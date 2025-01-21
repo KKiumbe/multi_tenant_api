@@ -61,7 +61,7 @@ async function updateSmsDeliveryStatus(req, res) {
 const getSmsMessages = async (req, res) => {
   try {
     // Fetch the first 100 SMS messages from the database, ordered by the creation date in descending order
-    const smsMessages = await prisma.sms.findMany({
+    const smsMessages = await prisma.sMS.findMany({
       orderBy: {
         createdAt: 'desc', // Sort by latest first
       },
