@@ -34,6 +34,12 @@ const getCustomerDetails = async (req, res) => {
     res.status(200).json(customer);
   } catch (error) {
     console.error('Error retrieving customer details:', error);
+    
+    // If it's a Prisma-specific error, return a more detailed response
+    if (error instanceof PrismaClientKnownRequestError) {
+      return res.status(400).json({ message: 'Invalid request', error: error.message });
+    }
+
     res.status(500).json({ message: 'Error retrieving customer details' });
   }
 };

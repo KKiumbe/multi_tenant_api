@@ -184,7 +184,7 @@ model Customer {
 
   // Relationships
   tenant                Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  Invoices              Invoice[]
+  invoices              Invoice[]
   receipts              Receipt[]
   trashbagsHistory      TrashBagIssuance[]
 
