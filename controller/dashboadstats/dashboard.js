@@ -20,7 +20,7 @@ const getDashboardStats = async (req, res) => {
         // Only fetch active customers
       },
       include: {
-        Invoices: true, // Include invoices for status checks
+        invoices: true, // Include invoices for status checks
       },
     });
 
@@ -45,7 +45,7 @@ const getDashboardStats = async (req, res) => {
 
     const overdueCustomers = activeCustomers.filter(customer => {
       // Check if the customer has more than 2 unpaid invoices
-      const unpaidInvoices = customer.Invoices.filter(invoice => invoice.status === 'UNPAID');
+      const unpaidInvoices = customer.invoices.filter(invoice => invoice.status === 'UNPAID');
       return unpaidInvoices.length > 2;
     }).length;
 
