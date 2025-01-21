@@ -72,7 +72,9 @@ const getSmsBalance = async (req,res) => {
         partnerID: partnerID,
       });
       console.log('SMS balance:', response.data.credit);
-      return response.data.credit;
+
+      res.status(200).json({ credit: response.data.credit });
+   
     } catch (error) {
       console.error('Error checking SMS balance:', error.response?.data || error.message);
       throw new Error('Failed to retrieve SMS balance');
