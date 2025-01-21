@@ -98,7 +98,7 @@ async function generateBulkBillSmsMessage() {
         const sentIds = filteredSmsList.map(sms => sms.clientsmsid);
 
         // Update SMS status to "sent" in the database
-        await prisma.sms.updateMany({
+        await prisma.sMS.updateMany({
           where: { clientsmsid: { in: sentIds } },
           data: { status: 'sent' }
         });

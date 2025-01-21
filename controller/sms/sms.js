@@ -4,6 +4,7 @@ const axios = require('axios');
 const {getSMSConfigForTenant }= require('../smsConfig/getSMSConfig.js')
 const { v4: uuidv4 } = require('uuid');
 
+
 const prisma = new PrismaClient();
 
 // const SMS_API_KEY = process.env.SMS_API_KEY;
@@ -473,28 +474,61 @@ const sendToGroup = async (req, res) => {
 // Helper function to send SMS
 
 
+
+
+
+
 const sendSms = async (tenantId, messages) => {
+  try {
     // Fetch tenant-specific SMS configuration
-    const { partnerID, apiKey, shortCode } = await getSMSConfigForTenant(tenantId);
-  
+    const { partnerId, apiKey, shortCode } = await getSMSConfigForTenant(tenantId);
+
+    if (!partnerId || !apiKey || !shortCode) {
+      throw new Error('Missing SMS configuration for tenant.');
+    }
+
     // Prepare the SMS payload
-    const smsList = messages.map((msg) => ({
-      partnerID: partnerID,
-      apikey: apiKey,
-      pass_type: 'plain',
-      clientsmsid: uuidv4(),
-      message: msg.message,
-      shortcode: shortCode,
-      mobile: sanitizePhoneNumber(msg.phoneNumber),
-    }));
-  
+    const smsList = messages.map((msg) => {
+      const clientsmsid = uuidv4(); // Generate unique client SMS ID
+      return {
+        clientsmsid,
+        partnerID: partnerId,
+        apikey: apiKey,
+        pass_type: 'plain',
+        message: msg.message,
+        shortcode: shortCode,
+        mobile: sanitizePhoneNumber(msg.phoneNumber),
+      };
+    });
+
+    // Send SMS request
     const response = await axios.post(process.env.BULK_SMS_ENDPOINT, {
       count: smsList.length,
       smslist: smsList,
     });
-  
+
+    // Log SMS details in the database
+    const smsLogs = smsList.map((sms) => ({
+      id: uuidv4(), // Unique ID for the SMS record
+      clientsmsid: sms.clientsmsid, // Store the unique clientsmsid
+      mobile: sms.mobile,
+      message: sms.message,
+      status: 'SENT', // Default status, can be updated later
+      createdAt: new Date(),
+    }));
+
+    await prisma.sMS.createMany({ data: smsLogs });
+
     return response.data;
-  };
+  } catch (error) {
+    console.error('Error sending SMS:', error);
+    throw new Error('Failed to send SMS.');
+  }
+};
+
+
+
+
   
 
 

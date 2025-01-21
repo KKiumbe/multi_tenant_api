@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
 const { PrismaClient } = require('@prisma/client');
 const ROLE_PERMISSIONS = require('../../DatabaseConfig/role.js');
+const { configureTenantSettings } = require('../smsConfig/config.js');
 const prisma = new PrismaClient();
 dotenv.config();
 
@@ -80,8 +81,12 @@ const register = async (req, res) => {
         },
       });
 
-      return user; // Return the created user
+      
+
+      return { user, tenantId: newTenant.id };
     });
+
+    await configureTenantSettings(newUser.tenantId);
 
     res.status(201).json({
       message: "User and organization created successfully",
