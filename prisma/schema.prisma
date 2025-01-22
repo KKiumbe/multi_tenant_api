@@ -23,6 +23,26 @@ model Tenant {
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
+  email               String ?   
+  phoneNumber         String  ? 
+  alternativePhoneNumber String?
+              
+
+
+  county                String?
+  town                  String?
+  adress                 String? //po box
+  building                String?
+
+  street                 String?
+
+  website               String?
+  logoUrl               String?
+  allowedUsers          Int 
+
+
+
+
   // Relationships
   users             User[]
   customers         Customer[]
