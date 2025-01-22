@@ -1,5 +1,19 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const multer = require('multer');
+const path = require('path');
+
+// Set up storage engine for multer to save the uploaded file
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, './uploads/'); // Save files in the 'uploads' directory
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname)); // Use timestamp as filename
+  },
+});
+
+const upload = multer({ storage });
 
 /**
  * Update Tenant Details (Supports Partial Updates)
@@ -12,9 +26,9 @@ const updateTenantDetails = async (req, res) => {
   const { role, tenantId: userTenantId, user: userId } = req.user;
 
   const tenantIdInt = parseInt(tenantId, 10);
-  
+
   // Validate input (At least one field must be provided)
-  if (Object.keys(updateData).length === 0) {
+  if (Object.keys(updateData).length === 0 && !req.file) {
     return res.status(400).json({ error: 'No valid fields provided for update.' });
   }
 
@@ -29,8 +43,14 @@ const updateTenantDetails = async (req, res) => {
     }
 
     // Ensure the user belongs to the same tenant or has SUPER_ADMIN privileges
-    if (userTenantId !== tenantIdInt ) {
+    if (userTenantId !== tenantIdInt) {
       return res.status(403).json({ error: 'Access denied. You do not have permission to update this tenant.' });
+    }
+
+    // Handle logo upload if a logo file is provided
+    if (req.file) {
+      const logoUrl = `/uploads/${req.file.filename}`; // You might want to use a full URL or cloud storage URL
+      updateData.logo = logoUrl; // Save the logo URL to the tenant data
     }
 
     // Ensure proper data types for numeric values
@@ -74,6 +94,9 @@ const updateTenantDetails = async (req, res) => {
     res.status(500).json({ error: 'Failed to update tenant details.', details: error.message });
   }
 };
+
+// Express route handler
+
 
 
 

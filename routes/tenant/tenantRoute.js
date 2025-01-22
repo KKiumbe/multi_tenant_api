@@ -5,7 +5,9 @@ const verifyToken = require('../../middleware/verifyToken.js');
 const router = express.Router();
 
 // Update Tenant Details
-router.put('/tenants/:tenantId',verifyToken, updateTenantDetails);
+
+
+router.put('/tenants/:tenantId', upload.single('logo'), verifyToken, updateTenantDetails);
 
 router.get('/tenants/:tenantId',verifyToken, getTenantDetails);
 
