@@ -19,12 +19,12 @@ model Tenant {
   status            TenantStatus     @default(ACTIVE)
   subscriptionPlan  String           // Plan name e.g., 'Ndovu', 'Simba', 'Nyati'
   monthlyCharge     Float 
-  numberOfBags       Int ?              // Monthly billing charge for the tenant
+  numberOfBags       Int?              // Monthly billing charge for the tenant
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
-  email               String ?   
-  phoneNumber         String  ? 
+  email               String?   
+  phoneNumber         String? 
   alternativePhoneNumber String?
               
 
@@ -274,7 +274,7 @@ model Receipt {
   phoneNumber    String?
   paymentId      String @unique 
 
-  payment        Payment ? @relation(fields: [paymentId], references: [id], onDelete: Cascade)   
+  payment        Payment? @relation(fields: [paymentId], references: [id], onDelete: Cascade)   
   receiptInvoices ReceiptInvoice[] @relation("InvoiceReceipts")
   customer       Customer    @relation(fields: [customerId], references: [id], onDelete: Cascade)
   
