@@ -286,7 +286,10 @@ const sendBill = async (req, res) => {
     // Prepare the message
     const message = `Dear ${customer.firstName}, your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}.Use paybill No :${paybill} ;your phone number is the account number.Inquiries? call: ${customerSupportPhoneNumber}.Thank you for being a loyal customer.`;
     // Call sendSms with an array
-    const smsResponses = await sendSms(tenantId,[
+
+
+
+    const smsResponses = await sendSMS(tenantId,[
       { phoneNumber: customer.phoneNumber, message },
     ]);
 
