@@ -289,9 +289,9 @@ const sendBill = async (req, res) => {
 
 
 
-    const smsResponses = await sendSMS(tenantId,[
-      { phoneNumber: customer.phoneNumber, message },
-    ]);
+    const smsResponses = await sendSMS(tenantId,
+       customer.phoneNumber, message
+    );
 
     res.status(200).json({ message: 'Bill sent successfully.', smsResponses });
   } catch (error) {
