@@ -31,7 +31,7 @@ model Tenant {
 
   county                String?
   town                  String?
-  adress                 String? //po box
+  address                 String? //po box
   building                String?
 
   street                 String?
