@@ -1,6 +1,7 @@
 const express = require('express');
 const { updateTenantDetails, getTenantDetails } = require('../../controller/tenant/tenantupdate.js');
 const verifyToken = require('../../middleware/verifyToken.js');
+const { upload } = require('../../controller/fileupload/uploadscript.js');
 
 const router = express.Router();
 

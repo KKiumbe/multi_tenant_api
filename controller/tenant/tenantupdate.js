@@ -15,6 +15,9 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+
+module.exports = upload;
+
 /**
  * Update Tenant Details (Supports Partial Updates)
  */
