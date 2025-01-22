@@ -21,16 +21,18 @@ module.exports = upload;
 /**
  * Update Tenant Details (Supports Partial Updates)
  */
+
+
+
+
+// Update Tenant Details (Supports Partial Updates)
 const updateTenantDetails = async (req, res) => {
   const { tenantId } = req.params; // Tenant ID from the route parameter
   const updateData = req.body; // Dynamic update fields
 
-  console.log(`User object: ${JSON.stringify(req.user)}`);
   const { role, tenantId: userTenantId, user: userId } = req.user;
-
   const tenantIdInt = parseInt(tenantId, 10);
 
-  // Validate input (At least one field must be provided)
   if (Object.keys(updateData).length === 0 && !req.file) {
     return res.status(400).json({ error: 'No valid fields provided for update.' });
   }
@@ -64,7 +66,7 @@ const updateTenantDetails = async (req, res) => {
       updateData.numberOfBags = parseInt(updateData.numberOfBags, 10);
     }
 
-    // Update the tenant
+    // Update the tenant details
     const updatedTenant = await prisma.tenant.update({
       where: { id: tenantIdInt },
       data: updateData,
@@ -77,13 +79,13 @@ const updateTenantDetails = async (req, res) => {
         resource: 'TENANT',
         description: `Updated tenant details for tenant ID ${tenantIdInt}`,
         tenant: {
-          connect: { id: tenantIdInt }, // Connect the tenant relation
+          connect: { id: tenantIdInt },
         },
         user: {
-          connect: { id: userId }, // Connect the user relation
+          connect: { id: userId },
         },
         details: {
-          updatedFields: Object.keys(updateData), // Log the fields updated
+          updatedFields: Object.keys(updateData),
         },
       },
     });
@@ -98,7 +100,11 @@ const updateTenantDetails = async (req, res) => {
   }
 };
 
-// Express route handler
+
+
+
+
+
 
 
 
