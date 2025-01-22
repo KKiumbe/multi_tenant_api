@@ -265,7 +265,9 @@ const sendToAll = async (req, res) => {
 const sendBill = async (req, res) => {
   const { customerId } = req.body;
   const { tenantId } = req.user; 
-  const { customerSupportPhoneNumber:customerSupport } = await getSMSConfigForTenant(tenantId);
+  const { customerSupportPhoneNumber } = await getSMSConfigForTenant(tenantId);
+
+  console.log(`this is the customer support number ${customerSupportPhoneNumber}`);
 
   if (!customerId) {
     return res.status(400).json({ error: 'Customer ID is required.' });
@@ -282,7 +284,7 @@ const sendBill = async (req, res) => {
     }
 
     // Prepare the message
-    const message = `Dear ${customer.firstName}, your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}.Use paybill No :${paybill} ;your phone number is the account number.Inquiries? call: ${customerSupport}.Thank you for being a loyal customer.`;
+    const message = `Dear ${customer.firstName}, your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}.Use paybill No :${paybill} ;your phone number is the account number.Inquiries? call: ${customerSupportPhoneNumber}.Thank you for being a loyal customer.`;
     // Call sendSms with an array
     const smsResponses = await sendSms(tenantId,[
       { phoneNumber: customer.phoneNumber, message },
