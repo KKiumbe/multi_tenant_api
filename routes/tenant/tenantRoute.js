@@ -1,16 +1,20 @@
 const express = require('express');
-const { updateTenantDetails, getTenantDetails } = require('../../controller/tenant/tenantupdate.js');
+const { updateTenantDetails, getTenantDetails, uploadLogo } = require('../../controller/tenant/tenantupdate.js');
 const verifyToken = require('../../middleware/verifyToken.js');
-const { upload } = require('../../controller/fileupload/uploadscript.js');
+const upload = require('../../controller/tenant/logoUploadMiddleware.js');
+
 
 const router = express.Router();
 
 // Update Tenant Details
 
 
-router.put('/tenants/:tenantId', upload.single('logo'), verifyToken, updateTenantDetails);
+router.put('/tenants/:tenantId', verifyToken, updateTenantDetails);
 
 router.get('/tenants/:tenantId',verifyToken, getTenantDetails);
+
+router.put('/logo-upload/:tenantId', upload.single('logo'),uploadLogo );
+
 
 module.exports = router;
 

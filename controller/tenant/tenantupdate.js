@@ -4,24 +4,38 @@ const multer = require('multer');
 const path = require('path');
 
 // Set up storage engine for multer to save the uploaded file
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, './uploads/'); // Save files in the 'uploads' directory
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Use timestamp as filename
-  },
-});
-
-const upload = multer({ storage });
 
 
-module.exports = upload;
 
-/**
- * Update Tenant Details (Supports Partial Updates)
- */
 
+// Controller function to handle logo upload
+const uploadLogo = async (req, res) => {
+  const { tenantId } = req.params; // Extract tenantId from route parameters
+
+  // Check if a file was uploaded
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded.' });
+  }
+
+  try {
+    // Construct the logo URL (adjust based on your application's requirements)
+    const logoUrl = `/uploads/${req.file.filename}`;
+
+    // Update the tenant's logo URL in the database
+    const updatedTenant = await prisma.tenant.update({
+      where: { id: parseInt(tenantId, 10) },
+      data: { logoUrl: logoUrl },
+    });
+
+    res.status(200).json({
+      message: 'Logo uploaded and tenant updated successfully.',
+      tenant: updatedTenant,
+    });
+  } catch (error) {
+    console.error('Error uploading logo:', error);
+    res.status(500).json({ error: 'Failed to upload logo.', details: error.message });
+  }
+};
 
 
 
@@ -33,9 +47,7 @@ const updateTenantDetails = async (req, res) => {
   const { role, tenantId: userTenantId, user: userId } = req.user;
   const tenantIdInt = parseInt(tenantId, 10);
 
-  if (Object.keys(updateData).length === 0 && !req.file) {
-    return res.status(400).json({ error: 'No valid fields provided for update.' });
-  }
+
 
   try {
     // Fetch the tenant to ensure it exists
@@ -52,11 +64,7 @@ const updateTenantDetails = async (req, res) => {
       return res.status(403).json({ error: 'Access denied. You do not have permission to update this tenant.' });
     }
 
-    // Handle logo upload if a logo file is provided
-    if (req.file) {
-      const logoUrl = `/uploads/${req.file.filename}`; // You might want to use a full URL or cloud storage URL
-      updateData.logo = logoUrl; // Save the logo URL to the tenant data
-    }
+
 
     // Ensure proper data types for numeric values
     if (updateData.monthlyCharge !== undefined) {
@@ -164,5 +172,5 @@ const getTenantDetails = async (req, res) => {
 
 
 module.exports = {
-  updateTenantDetails,getTenantDetails
+  updateTenantDetails,getTenantDetails,uploadLogo
 };

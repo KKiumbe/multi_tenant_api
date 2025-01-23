@@ -38,7 +38,7 @@ model Tenant {
 
   website               String?
   logoUrl               String?
-  allowedUsers          Int 
+  allowedUsers          Int  @default(1)
 
 
 
