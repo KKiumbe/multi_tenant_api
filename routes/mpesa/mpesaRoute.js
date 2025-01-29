@@ -70,6 +70,8 @@ router.post('/callback', async (req, res) => {
 
     console.log('Payment info saved to the database:', transaction);
 
+  
+
     // Trigger invoice settlement process
     await settleInvoice(); // Ensure settleInvoice is correctly implemented to process invoices
 

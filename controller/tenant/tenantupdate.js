@@ -19,8 +19,7 @@ const uploadLogo = async (req, res) => {
 
   try {
     // Construct the logo URL (adjust based on your application's requirements)
-    const logoUrl = `/uploads/${req.file.filename}`;
-
+    const logoUrl = `/uploads/${req.file.filename}`;  
     // Update the tenant's logo URL in the database
     const updatedTenant = await prisma.tenant.update({
       where: { id: parseInt(tenantId, 10) },
@@ -115,6 +114,57 @@ const updateTenantDetails = async (req, res) => {
 
 
 
+const fetchTenantDetails = async(tenantID) =>{
+   
+
+
+  try {
+    // Fetch the tenant with relationships
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantID },
+      select: {
+        name: true,
+        createdBy: true,
+        status: true,
+        subscriptionPlan: true,
+        monthlyCharge: true,
+        paymentDetails:true,
+        numberOfBags: true,
+        createdAt: true,
+        updatedAt: true,
+        email: true,
+        phoneNumber: true,
+        alternativePhoneNumber: true,
+        county: true,
+        town: true,
+        address: true,
+        building: true,
+        street: true,
+        website: true,
+        logoUrl: true,
+        allowedUsers: true, // Include trash bag issuance
+      },
+    });
+
+    if (!tenant) {
+      return res.status(404).json({ error: 'Tenant not found.' });
+    }
+
+ 
+    //const baseurl = `${req.protocol}://${req.get('host')}`;
+
+    // Build the full URL for logoUrl if it exists
+    //const fullLogoUrl = tenant.logoUrl ? `${baseurl}${tenant.logoUrl}` : null;
+
+    // Send the response with the full logo URL
+   return tenant
+  } catch (error) {
+    console.error('Error fetching tenant details:', error);
+    res.status(500).json({ error: 'Failed to retrieve tenant details.', details: error.message });
+  }
+};
+
+
 
 
 
@@ -135,6 +185,7 @@ const getTenantDetails = async (req, res) => {
         status: true,
         subscriptionPlan: true,
         monthlyCharge: true,
+        paymentDetails:true,
         numberOfBags: true,
         createdAt: true,
         updatedAt: true,
@@ -143,12 +194,12 @@ const getTenantDetails = async (req, res) => {
         alternativePhoneNumber: true,
         county: true,
         town: true,
-        adress: true,
+        address: true,
         building: true,
         street: true,
         website: true,
         logoUrl: true,
-        allowedUsers: true,// Include trash bag issuance
+        allowedUsers: true, // Include trash bag issuance
       },
     });
 
@@ -160,8 +211,18 @@ const getTenantDetails = async (req, res) => {
     if (userTenantId !== tenantIdInt) {
       return res.status(403).json({ error: 'Access denied. You do not have permission to view this tenant.' });
     }
+    const baseurl = `${req.protocol}://${req.get('host')}`;
 
-    res.status(200).json({ tenant });
+    // Build the full URL for logoUrl if it exists
+    const fullLogoUrl = tenant.logoUrl ? `${baseurl}${tenant.logoUrl}` : null;
+
+    // Send the response with the full logo URL
+    res.status(200).json({ 
+      tenant: {
+        ...tenant,
+        logoUrl: fullLogoUrl, // Add the full URL to the response
+      } 
+    });
   } catch (error) {
     console.error('Error fetching tenant details:', error);
     res.status(500).json({ error: 'Failed to retrieve tenant details.', details: error.message });
@@ -170,7 +231,6 @@ const getTenantDetails = async (req, res) => {
 
 
 
-
 module.exports = {
-  updateTenantDetails,getTenantDetails,uploadLogo
+  updateTenantDetails,getTenantDetails,uploadLogo,fetchTenantDetails
 };

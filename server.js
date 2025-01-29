@@ -7,6 +7,7 @@ const cors = require('cors');
 const helmet = require('helmet'); // Import Helmet
 require('dotenv').config();
 const bodyParser = require('body-parser');
+const path = require('path');
 const customerRoutes = require('./routes/customer/customerRoutes.js');
 const userRoutes = require('./routes/userRoute/userRoute.js');
 const invoiceRoutes = require('./routes/invoices/invoiceRoute.js');
@@ -34,6 +35,10 @@ const prisma = new PrismaClient(); // Prisma Client instance
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 app.use(cookieParser());
 app.use(cors());
 app.use(bodyParser.json());
@@ -57,6 +62,11 @@ async function connectDatabase() {
 
 connectDatabase();
 
+
+
+app.get('/test',(req,res)=>{
+  res.sendFile(path.join(__dirname, '/uploads/1737629268458.png  '))
+})
 // Use customer routes
 app.use('/api', customerRoutes); //done
 app.use('/api', userRoutes);
@@ -71,7 +81,7 @@ app.use('/api', statsRoute); //done
 app.use('/api', uploadcustomers); 
  
  app.use('/api', smsBalanceRoute); 
-// app.use('/api', reportsReoute); 
+app.use('/api', reportsReoute); 
 app.use('/api', userManagementRoute); 
 
 app.use('/api', mpesaSettings); 

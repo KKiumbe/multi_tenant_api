@@ -40,7 +40,7 @@ CREATE TABLE "Tenant" (
     "street" TEXT,
     "website" TEXT,
     "logoUrl" TEXT,
-    "allowedUsers" INTEGER NOT NULL,
+    "allowedUsers" INTEGER NOT NULL DEFAULT 1,
 
     CONSTRAINT "Tenant_pkey" PRIMARY KEY ("id")
 );

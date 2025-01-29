@@ -3,121 +3,252 @@ const PDFDocument = require('pdfkit');
 const prisma = new PrismaClient();
 const fs = require('fs');
 const path = require('path');
+const { fetchTenantDetails } = require('../tenant/tenantupdate');
+const { generatePDFHeader } = require('./header');
+const fsPromises = require('fs').promises;
 
-// Helper function to generate PDF report for each category
-async function generateReport(customers, title, fileName, res) {
-  const groupedByCollectionDay = customers.reduce((acc, customer) => {
-    const day = customer.garbageCollectionDay;
-    if (!acc[day]) {
-      acc[day] = { count: 0, customers: [], totalClosingBalance: 0, monthlyTotal: 0 };
-    }
-    acc[day].count += 1;
-    acc[day].customers.push(customer);
-    acc[day].totalClosingBalance += customer.closingBalance;
-    acc[day].monthlyTotal += customer.monthlyCharge;
-    return acc;
-  }, {});
 
-  const filePath = path.join(__dirname, '..', 'reports', `${fileName}.pdf`);
-  await generatePDF(groupedByCollectionDay, filePath, title);
 
-  res.download(filePath, `${fileName}.pdf`, (err) => {
-    if (err) {
-      console.error('File download error:', err);
-      res.status(500).send('Error generating report');
-    }
-    fs.unlinkSync(filePath);
-  });
-}
 
-// Function to generate a PDF document
-function generatePDF(groupedByCollectionDay, filePath, reportTitle) {
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50 });
-    const writeStream = fs.createWriteStream(filePath);
-    doc.pipe(writeStream);
-
-    const logoPath = path.join(__dirname, '..', 'assets', 'icon.png');
-    doc.image(logoPath, 50, 45, { width: 100 })
-      .fontSize(20).text('TAQa MALI ', 160, 50)
-      .fontSize(10).text('KISERIAN, NGONG, RONGAI, MATASIA,', 160, 80)
-      .fontSize(10).text('For all inquiries, Call 0726594923', 160, 110).moveDown();
-
-    doc.moveTo(50, 120).lineTo(550, 120).stroke();
-    doc.fontSize(18).text(reportTitle, { align: 'center' }).moveDown();
-
-    for (const [day, { count, customers, totalClosingBalance, monthlyTotal }] of Object.entries(groupedByCollectionDay)) {
-      doc.fontSize(12).text(`Collection Day: ${day} (Total Customers: ${count})`, { underline: true }).moveDown();
-      doc.fontSize(10).text('Name', 50, doc.y, { continued: true })
-        .text('PhoneNumber', 150, doc.y, { continued: true })
-        .text('Balance', 300, doc.y, { continued: true })
-        .text('MonthlyCharge', 410, doc.y).moveDown();
-      doc.moveTo(50, doc.y - 5).lineTo(550, doc.y - 5).stroke().moveDown();
-
-      customers.forEach((customer) => {
-        doc.fontSize(10).fillColor('#333')
-          .text(`${customer.firstName} ${customer.lastName}`, 50, doc.y, { continued: true })
-          .text(customer.phoneNumber, 150, doc.y, { continued: true })
-          .text(customer.closingBalance.toFixed(2), 300, doc.y, { continued: true })
-          .text(customer.monthlyCharge.toFixed(2), 410, doc.y).moveDown();
-      });
-
-      doc.moveDown().fontSize(12)
-        .text(`Total Closing Balance for this Collection Day: ${totalClosingBalance.toFixed(2)}`, 50, doc.y)
-        .moveDown()
-        .text(`Total Monthly Charges for this Collection Day: ${monthlyTotal.toFixed(2)}`, 50, doc.y)
-        .moveDown().moveDown();
-    }
-
-    doc.end();
-    writeStream.on('finish', resolve);
-    writeStream.on('error', reject);
-  });
-}
-
-// Controller function for high debt report
 async function getCustomersWithHighDebt(req, res) {
-  const customers = await prisma.customer.findMany({
-    where: { status: 'ACTIVE', invoices: { some: { status: 'UNPAID' } } },
-    select: {
-      firstName: true, lastName: true, phoneNumber: true, email: true, monthlyCharge: true, closingBalance: true, garbageCollectionDay: true
+  const tenantId = req.user?.tenantId;
+  try {
+    // Fetch customers with unpaid invoices and high debt
+    const customers = await prisma.customer.findMany({
+      where: {
+        status: 'ACTIVE',
+        tenantId: tenantId,
+        invoices: {
+          some: { status: 'UNPAID' },
+        },
+      },
+      select: {
+        firstName: true,
+        lastName: true,
+        phoneNumber: true,
+       
+        monthlyCharge: true,
+        closingBalance: true,
+        garbageCollectionDay: true,
+      },
+    });
+
+    // Filter customers with high debt (closingBalance > 2 * monthlyCharge)
+    const filteredCustomers = customers.filter(
+      (customer) => customer.closingBalance > 2 * customer.monthlyCharge
+    );
+
+    if (filteredCustomers.length === 0) {
+      return res.status(404).json({ message: "No customers with high debt found." });
     }
-  });
-  const filteredCustomers = customers.filter(c => c.closingBalance > 2 * c.monthlyCharge);
-  if (!filteredCustomers.length) return res.status(404).json({ message: "No customers with high debt found." });
-  await generateReport(filteredCustomers, 'High Debt Report', 'high-debt-report', res);
+
+    // Fetch tenant details
+    const tenant = await fetchTenantDetails(tenantId);
+    if (!tenant) {
+      return res.status(404).json({ message: "Tenant details not found." });
+    }
+
+    // Create PDF report
+    const reportsDir = path.join(__dirname, '..', 'reports');
+    await fsPromises.mkdir(reportsDir, { recursive: true });
+
+    const filePath = path.join(reportsDir, 'highdebtcustomersreport.pdf');
+    console.log('File Path:', filePath);
+
+    const doc = new PDFDocument({ margin: 50 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="highdebtcustomersreport.pdf"');
+
+    doc.pipe(res);
+
+    // Generate PDF header
+    generatePDFHeader(doc, tenant);
+
+    // Header with reduced font size
+    doc.font('Helvetica').fontSize(12).text('Customers with High Debt Report', { align: 'center' });
+    doc.moveDown(1);
+
+    // Table Header with reduced font size
+    const columnWidths = [100, 120, 100, 120, 100, 100];
+    const startX = 50;
+
+    // Function to draw table rows
+    function drawTableRow(y, data, isHeader = false) {
+      let x = startX;
+
+      if (isHeader) {
+        doc.font('Helvetica-Bold').fontSize(8); // Header font size
+      } else {
+        doc.font('Helvetica').fontSize(8); // Content font size
+      }
+
+      data.forEach((text, index) => {
+        doc.text(text, x + 5, y + 5, { width: columnWidths[index] });
+        doc.rect(x, y, columnWidths[index], 25).stroke();
+        x += columnWidths[index];
+      });
+    }
+
+    // Draw table header
+    drawTableRow(doc.y, ['First Name', 'Last Name', 'Phone', 'Monthly Charge', 'Closing Balance'], true);
+    let rowY = doc.y + 30;
+
+    // Draw table rows for filtered customers
+    filteredCustomers.forEach((customer) => {
+      if (rowY > 700) { // Avoid page overflow
+        doc.addPage();
+        rowY = 50;
+        drawTableRow(rowY, ['First Name', 'Last Name', 'Phone',  'Monthly Charge', 'Closing Balance'], true);
+        rowY += 30;
+      }
+
+      drawTableRow(rowY, [
+        customer.firstName,
+        customer.lastName,
+        customer.phoneNumber || 'N/A',
+      
+        `$${customer.monthlyCharge.toFixed(2)}`,
+        `$${customer.closingBalance.toFixed(2)}`,
+      ]);
+
+      rowY += 30;
+    });
+
+    // Finalize PDF
+    doc.end();
+  } catch (error) {
+    console.error('Error generating high debt customer report:', error);
+    res.status(500).json({ error: 'Error generating report' });
+  }
 }
+
+
+
+
+
+
 
 // Controller function for low balance report
+
+
 async function getCustomersWithLowBalance(req, res) {
-  const customers = await prisma.customer.findMany({
-    where: { status: 'ACTIVE', invoices: { some: { status: 'UNPAID' } } },
-    select: {
-      firstName: true, lastName: true, phoneNumber: true, email: true, monthlyCharge: true, closingBalance: true, garbageCollectionDay: true
+  const tenantId = req.user?.tenantId;
+  try {
+    // Fetch customers with unpaid invoices and low balance
+    const customers = await prisma.customer.findMany({
+      where: {
+        status: 'ACTIVE',
+        tenantId: tenantId,
+        invoices: {
+          some: { status: 'UNPAID' },
+        },
+      },
+      select: {
+        firstName: true,
+        lastName: true,
+        phoneNumber: true,
+      
+        monthlyCharge: true,
+        closingBalance: true,
+        garbageCollectionDay: true,
+      },
+    });
+
+    // Filter customers with low balance (closingBalance <= monthlyCharge)
+    const filteredCustomers = customers.filter(
+      (customer) => customer.closingBalance <= customer.monthlyCharge
+    );
+
+    if (filteredCustomers.length === 0) {
+      return res.status(404).json({ message: "No customers with low balance found." });
     }
-  });
-  const filteredCustomers = customers.filter(c => c.closingBalance <= c.monthlyCharge);
-  if (!filteredCustomers.length) return res.status(404).json({ message: "No customers with low balance found." });
-  await generateReport(filteredCustomers, 'Low Balance Report', 'low-balance-report', res);
+
+    // Fetch tenant details
+    const tenant = await fetchTenantDetails(tenantId);
+    if (!tenant) {
+      return res.status(404).json({ message: "Tenant details not found." });
+    }
+
+    // Create PDF report
+    const reportsDir = path.join(__dirname, '..', 'reports');
+    await fsPromises.mkdir(reportsDir, { recursive: true });
+
+    const filePath = path.join(reportsDir, 'lowbalancecustomersreport.pdf');
+    console.log('File Path:', filePath);
+
+    const doc = new PDFDocument({ margin: 50 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="lowbalancecustomersreport.pdf"');
+
+    doc.pipe(res);
+
+    // Generate PDF header
+    generatePDFHeader(doc, tenant);
+
+    // Header with reduced font size
+    doc.font('Helvetica').fontSize(12).text('Customers with Low Balance Report', { align: 'center' });
+    doc.moveDown(1);
+
+    // Table Header with reduced font size
+    const columnWidths = [100, 120, 100, 120, 100, 100];
+    const startX = 50;
+
+    // Function to draw table rows
+    function drawTableRow(y, data, isHeader = false) {
+      let x = startX;
+
+      if (isHeader) {
+        doc.font('Helvetica-Bold').fontSize(8); // Header font size
+      } else {
+        doc.font('Helvetica').fontSize(8); // Content font size
+      }
+
+      data.forEach((text, index) => {
+        doc.text(text, x + 5, y + 5, { width: columnWidths[index] });
+        doc.rect(x, y, columnWidths[index], 25).stroke();
+        x += columnWidths[index];
+      });
+    }
+
+    // Draw table header
+    drawTableRow(doc.y, ['First Name', 'Last Name', 'Phone', 'Monthly Charge', 'Closing Balance'], true);
+    let rowY = doc.y + 30;
+
+    // Draw table rows for filtered customers
+    filteredCustomers.forEach((customer) => {
+      if (rowY > 700) { // Avoid page overflow
+        doc.addPage();
+        rowY = 50;
+        drawTableRow(rowY, ['First Name', 'Last Name', 'Phone', 'Monthly Charge', 'Closing Balance'], true);
+        rowY += 30;
+      }
+
+      drawTableRow(rowY, [
+        customer.firstName,
+        customer.lastName,
+        customer.phoneNumber || 'N/A',
+      
+        `$${customer.monthlyCharge.toFixed(2)}`,
+        `$${customer.closingBalance.toFixed(2)}`,
+      ]);
+
+      rowY += 30;
+    });
+
+    // Finalize PDF
+    doc.end();
+  } catch (error) {
+    console.error('Error generating low balance customer report:', error);
+    res.status(500).json({ error: 'Error generating report' });
+  }
 }
 
-// Controller function for current balance report
-async function getCurrentCustomersDebt(req, res) {
-  const customers = await prisma.customer.findMany({
-    where: { status: 'ACTIVE', invoices: { some: { status: 'UNPAID' } } },
-    select: {
-      firstName: true, lastName: true, phoneNumber: true, email: true, monthlyCharge: true, closingBalance: true, garbageCollectionDay: true
-    }
-  });
 
-  //  customer.closingBalance >= customer.monthlyCharge * 0.15 
-  const filteredCustomers = customers.filter(c => c.closingBalance >= c.monthlyCharge * 0.15);
-  if (!filteredCustomers.length) return res.status(404).json({ message: "No current balance customers found." });
-  await generateReport(filteredCustomers, 'Current Balance Report', 'current-balance-report', res);
-}
+
+
 
 module.exports = {
   getCustomersWithHighDebt,
   getCustomersWithLowBalance,
-  getCurrentCustomersDebt
+  
 };

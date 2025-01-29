@@ -235,29 +235,50 @@ const sendBills = async (req, res) => {
 
 // Send SMS to all active customers
 const sendToAll = async (req, res) => {
-    const { tenantId } = req.user; 
+  const { tenantId } = req.user;
   const { message } = req.body;
 
   if (!message) {
-    return res.status(400).json({ error: 'Message is required.' });
+      return res.status(400).json({ error: 'Message is required.' });
   }
+ 
 
   try {
-    const activeCustomers = await prisma.customer.findMany({
-      where: { status: 'ACTIVE' },
-    });
+      // Check if SMS configuration exists for the tenant
+      const smsConfig = await prisma.sMSConfig.findUnique({
+          where: { tenantId },
+      });
 
-    const messages = activeCustomers.map((customer) => ({
-      phoneNumber: customer.phoneNumber,
-      message,
-    }));
+      if (!smsConfig) {
+          return res.status(400).json({ error: 'Missing SMS configuration for tenant.' });
+      }
 
-    const smsResponses = await sendSms(tenantId,messages);
+      // Fetch active customers
+      const activeCustomers = await prisma.customer.findMany({
+          where: { status: 'ACTIVE', tenantId },
+      });
 
-    res.status(200).json({ message: 'SMS sent to all active customers.', smsResponses });
+      if (activeCustomers.length === 0) {
+          return res.status(200).json({ message: 'No active customers found.' });
+      }
+
+      // Prepare messages
+      const messages = activeCustomers.map((customer) => ({
+          phoneNumber: customer.phoneNumber,
+          message,
+      }));
+
+      // Send SMS in batches to avoid timeouts
+ 
+
+        const smsResponses = await sendSms(tenantId, messages);
+      
+      
+
+      res.status(200).json({ message: 'SMS sent to all active customers.', smsResponses });
   } catch (error) {
-    console.error('Error sending SMS to all customers:', error);
-    res.status(500).json({ error: 'Failed to send SMS to all customers.' });
+      console.error('Error sending SMS to all customers:', error);
+      res.status(500).json({ error: 'Failed to send SMS to all customers.', details: error.message });
   }
 };
 
@@ -488,9 +509,9 @@ const sendToGroup = async (req, res) => {
 const sendSms = async (tenantId, messages) => {
   try {
     // Fetch tenant-specific SMS configuration
-    const { partnerId, apiKey, shortCode } = await getSMSConfigForTenant(tenantId);
+    const { partnerID, apikey, shortCode } = await getSMSConfigForTenant(tenantId);
 
-    if (!partnerId || !apiKey || !shortCode) {
+    if (!partnerID || !apikey || !shortCode) {
       throw new Error('Missing SMS configuration for tenant.');
     }
 
@@ -499,8 +520,8 @@ const sendSms = async (tenantId, messages) => {
       const clientsmsid = uuidv4(); // Generate unique client SMS ID
       return {
         clientsmsid,
-        partnerID: partnerId,
-        apikey: apiKey,
+        partnerID: partnerID,
+        apikey: apikey,
         pass_type: 'plain',
         message: msg.message,
         shortcode: shortCode,

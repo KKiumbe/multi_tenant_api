@@ -2,176 +2,302 @@ const { PrismaClient } = require('@prisma/client');
 const PDFDocument = require('pdfkit');
 const prisma = new PrismaClient();
 const fs = require('fs');
+const { promises: fsPromises } = require('fs');
 const path = require('path');
+const { fetchTenantDetails } = require('../tenant/tenantupdate.js');
+const { generatePDFHeader } = require('./header.js');
+ // Import header function
 
-// Controller function to get all active customers grouped by collection day
-async function getAllActiveCustomersReport(req, res) {
-  try {
-    // Fetch active customers
-    const customers = await prisma.customer.findMany({
-      where: {
-        status: 'ACTIVE', // Only active customers
-      },
-      select: {
-        firstName: true,
-        lastName: true,
-        phoneNumber: true,
-        email: true,
-        monthlyCharge: true,
-        closingBalance: true, // Include closing balance for total debt
-        garbageCollectionDay: true // Include collection day for grouping
-      }
-    });
 
-    if (!customers.length) {
-      return res.status(404).json({ message: "No active customers found." });
-    }
+ 
 
-    // Group customers by garbage collection day and calculate totals
-    const groupedByCollectionDay = customers.reduce((acc, customer) => {
-      const day = customer.garbageCollectionDay;
-      if (!acc[day]) {
-        acc[day] = { count: 0, customers: [], totalClosingBalance: 0, monthlyTotal: 0 }; // Initialize totals
-      }
-      acc[day].count += 1;
-      acc[day].customers.push(customer);
-      acc[day].totalClosingBalance += customer.closingBalance; // Accumulate the total closing balance
-      acc[day].monthlyTotal += customer.monthlyCharge; // Accumulate the monthly charges
-      return acc;
-    }, {});
+ 
+ async function getAllActiveCustomersReport(req, res) {
+   const tenantId = req.user?.tenantId;
+ 
+   if (!tenantId) {
+     return res.status(401).json({ message: "Tenant not identified." });
+   }
+ 
+   try {
+     const customers = await prisma.customer.findMany({
+       where: { status: 'ACTIVE', tenantId },
+       select: {
+         firstName: true,
+         lastName: true,
+         phoneNumber: true,
+         email: true,
+         monthlyCharge: true,
+         closingBalance: true,
+         garbageCollectionDay: true,
+       }
+     });
+ 
+     if (!customers.length) {
+       return res.status(404).json({ message: "No active customers found." });
+     }
+ 
+     const tenant = await fetchTenantDetails(tenantId);
+     if (!tenant) {
+       return res.status(404).json({ message: "Tenant details not found." });
+     }
+ 
+     const reportsDir = path.join(__dirname, '..', 'reports');
+     await fsPromises.mkdir(reportsDir, { recursive: true });
+ 
+     const filePath = path.join(reportsDir, 'activecustomersreport.pdf');
+     console.log('File Path:', filePath);
+ 
+     // Generate the PDF report with reduced font size
+     const doc = new PDFDocument({ margin: 50 });
+     res.setHeader('Content-Type', 'application/pdf');
+     res.setHeader('Content-Disposition', 'attachment; filename="activecustomersreport.pdf"');
+ 
+     doc.pipe(res);
 
-    // Generate the PDF report
-    const filePath = path.join(__dirname, '..', 'reports', 'active-customers-weekly-report.pdf');
-    await generatePDF(groupedByCollectionDay, filePath);
+     generatePDFHeader(doc, tenant);
+ 
+     // Header with reduced font size
+     doc.font('Helvetica').fontSize(12).text('Active Customers Report', { align: 'center' });
+     doc.moveDown(1);
+ 
+     // Table Header
+     const columnWidths = [100, 120, 100, 120, 100, 100];
+     const startX = 50;
+ 
+     function drawTableRow(y, data, isHeader = false) {
+       let x = startX;
+ 
+       // Use reduced font size for headers and content
+       if (isHeader) {
+         doc.font('Helvetica-Bold').fontSize(8); // Header font size
+       } else {
+         doc.font('Helvetica').fontSize(8); // Content font size
+       }
+ 
+       data.forEach((text, index) => {
+         doc.text(text, x + 5, y + 5, { width: columnWidths[index] });
+         doc.rect(x, y, columnWidths[index], 25).stroke();
+         x += columnWidths[index];
+       });
+     }
+ 
+     // Drawing table rows with reduced font size for data
+     drawTableRow(doc.y, ['First Name', 'Last Name', 'Phone', 'Email', 'Monthly Charge', 'Closing Balance'], true);
+     let rowY = doc.y + 30;
+ 
+     customers.forEach(customer => {
+       if (rowY > 700) { // Avoid page overflow
+         doc.addPage();
+         rowY = 50;
+         drawTableRow(rowY, ['First Name', 'Last Name', 'Phone', 'Email', 'Monthly Charge', 'Closing Balance'], true);
+         rowY += 30;
+       }
+ 
+       drawTableRow(rowY, [
+         customer.firstName,
+         customer.lastName,
+         customer.phoneNumber || 'N/A',
+         customer.email || 'N/A',
+         `$${customer.monthlyCharge.toFixed(2)}`,
+         `$${customer.closingBalance.toFixed(2)}`,
+       ]);
+ 
+       rowY += 30;
+     });
+ 
+     // Finalize PDF
+     doc.end();
+ 
+   } catch (error) {
+     console.error('Error fetching active customer report:', error);
+     res.status(500).json({ error: 'Error generating report' });
+   }
+ }
+ 
 
-    // Send the file as a downloadable response
-    res.download(filePath, 'active-customers-weekly-report.pdf', (err) => {
-      if (err) {
-        console.error('File download error:', err);
-        res.status(500).send('Error generating report');
-      }
-      // Optionally delete the file after sending
-      fs.unlinkSync(filePath);
-    });
-  } catch (error) {
-    console.error('Error fetching active customer report:', error);
-    res.status(500).send('Error generating report');
-  }
-}
+ 
 
-// Helper function to generate the PDF report
-function generatePDF(groupedByCollectionDay, filePath) {
+async function generatePDF(customers, tenant, filePath) {
+  const doc = new PDFDocument({ margin: 50 });
+
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 50 });
     const writeStream = fs.createWriteStream(filePath);
     doc.pipe(writeStream);
 
-    // Load the company logo
-    const logoPath = path.join(__dirname, '..', 'assets', 'icon.png');
+    // **Use the reusable header function**
+   generatePDFHeader(doc, tenant);
 
-    // Add the Company Logo and Name at the top
-    doc.image(logoPath, 50, 45, { width: 100 }) // Adjust position and size as needed
-      .fontSize(20)
-      .text('TAQa MALI ', 160, 50) // Position name next to logo
-      .fontSize(10)
-      .text('KISERIAN, NGONG, RONGAI, MATASIA,', 160, 80)
-      .fontSize(10)
-      .text('For all the inquiries, Call 0726594923, We help you Conserve and Protect the environment', 160, 110)
-      .moveDown();
+    doc.fontSize(16).font('Helvetica-Bold').text('Weekly Active Customers Report',50,doc.y).
+    
+    moveDown(2);
 
-    // Add a straight divider line after the header
-    doc.moveTo(50, 120).lineTo(550, 120).stroke();
+    // Group customers by garbage collection day
+    const groupedByCollectionDay = customers.reduce((acc, customer) => {
+      const day = customer.garbageCollectionDay || 'Unknown';
+      if (!acc[day]) {
+        acc[day] = { count: 0, customers: [], totalClosingBalance: 0, monthlyTotal: 0 };
+      }
+      acc[day].count += 1;
+      acc[day].customers.push(customer);
+      acc[day].totalClosingBalance += customer.closingBalance || 0;
+      acc[day].monthlyTotal += customer.monthlyCharge || 0;
+      return acc;
+    }, {});
 
-    // Title for the report
-    doc.fontSize(18).text('Weekly Active Customers Report', { align: 'center' });
-    doc.moveDown();
+    // Add grouped customer data to the PDF
+    Object.entries(groupedByCollectionDay).forEach(([day, { count, customers, totalClosingBalance, monthlyTotal }]) => {
+      doc.fontSize(14).font('Helvetica-Bold').text(`Collection Day: ${day} (Total Customers: ${count})`).moveDown();
 
-    // Define fixed column widths
-    const nameColumnWidth = 150;
-    const phoneColumnWidth = 100;
-    const balanceColumnWidth = 100;
-    const monthlyChargeColumnWidth = 100;
+      // Table headers
+      doc.font('Helvetica-Bold')
+        .text('Name', 50, doc.y, { width: 150, continued: true })
+        .text('Phone', 200, doc.y, { width: 100, continued: true })
+        .text('Balance', 300, doc.y, { width: 100, continued: true })
+        .text('Monthly Charge', 400, doc.y, { width: 100 })
+        .moveDown();
 
-    // Loop through each collection day group
-    for (const [day, { count, customers, totalClosingBalance, monthlyTotal }] of Object.entries(groupedByCollectionDay)) {
-      doc.fontSize(16).text(`Collection Day: ${day} (Total Customers: ${count})`, { underline: true });
-      doc.moveDown();
-
-      // Add header for the table with fixed column widths
-      doc.fontSize(10).text('Name', 50, doc.y, { continued: true });
-      doc.text('Phone', 50 + nameColumnWidth, doc.y, { continued: true });
-      doc.text('Balance', 50 + nameColumnWidth + phoneColumnWidth, doc.y, { continued: true });
-      doc.text('Monthly Charge', 50 + nameColumnWidth + phoneColumnWidth + balanceColumnWidth, doc.y);
-      doc.moveDown();
-
-      // Add a horizontal line below the header
+      // Draw a horizontal line under headers
       doc.moveTo(50, doc.y - 5).lineTo(550, doc.y - 5).stroke();
       doc.moveDown();
 
-      // Loop over customers in this collection day group
-      customers.forEach((customer) => {
-        const fullName = `${customer.firstName} ${customer.lastName}`;
-        const nameWidth = doc.widthOfString(fullName);
-        const maxWidth = nameColumnWidth; // Maximum width for the name column
-
-        // Split name into two lines if it exceeds maxWidth
-        if (nameWidth > maxWidth) {
-          const names = fullName.split(' ');
-          let line1 = '';
-          let line2 = '';
-
-          // Build the first line up to the maximum width
-          for (const name of names) {
-            if (doc.widthOfString(line1 + name + ' ') < maxWidth) {
-              line1 += name + ' ';
-            } else {
-              line2 += name + ' ';
-            }
-          }
-
-          // Write the first line of the name
-          doc.fontSize(10)
-            .fillColor('#333')
-            .text(line1.trim(), 50, doc.y, { continued: true });
-
-          // Adjust Y position for the second line
-          doc.moveDown(); // Move down for the next line
-          // Write the second line of the name at the start of the line
-          doc.text(line2.trim(), 50, doc.y, { continued: true });
-          doc.moveDown(); // Add space after multi-line name
-        } else {
-          // Include customer details in a tabular format if within width
-          doc.fontSize(10)
-            .fillColor('#333')
-            .text(fullName, 50, doc.y, { continued: true });
-        }
-
-        // Write other customer details with fixed widths
-        doc.text(customer.phoneNumber, 50 + nameColumnWidth, doc.y, { continued: true });
-        doc.text(customer.closingBalance.toFixed(2), 50 + nameColumnWidth + phoneColumnWidth, doc.y, { continued: true });
-        doc.text(customer.monthlyCharge.toFixed(2), 50 + nameColumnWidth + phoneColumnWidth + balanceColumnWidth, doc.y);
-        doc.moveDown(); // Add spacing between customers
+      // Add customer data
+      doc.font('Helvetica');
+      customers.forEach(customer => {
+        doc.text(`${customer.firstName} ${customer.lastName}`, 50, doc.y, { width: 150, continued: true })
+          .text(customer.phoneNumber || 'N/A', 200, doc.y, { width: 100, continued: true })
+          .text(`KSH ${customer.closingBalance?.toFixed(2) ?? '0.00'}`, 300, doc.y, { width: 100, continued: true })
+          .text(`KSH ${customer.monthlyCharge?.toFixed(2) ?? '0.00'}`, 400, doc.y, { width: 100 })
+          .moveDown();
       });
 
-      // Add total closing balance and monthly total for the collection day
       doc.moveDown();
-      doc.fontSize(12).text(`Total Closing Balance for this Collection Day: ${totalClosingBalance.toFixed(2)}`, 50, doc.y);
-      doc.moveDown();
-      doc.fontSize(12).text(`Total Monthly Charges for this Collection Day: ${monthlyTotal.toFixed(2)}`, 50, doc.y);
-      doc.moveDown(); // Add space after the totals
+      doc.fontSize(12).font('Helvetica-Bold').text(`Total Closing Balance: KSH ${totalClosingBalance.toFixed(2)}`);
+      doc.fontSize(12).font('Helvetica-Bold').text(`Total Monthly Charges: KSH ${monthlyTotal.toFixed(2)}`);
+      doc.moveDown(2);
+    });
 
-      // Add a space between collection days
-      doc.moveDown();
-    }
-
+    // **Finalize PDF**
     doc.end();
 
-    // Resolve or reject the promise based on stream events
     writeStream.on('finish', resolve);
     writeStream.on('error', reject);
   });
 }
 
-module.exports = {
-  getAllActiveCustomersReport,
-};
+
+
+
+
+
+
+
+async function generateGarbageCollectionReport(req, res) {
+  try {
+    const tenantId = req.user.tenantId;
+    const tenant = await fetchTenantDetails(tenantId);
+
+    // Fetch customers with garbage collection information
+    const customers = await prisma.customer.findMany({
+      where: {
+        tenantId,
+      },
+    });
+
+    if (customers.length === 0) {
+      return res.status(404).json({ success: false, message: 'No customers found for garbage collection' });
+    }
+
+    // Group customers by collection day
+    const groupedByCollectionDay = customers.reduce((acc, customer) => {
+      const collectionDay = customer.garbageCollectionDay || 'Unknown';
+
+      if (!acc[collectionDay]) {
+        acc[collectionDay] = [];
+      }
+
+      acc[collectionDay].push(customer);
+      return acc;
+    }, {});
+
+    // Create PDF Document
+    const doc = new PDFDocument({ margin: 50 });
+    res.setHeader('Content-Disposition', 'attachment; filename="garbage_collection_report.pdf"');
+    res.setHeader('Content-Type', 'application/pdf');
+    doc.pipe(res);
+
+    // Header
+    generatePDFHeader(doc, tenant);
+    doc.fontSize(12).font("Helvetica-Bold").text('Customers Per Collection Day', { align: 'center' });
+    doc.moveDown();
+
+    const columnWidths = [150, 120, 120, 150, 150, 100]; // Customize as needed
+    const startX = 10;
+
+    function drawTableRow(y, data, isHeader = false) {
+      let x = startX;
+
+      if (isHeader) {
+        doc.font("Helvetica-Bold").fontSize(8); // Header font size
+      } else {
+        doc.font("Helvetica").fontSize(8); // Regular row font size
+      }
+
+      data.forEach((text, index) => {
+        doc.text(text, x + 5, y + 5, { width: columnWidths[index], lineBreak: false });
+        doc.rect(x, y, columnWidths[index], 25).stroke();
+        x += columnWidths[index];
+      });
+    }
+
+    // Iterate over each collection day and create a section for it
+    Object.keys(groupedByCollectionDay).forEach(collectionDay => {
+      // Display the count of customers for this collection day
+      const customerCount = groupedByCollectionDay[collectionDay].length;
+      doc.fontSize(10).font("Helvetica").text(`Collection Day: ${collectionDay} (Total Customers: ${customerCount})`, { align: 'left' });
+      doc.moveDown();
+
+      // Table Header
+      drawTableRow(doc.y, ['Customer Name', 'Phone Number', 'Town', 'Location', 'Estate Name', 'Service Type'], true);
+      let rowY = doc.y + 30;
+
+      // Table Data for customers in this collection day group
+      groupedByCollectionDay[collectionDay].forEach(customer => {
+        if (rowY > 700) { // Avoid page overflow
+          doc.addPage();
+          rowY = 50;
+          drawTableRow(rowY, ['Customer Name', 'Phone Number', 'Town', 'Location', 'Estate Name', 'Service Type'], true);
+          rowY += 30;
+        }
+
+        drawTableRow(rowY, [
+          `${customer.firstName} ${customer.lastName}`,
+          customer.phoneNumber || 'N/A',
+          customer.town || 'N/A',
+          customer.location || 'N/A',
+          customer.estateName || 'N/A',
+          customer.garbageCollectionDay || 'N/A',
+        ]);
+
+        rowY += 30;
+      });
+
+      doc.moveDown();
+    });
+
+    // Finalize PDF
+    doc.end();
+  } catch (error) {
+    console.error('Error generating garbage collection report:', error);
+    res.status(500).json({ success: false, message: 'Error generating report' });
+  }
+}
+
+
+
+
+
+
+
+
+module.exports = { getAllActiveCustomersReport,generateGarbageCollectionReport };

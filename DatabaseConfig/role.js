@@ -2,7 +2,7 @@ const ROLE_PERMISSIONS = {
     ADMIN: {
       customer: ["create", "read", "update", "delete"],
       user: ["create", "read", "update", "delete"],
-      invoices: ["create", "read", "update", "delete"],
+      invoices: ["create", "read", "update", "delete"], 
       receipts: ["create", "read", "update", "delete"],
       payments: ["create", "read", "update", "delete"],
       sms: ["create", "read", "update", "delete"],

@@ -8,6 +8,7 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "csv-parser": "^3.0.0",
+    "dayjs": "^1.11.13",
     "expo-location": "~17.0.1",
     "express": "^4.21.1",
     "helmet": "^8.0.0",
@@ -20,6 +21,8 @@
     "node-schedule": "^2.1.1",
     "npm": "^10.9.0",
     "pdfkit": "^0.15.1",
+    "pdfkit-table": "^0.1.99",
+    "pdfmake": "^0.2.18",
     "prisma": "^5.22.0",
     "uuid": "^11.0.2"
   },
@@ -33,5 +36,11 @@
   "devDependencies": {
     "nodemon": "^3.1.7",
     "typescript": "^5.6.3"
-  }
+  },
+  "name": "multiapi",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "author": "",
+  "license": "ISC"
 }
