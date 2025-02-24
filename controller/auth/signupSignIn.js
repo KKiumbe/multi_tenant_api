@@ -25,7 +25,7 @@ const register = async (req, res) => {
   try {
     // Validate input fields
     if (!firstName || !lastName || !phoneNumber || !email || !password || !tenantName) {
-      return res.status(400).json({ message: "All fields are required" });
+      return res.status(400).json({ message: 'All fields are required' });
     }
 
     // Check if phoneNumber already exists
@@ -34,14 +34,14 @@ const register = async (req, res) => {
     });
 
     if (existingUser) {
-      return res.status(400).json({ message: "Phone number is already registered." });
+      return res.status(400).json({ message: 'Phone number is already registered.' });
     }
 
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Define the default role as 'ADMIN' for the first user
-    const defaultRoles = ["ADMIN"]; // Use an array since `role` is an array field
+    const defaultRoles = ['ADMIN'];
 
     // Check if the roles exist in ROLE_PERMISSIONS
     const validRoles = Object.keys(ROLE_PERMISSIONS);
@@ -49,27 +49,24 @@ const register = async (req, res) => {
 
     if (invalidRoles.length > 0) {
       return res.status(500).json({
-        message: `Default roles are not defined in ROLE_PERMISSIONS: ${invalidRoles.join(", ")}`,
+        message: `Default roles are not defined in ROLE_PERMISSIONS: ${invalidRoles.join(', ')}`,
       });
     }
 
     // Create a new user and tenant in a transaction
-    const newUser = await prisma.$transaction(async (prisma) => {
-      // Create the tenant (organization) with default values for plan and charge
+    const { user, tenant } = await prisma.$transaction(async (prisma) => {
+      // Create the tenant (organization) with default values
       const newTenant = await prisma.tenant.create({
         data: {
           name: tenantName,
-          createdBy: phoneNumber, // This should be the user ID of the creator
-          subscriptionPlan: "Default Plan",
+          subscriptionPlan: 'Default Plan',
           monthlyCharge: 0.0, // Can be updated later
+          createdBy: null, // Temporarily null; update after user creation
         },
       });
 
-
-
-
       // Create the user and associate them with the tenant
-      const user = await prisma.user.create({
+      const newUser = await prisma.user.create({
         data: {
           firstName,
           lastName,
@@ -78,30 +75,48 @@ const register = async (req, res) => {
           county,
           town,
           gender,
-          lastLogin: new Date(),
-          loginCount: { increment: 1 }, 
           password: hashedPassword,
-          role: { set: defaultRoles }, // Set roles array with the default role(s)
-          tenantId: newTenant.id, // Link user to the created tenant
+          role: defaultRoles, // Directly assign array; no need for { set: }
+          tenantId: newTenant.id,
+          lastLogin: new Date(), // Set initial login time
+          loginCount: 1, // Initial value for new user
         },
       });
 
-      
+      // Update tenant with the user's ID as createdBy
+      await prisma.tenant.update({
+        where: { id: newTenant.id },
+        data: { createdBy: newUser.id.toString() }, // Convert Int to String if schema expects String
+      });
 
-      return { user, tenantId: newTenant.id };
+      return { user: newUser, tenant: newTenant };
     });
 
-    await configureTenantSettings(newUser.tenantId);
+    // Configure tenant settings (assumed async function)
+    await configureTenantSettings(tenant.id);
 
     res.status(201).json({
-      message: "User and organization created successfully",
-      user: newUser,
+      message: 'User and organization created successfully',
+      user,
+      tenantId: tenant.id,
     });
   } catch (error) {
-    console.error("Error registering user and organization:", error);
-    res.status(500).json({ message: "Internal server error" });
+    console.error('Error registering user and organization:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  } finally {
+    await prisma.$disconnect(); // Ensure Prisma client disconnects
   }
 };
+
+// Placeholder for configureTenantSettings (define this as needed)
+async function configureTenantSettings(tenantId) {
+  // Example: Set up default SMS or MPESA config
+  console.log(`Configuring settings for tenant ${tenantId}`);
+  // Add your logic here
+}
+
+
+
 
 
 
