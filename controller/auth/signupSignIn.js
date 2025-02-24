@@ -9,6 +9,7 @@ dotenv.config();
 
 
 
+
 const register = async (req, res) => {
   const {
     firstName,
@@ -23,86 +24,139 @@ const register = async (req, res) => {
   } = req.body;
 
   try {
-    // Validate input fields
+    // Enhanced input validation
     if (!firstName || !lastName || !phoneNumber || !email || !password || !tenantName) {
-      return res.status(400).json({ message: 'All fields are required' });
+      return res.status(400).json({ message: 'All fields (firstName, lastName, phoneNumber, email, password, tenantName) are required' });
     }
 
-    // Check if phoneNumber already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { phoneNumber },
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: 'Invalid email format' });
+    }
+    if (phoneNumber.length < 9 || !/^\d+$/.test(phoneNumber)) {
+      return res.status(400).json({ message: 'Phone number must be numeric and at least 9 digits' });
+    }
+
+    // Check for existing user by phoneNumber or email
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [{ phoneNumber }, { email }],
+      },
     });
 
     if (existingUser) {
-      return res.status(400).json({ message: 'Phone number is already registered.' });
+      const conflictField = existingUser.phoneNumber === phoneNumber ? 'Phone number' : 'Email';
+      return res.status(400).json({ message: `${conflictField} is already registered` });
     }
 
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Define the default role as 'ADMIN' for the first user
+    // Define default roles
     const defaultRoles = ['ADMIN'];
 
-    // Check if the roles exist in ROLE_PERMISSIONS
+    // Validate roles against ROLE_PERMISSIONS
     const validRoles = Object.keys(ROLE_PERMISSIONS);
     const invalidRoles = defaultRoles.filter((role) => !validRoles.includes(role));
-
     if (invalidRoles.length > 0) {
       return res.status(500).json({
-        message: `Default roles are not defined in ROLE_PERMISSIONS: ${invalidRoles.join(', ')}`,
+        message: `Invalid roles: ${invalidRoles.join(', ')}. Must be defined in ROLE_PERMISSIONS`,
       });
     }
 
-    // Create a new user and tenant in a transaction
+    // Transaction to create tenant and user
     const { user, tenant } = await prisma.$transaction(async (prisma) => {
-      // Create the tenant (organization) with default values
-      const newTenant = await prisma.tenant.create({
-        data: {
-          name: tenantName,
-          subscriptionPlan: 'Default Plan',
-          monthlyCharge: 0.0, // Can be updated later
-          createdBy: null, // Temporarily null; update after user creation
-        },
-      });
-
-      // Create the user and associate them with the tenant
+      // Create user first (since they're the creator)
       const newUser = await prisma.user.create({
         data: {
           firstName,
           lastName,
           phoneNumber,
           email,
-          county,
-          town,
-          gender,
+          county: county || null,
+          town: town || null,
+          gender: gender || null,
           password: hashedPassword,
-          role: defaultRoles, // Directly assign array; no need for { set: }
-          tenantId: newTenant.id,
-          lastLogin: new Date(), // Set initial login time
-          loginCount: 1, // Initial value for new user
+          role: defaultRoles,
+          lastLogin: new Date(),
+          loginCount: 1,
+          status: 'ACTIVE',
+          // tenantId will be set after tenant creation
         },
       });
 
-   
+      // Create tenant with the new user's ID as createdBy
+      const newTenant = await prisma.tenant.create({
+        data: {
+          name: tenantName,
+          subscriptionPlan: 'Default Plan',
+          monthlyCharge: 1000.0,
+          createdBy: newUser.id.toString(), // String since schema expects String
+          status: 'ACTIVE',
+          users: {
+            connect: { id: newUser.id }, // Link user to tenant immediately
+          },
+        },
+      });
+
+      // Update user with tenantId (since it wasn’t available during user creation)
+      await prisma.user.update({
+        where: { id: newUser.id },
+        data: { tenantId: newTenant.id },
+      });
+
+      // Log the creation in AuditLog
+      await prisma.auditLog.create({
+        data: {
+          tenantId: newTenant.id,
+          userId: newUser.id,
+          action: 'CREATE',
+          resource: 'USER_TENANT',
+          details: { message: `User ${newUser.email} created tenant ${tenantName}` },
+        },
+      });
 
       return { user: newUser, tenant: newTenant };
     });
 
-    // Configure tenant settings (assumed async function)
-    await configureTenantSettings(tenant.id);
+    // Configure tenant settings
+    try {
+      await configureTenantSettings(tenant.id);
+    } catch (configError) {
+      console.warn(`Failed to configure tenant settings for tenant ${tenant.id}:`, configError);
+    }
 
+    // Success response
     res.status(201).json({
       message: 'User and organization created successfully',
-      user,
-      tenantId: tenant.id,
+      user: {
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        role: user.role,
+        tenantId: tenant.id,
+      },
+      tenant: {
+        id: tenant.id,
+        name: tenant.name,
+      },
     });
   } catch (error) {
     console.error('Error registering user and organization:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    if (error.code === 'P2002') {
+      return res.status(400).json({ message: 'Email or phone number already exists' });
+    }
+    res.status(500).json({ message: 'Internal server error', error: error.message });
   } finally {
-    await prisma.$disconnect(); // Ensure Prisma client disconnects
+    await prisma.$disconnect();
   }
 };
+
+
+
+module.exports = { register };
 
 // Placeholder for configureTenantSettings (define this as needed)
 
