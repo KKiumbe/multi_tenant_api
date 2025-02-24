@@ -1,4 +1,4 @@
-const { fetchTenantDetails } = require('../tenant/tenantupdate.js');
+const { fetchTenantDetails } = require('../tenants/tenantupdate.js');
 const { generatePDFHeader } = require('./header.js');
 const { PrismaClient } = require('@prisma/client');
 const PDFDocument = require('pdfkit');

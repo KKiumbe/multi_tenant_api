@@ -2,7 +2,10 @@
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+
+ 
 }
+
 
 // Generator for Prisma Client
 generator client {
@@ -66,7 +69,45 @@ model Tenant {
   Task Task[]
 
   TrashBagIssuance TrashBagIssuance[]
+
+  tenantInvoices  TenantInvoice[]    // Add this relation
+  tenantPayments  TenantPayment[]
 }
+
+
+// Add this to your existing schema
+model TenantInvoice {
+  id              String          @id @default(uuid())
+  tenantId        Int             // Links to the tenant
+  invoicePeriod   DateTime        // The billing period (e.g., Feb 2025)
+  invoiceNumber   String          @unique // Unique identifier for the invoice
+  invoiceAmount   Float           // Amount due (e.g., monthlyCharge)
+  status          InvoiceStatus   @default(UNPAID) // Payment status
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  amountPaid      Float           @default(0) // Tracks payments made toward this invoice
+
+  // Relationships
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  payments        TenantPayment[] // Link to payments made for this invoice
+}
+
+// Model to track payments made toward TenantInvoices
+model TenantPayment {
+  id              String          @id @default(uuid())
+  tenantInvoiceId String          // Links to the specific tenant invoice
+  tenantId        Int             // Links to the tenant
+  amount          Float           // Amount paid
+  modeOfPayment   ModeOfPayment   // e.g., MPESA, CASH
+  transactionId   String?         @unique // Unique ID from payment provider (e.g., MPESA TransID)
+  createdAt       DateTime        @default(now())
+
+  // Relationships
+  tenantInvoice   TenantInvoice   @relation(fields: [tenantInvoiceId], references: [id], onDelete: Cascade)
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+// Update the Tenant model to include TenantInvoices and TenantPayments
 
 // Enum for tenant status
 enum TenantStatus {
@@ -96,6 +137,8 @@ model User {
 
   bagsHeld            Int?     
   originalBagsIssued  Int? 
+  lastLogin           DateTime?    // Stores last login time
+  loginCount          Int @default(0) // Tracks login frequency
 
   // Relationships
   tenant              Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -117,6 +160,18 @@ model User {
 
   Task Task[]
 }
+
+
+model UserActivity {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  action      String    // e.g., 'LOGIN', 'LOGOUT', 'VIEW'
+  timestamp   DateTime  @default(now())
+
+  // Relationships
+  user        User      @relation(fields: [userId], references: [id])
+}
+
 
 
 
@@ -360,15 +415,7 @@ model Notification {
 }
 
 // User Activity model for tracking user actions
-model UserActivity {
-  id          Int       @id @default(autoincrement())
-  userId      Int
-  action      String    // e.g., 'LOGIN', 'LOGOUT', 'VIEW'
-  timestamp   DateTime  @default(now())
 
-  // Relationships
-  user        User      @relation(fields: [userId], references: [id])
-}
 
 
 model SMS {

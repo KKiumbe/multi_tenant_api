@@ -3,7 +3,7 @@ const PDFDocument = require('pdfkit');
 const prisma = new PrismaClient();
 const fs = require('fs');
 const path = require('path');
-const { fetchTenantDetails } = require('../tenant/tenantupdate');
+const { fetchTenantDetails } = require('../tenants/tenantupdate');
 const { generatePDFHeader } = require('./header');
 const fsPromises = require('fs').promises;
 

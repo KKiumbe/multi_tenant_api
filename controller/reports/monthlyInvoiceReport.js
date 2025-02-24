@@ -2,7 +2,7 @@ const pdfMake = require("pdfmake/build/pdfmake");
 const pdfFonts = require("pdfmake/build/vfs_fonts");
 const PDFDocument = require("pdfkit");
 
-const { fetchTenantDetails } = require("../tenant/tenantupdate.js");
+const { fetchTenantDetails } = require("../tenants/tenantupdate.js");
 const { PrismaClient } = require("@prisma/client");
 const { generatePDFHeader } = require("./header.js");
 

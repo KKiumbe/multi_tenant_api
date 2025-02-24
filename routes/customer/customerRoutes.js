@@ -7,6 +7,7 @@ const { SearchCustomers } = require('../../controller/customers/searchCustomers.
 const checkAccess = require('../../middleware/roleVerify.js');
 const verifyToken = require('../../middleware/verifyToken.js');
 const { getCustomerDetails } = require('../../controller/customers/customerDetails.js');
+const { clearCustomerData } = require('../../controller/customers/delete/delete.js');
 
 
 
@@ -22,6 +23,7 @@ router.get('/customers', verifyToken, checkAccess('customer','read') ,getAllCust
 router.put('/customers/:id',verifyToken,checkAccess('customer','update'), editCustomer);
 router.get('/search-customers',verifyToken, SearchCustomers);
 router.get('/customer-details/:id',verifyToken, getCustomerDetails);
+router.post('/delete-customers',clearCustomerData)
 
 
 module.exports = router;

@@ -2,7 +2,7 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
-const { fetchTenantDetails } = require('../tenant/tenantupdate.js');
+const { fetchTenantDetails } = require('../tenants/tenantupdate.js');
 const { generatePDFHeader } = require('./header.js');
 
 const prisma = new PrismaClient();
@@ -48,8 +48,9 @@ async function generateInvoicePDF(invoiceId) {
       .moveDown();
 
     // **Finalize the PDF**
+  
     doc.end();
-
+    
     return new Promise((resolve, reject) => {
       writeStream.on('finish', resolve);
       writeStream.on('error', reject);

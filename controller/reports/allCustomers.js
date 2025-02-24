@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 const fs = require('fs');
 const { promises: fsPromises } = require('fs');
 const path = require('path');
-const { fetchTenantDetails } = require('../tenant/tenantupdate.js');
+const { fetchTenantDetails } = require('../tenants/tenantupdate.js');
 const { generatePDFHeader } = require('./header.js');
  // Import header function
 
