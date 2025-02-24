@@ -78,6 +78,7 @@ const register = async (req, res) => {
           gender: gender || null,
           password: hashedPassword,
           role: defaultRoles,
+          tenantId: newTenant.id,
           lastLogin: new Date(),
           loginCount: 1,
           status: 'ACTIVE',
