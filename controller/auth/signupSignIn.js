@@ -109,11 +109,7 @@ const register = async (req, res) => {
 };
 
 // Placeholder for configureTenantSettings (define this as needed)
-async function configureTenantSettings(tenantId) {
-  // Example: Set up default SMS or MPESA config
-  console.log(`Configuring settings for tenant ${tenantId}`);
-  // Add your logic here
-}
+
 
 
 
