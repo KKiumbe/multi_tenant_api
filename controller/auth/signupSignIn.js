@@ -8,8 +8,6 @@ const prisma = new PrismaClient();
 dotenv.config();
 
 
-
-
 const register = async (req, res) => {
   const {
     firstName,
@@ -66,7 +64,23 @@ const register = async (req, res) => {
 
     // Transaction to create tenant and user
     const { user, tenant } = await prisma.$transaction(async (prisma) => {
-      // Create user first (since they're the creator)
+      // Calculate the next tenantNumber
+      const tenantCount = await prisma.tenant.count();
+      const nextTenantNumber = tenantCount + 1;
+
+      // Create tenant first
+      const newTenant = await prisma.tenant.create({
+        data: {
+          tenantNumber: nextTenantNumber,
+          name: tenantName,
+          subscriptionPlan: 'Default Plan',
+          monthlyCharge: 0.0,
+          createdBy: null, // Set to null initially
+          status: 'ACTIVE',
+        },
+      });
+
+      // Create user with tenantId
       const newUser = await prisma.user.create({
         data: {
           firstName,
@@ -78,32 +92,17 @@ const register = async (req, res) => {
           gender: gender || null,
           password: hashedPassword,
           role: defaultRoles,
-          tenantId: newTenant.id,
+          tenantId: newTenant.id, // Use newTenant.id after initialization
           lastLogin: new Date(),
           loginCount: 1,
           status: 'ACTIVE',
-          // tenantId will be set after tenant creation
         },
       });
 
-      // Create tenant with the new user's ID as createdBy
-      const newTenant = await prisma.tenant.create({
-        data: {
-          name: tenantName,
-          subscriptionPlan: 'Default Plan',
-          monthlyCharge: 1000.0,
-          createdBy: newUser.id.toString(), // String since schema expects String
-          status: 'ACTIVE',
-          users: {
-            connect: { id: newUser.id }, // Link user to tenant immediately
-          },
-        },
-      });
-
-      // Update user with tenantId (since it wasn’t available during user creation)
-      await prisma.user.update({
-        where: { id: newUser.id },
-        data: { tenantId: newTenant.id },
+      // Update tenant with createdBy
+      await prisma.tenant.update({
+        where: { id: newTenant.id },
+        data: { createdBy: newUser.id.toString() }, // String since schema expects String
       });
 
       // Log the creation in AuditLog
@@ -113,7 +112,7 @@ const register = async (req, res) => {
           userId: newUser.id,
           action: 'CREATE',
           resource: 'USER_TENANT',
-          details: { message: `User ${newUser.email} created tenant ${tenantName}` },
+          details: { message: `User ${newUser.email} created tenant ${tenantName} (Tenant #${nextTenantNumber})` },
         },
       });
 
@@ -141,13 +140,14 @@ const register = async (req, res) => {
       },
       tenant: {
         id: tenant.id,
+        tenantNumber: tenant.tenantNumber,
         name: tenant.name,
       },
     });
   } catch (error) {
     console.error('Error registering user and organization:', error);
     if (error.code === 'P2002') {
-      return res.status(400).json({ message: 'Email or phone number already exists' });
+      return res.status(400).json({ message: 'Email, phone number, or tenant number already exists' });
     }
     res.status(500).json({ message: 'Internal server error', error: error.message });
   } finally {
@@ -155,11 +155,6 @@ const register = async (req, res) => {
   }
 };
 
-
-
-module.exports = { register };
-
-// Placeholder for configureTenantSettings (define this as needed)
 
 
 
