@@ -83,11 +83,7 @@ const register = async (req, res) => {
         },
       });
 
-      // Update tenant with the user's ID as createdBy
-      await prisma.tenant.update({
-        where: { id: newTenant.id },
-        data: { createdBy: newUser.id.toString() }, // Convert Int to String if schema expects String
-      });
+   
 
       return { user: newUser, tenant: newTenant };
     });
