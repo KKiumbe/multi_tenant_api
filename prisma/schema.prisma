@@ -137,8 +137,9 @@ model User {
 
   bagsHeld            Int?     
   originalBagsIssued  Int? 
-  lastLogin           DateTime?    // Stores last login time
+  lastLogin           DateTime    // Stores last login time
   loginCount          Int @default(0) // Tracks login frequency
+
 
   // Relationships
   tenant              Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
