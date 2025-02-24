@@ -64,14 +64,14 @@ const register = async (req, res) => {
 
     // Transaction to create tenant and user
     const { user, tenant } = await prisma.$transaction(async (prisma) => {
-      // Calculate the next tenantNumber
+
       const tenantCount = await prisma.tenant.count();
-      const nextTenantNumber = tenantCount + 1;
+     
 
       // Create tenant first
       const newTenant = await prisma.tenant.create({
         data: {
-          tenantNumber: nextTenantNumber,
+        
           name: tenantName,
           subscriptionPlan: 'Default Plan',
           monthlyCharge: 0.0,
@@ -112,7 +112,7 @@ const register = async (req, res) => {
           userId: newUser.id,
           action: 'CREATE',
           resource: 'USER_TENANT',
-          details: { message: `User ${newUser.email} created tenant ${tenantName} (Tenant #${nextTenantNumber})` },
+          details: { message: `User ${newUser.email} created tenant ${tenantName}` },
         },
       });
 
@@ -140,7 +140,7 @@ const register = async (req, res) => {
       },
       tenant: {
         id: tenant.id,
-        tenantNumber: tenant.tenantNumber,
+       
         name: tenant.name,
       },
     });
