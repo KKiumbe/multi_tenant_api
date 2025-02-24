@@ -75,7 +75,7 @@ const register = async (req, res) => {
           name: tenantName,
           subscriptionPlan: 'Default Plan',
           monthlyCharge: 0.0,
-          createdBy: null, // Set to null initially
+          createdBy: firstName, // Set to null initially
           status: 'ACTIVE',
         },
       });
