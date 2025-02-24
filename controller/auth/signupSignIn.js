@@ -65,6 +65,9 @@ const register = async (req, res) => {
         },
       });
 
+
+
+
       // Create the user and associate them with the tenant
       const user = await prisma.user.create({
         data: {
@@ -75,6 +78,8 @@ const register = async (req, res) => {
           county,
           town,
           gender,
+          lastLogin: new Date(),
+          loginCount: { increment: 1 }, 
           password: hashedPassword,
           role: { set: defaultRoles }, // Set roles array with the default role(s)
           tenantId: newTenant.id, // Link user to the created tenant
