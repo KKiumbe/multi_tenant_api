@@ -49,15 +49,26 @@ app.use(helmet());
 
 
 app.use(cors({
-  origin: [
-   
-    "https://taqa.sikika-ke.co.ke","http://173.249.50.194/"], // Direct server access (optional)
- 
-  credentials: true, // Allow cookies & authentication headers
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-
-  optionsSuccessStatus: 200 // Some browsers (legacy) need this
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      'http://173.249.50.194', // Frontend IP without trailing slash
+      'https://taqa.sikika-ke.co.ke', // Domain
+       // For local development (optional)
+    ];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Include OPTIONS for preflight
+  allowedHeaders: ['Content-Type', 'Authorization'], // Common headers
+  optionsSuccessStatus: 200,
 }));
+
+// Handle preflight requests explicitly
+app.options('*', cors());
 
 
 
