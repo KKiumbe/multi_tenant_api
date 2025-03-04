@@ -1,6 +1,6 @@
 const express = require("express");
 const checkAccess = require("../../middleware/roleVerify.js");
-const { getAllUsers, assignRole, deleteUser, stripRoles, editUserRole, updateUserDetails, fetchUser } = require("../../controller/userManagement/userManagement.js");
+const { getAllUsers, assignRole, deleteUser, stripRoles, editUserRole, updateUserDetails, fetchUser, removeRoles } = require("../../controller/userManagement/userManagement.js");
 const verifyToken = require("../../middleware/verifyToken.js");
 
 
@@ -14,8 +14,9 @@ router.get("/users/:userId", verifyToken, checkAccess("user", "read"), fetchUser
 
 // // Assign roles to a user
 router.post("/assign-roles", verifyToken, checkAccess("user", "update"), assignRole);
+router.put("/remove-roles", verifyToken, checkAccess("user", "update"), removeRoles);
 
-router.put("/update-user", verifyToken, checkAccess("user", "update"), updateUserDetails);
+router.put("/update-user", verifyToken, updateUserDetails);
 
 // // Delete a user
 router.delete("/user/:userId",verifyToken, checkAccess("user", "delete"), deleteUser);

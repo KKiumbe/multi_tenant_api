@@ -60,9 +60,10 @@ const registerUser = async (req, res) => {
         password: hashedPassword,
         role: { set: [defaultRole] }, // Assign default role
         createdBy: req.user.id, // User ID of the admin who created the user
+        lastLogin: new Date(), // ✅ Add this line
       },
     });
-
+    
     return res.status(201).json({ message: 'User created successfully', user: newUser });
   } catch (error) {
     console.error('Error creating user:', error);

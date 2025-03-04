@@ -3,8 +3,7 @@ const prisma = new PrismaClient();
 
 // PUT: Update a customer
 const editCustomer = async (req, res) => {
-  const customerId = parseInt(req.params.id, 10);
- // Get the customer ID from the URL
+  const customerId = req.params.id; // Keep as string for UUID
   const {
     firstName,
     lastName,
@@ -15,9 +14,9 @@ const editCustomer = async (req, res) => {
     town,
     status,
     location,
-    estateName, // Optional field for estate name
-    building, // Optional field for building name
-    houseNumber, // Optional field for house number
+    estateName,
+    building,
+    houseNumber,
     category,
     monthlyCharge,
     garbageCollectionDay,
@@ -49,28 +48,35 @@ const editCustomer = async (req, res) => {
       return res.status(404).json({ message: 'Customer not found or access denied' });
     }
 
-    // Update the customer
+    // Create an object with only the provided fields
+    const updateData = {};
+    if (firstName !== undefined) updateData.firstName = firstName;
+    if (lastName !== undefined) updateData.lastName = lastName;
+    if (email !== undefined) updateData.email = email;
+    if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
+    if (gender !== undefined) updateData.gender = gender;
+    if (county !== undefined) updateData.county = county;
+    if (town !== undefined) updateData.town = town;
+    if (status !== undefined) updateData.status = status;
+    if (location !== undefined) updateData.location = location;
+    if (estateName !== undefined) updateData.estateName = estateName;
+    if (building !== undefined) updateData.building = building;
+    if (houseNumber !== undefined) updateData.houseNumber = houseNumber;
+    if (category !== undefined) updateData.category = category;
+    if (monthlyCharge !== undefined) updateData.monthlyCharge = monthlyCharge;
+    if (garbageCollectionDay !== undefined) updateData.garbageCollectionDay = garbageCollectionDay;
+    if (collected !== undefined) updateData.collected = collected;
+    if (closingBalance !== undefined) updateData.closingBalance = closingBalance;
+
+    // Ensure at least one field is provided for update
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: 'At least one field must be provided for update' });
+    }
+
+    // Update the customer with only the provided fields
     const updatedCustomer = await prisma.customer.update({
       where: { id: customerId },
-      data: {
-        firstName,
-        lastName,
-        email,
-        phoneNumber,
-        gender,
-        county,
-        town,
-        status,
-        location,
-        estateName,
-        building,
-        houseNumber,
-        category,
-        monthlyCharge,
-        garbageCollectionDay,
-        collected,
-        closingBalance,
-      },
+      data: updateData,
     });
 
     // Return the updated customer data
@@ -82,3 +88,4 @@ const editCustomer = async (req, res) => {
 };
 
 module.exports = { editCustomer };
+

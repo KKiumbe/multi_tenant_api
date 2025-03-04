@@ -72,6 +72,8 @@ model Tenant {
 
   tenantInvoices  TenantInvoice[]    // Add this relation
   tenantPayments  TenantPayment[]
+
+  SMS SMS[]
 }
 
 
@@ -141,6 +143,10 @@ model User {
   loginCount          Int @default(0) // Tracks login frequency
 
 
+  // Added fields for OTP reset
+  resetCode           String?   // Stores hashed OTP
+  resetCodeExpiresAt  DateTime? // OTP expiry time
+  otpAttempts         Int       @default(0) // Tracks failed attempts
   // Relationships
   tenant              Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdUsers        User[]    @relation("CreatedUsers")
@@ -280,7 +286,7 @@ model Customer {
 // Invoice model
 model Invoice {
   id                  String       @id @default(uuid())
-  tenantId             Int
+  tenantId             Int  
   customerId          String
   invoicePeriod       DateTime
   invoiceNumber       String       @unique 
@@ -288,7 +294,7 @@ model Invoice {
   closingBalance      Float        
   status              InvoiceStatus @default(UNPAID) 
   isSystemGenerated   Boolean    
-  createdAt           DateTime     @default(now())
+  createdAt           DateTime     @default(now())  
   amountPaid          Float        @default(0) 
 
   customer            Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
@@ -421,12 +427,15 @@ model Notification {
 
 model SMS {
   id           String   @id @default(uuid())
-  clientsmsid  String      @unique
-
+  tenantId     Int
+  clientsmsid  String   @unique
   mobile       String
   message      String
   status       String
   createdAt    DateTime @default(now())
+
+  // Relationship
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 

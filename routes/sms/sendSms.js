@@ -1,6 +1,6 @@
 const express = require('express');
 const verifyToken = require('../../middleware/verifyToken.js');
-const { sendBills, sendToAll, sendBill, sendBillPerDay, sendToGroup, sendToOne, sendUnpaidCustomers, sendLowBalanceCustomers, sendHighBalanceCustomers } = require('../../controller/sms/sms.js');
+const { sendBills, sendToAll, sendBill, sendBillPerDay, sendToGroup, sendToOne, sendUnpaidCustomers, sendLowBalanceCustomers, sendHighBalanceCustomers, sendCustomersAboveBalance } = require('../../controller/sms/sms.js');
 const checkAccess = require('../../middleware/roleVerify.js');
 const { updateSMSConfig, createSMSConfig } = require('../../controller/smsConfig/smsConfig.js');
 const { updateSmsDeliveryStatus, getSmsMessages } = require('../../controller/bulkSMS/deliveryStatus.js');
@@ -29,8 +29,11 @@ router.post('/send-sms-low-balance',verifyToken, sendLowBalanceCustomers); //don
 
 router.post('/send-sms-high-balance',verifyToken, sendHighBalanceCustomers); //done
 
+
+router.post('/send-sms-custom-balance',verifyToken, sendCustomersAboveBalance);
+
 router.get('/sms-delivery-report' ,updateSmsDeliveryStatus);
-router.get('/sms-history',getSmsMessages);
+router.get('/sms-history',verifyToken, getSmsMessages);
 //router.post('/auto-sms' , sendSMS)
 
 module.exports = router;

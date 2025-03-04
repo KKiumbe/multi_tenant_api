@@ -124,13 +124,14 @@ const sendSMS = async (tenantId, mobile, message) => {
       // Create SMS record in the database
       const smsRecord = await prisma.sMS.create({
         data: {
+          tenantId, // ✅ Add this line
           clientsmsid,
-         
           mobile: sanitizedPhoneNumber,
           message,
-          status: 'pending',
+          status: 'sent',
         },
       });
+      
   
       console.log(`SMS record created: ${JSON.stringify(smsRecord)}`);
   
@@ -520,8 +521,8 @@ const sendSms = async (tenantId, messages) => {
       const clientsmsid = uuidv4(); // Generate unique client SMS ID
       return {
         clientsmsid,
-        partnerID: partnerID,
-        apikey: apikey,
+        partnerID,
+        apikey,
         pass_type: 'plain',
         message: msg.message,
         shortcode: shortCode,
@@ -530,18 +531,25 @@ const sendSms = async (tenantId, messages) => {
     });
 
     // Send SMS request
-    const response = await axios.post(process.env.BULK_SMS_ENDPOINT, {
-      count: smsList.length,
-      smslist: smsList,
-    });
+    let response;
+    try {
+      response = await axios.post(process.env.BULK_SMS_ENDPOINT, {
+        count: smsList.length,
+        smslist: smsList,
+      });
+      console.log('SMS sent successfully:', response.data);
+    } catch (error) {
+      console.error('Bulk SMS API error:', error.response?.data || error.message);
+      response = { data: { status: 'FAILED' } }; // Simulate failure response
+    }
 
     // Log SMS details in the database
     const smsLogs = smsList.map((sms) => ({
-      id: uuidv4(), // Unique ID for the SMS record
       clientsmsid: sms.clientsmsid, // Store the unique clientsmsid
+      tenantId, // ✅ Ensure tenantId is logged
       mobile: sms.mobile,
       message: sms.message,
-      status: 'SENT', // Default status, can be updated later
+      status: response.data.status === 'FAILED' ? 'FAILED' : 'SENT', // Mark failure if API failed
       createdAt: new Date(),
     }));
 
@@ -628,6 +636,81 @@ const sendSms = async (tenantId, messages) => {
     }
   };
   
+
+  const sendCustomersAboveBalance = async (req, res) => {
+    try {
+      const { tenantId } = req.user; // Extract tenant ID from the request
+      const { balance } = req.body; // Extract custom balance from request body
+  
+      // Validate inputs
+      if (!tenantId) {
+        throw new Error('Tenant ID is required');
+      }
+      if (balance === undefined || isNaN(balance) || balance < 0) {
+        throw new Error('A valid balance amount is required');
+      }
+  
+      console.log(`Fetching customers above balance ${balance} for tenant ID: ${tenantId}`);
+  
+      // Fetch customers for the specific tenant with an active status
+      const activeCustomers = await prisma.customer.findMany({
+        where: {
+          status: 'ACTIVE',
+          tenantId: tenantId, // Ensure customers belong to the specified tenant
+        },
+        select: {
+          phoneNumber: true,
+          firstName: true,
+          closingBalance: true,
+          monthlyCharge: true,
+        },
+      });
+  
+      // Filter customers with balances above the specified amount
+      const customersAboveBalance = activeCustomers.filter(
+        (customer) => customer.closingBalance > balance
+      );
+  
+      // Create bulk SMS messages
+      const messages = customersAboveBalance.map((customer) => ({
+        mobile: customer.phoneNumber,
+        message: `Dear ${customer.firstName}, your outstanding balance is ${customer.closingBalance.toFixed(2)}, which exceeds ${balance.toFixed(2)}. Please settle your dues. Paybill No: 4107197, use your phone number as the account number. Customer support: 0726594923.`,
+      }));
+  
+      console.log(`Prepared ${messages.length} messages for customers above balance ${balance}.`);
+  
+      // Check if there are messages to send
+      if (messages.length === 0) {
+        return res.status(404).json({ 
+          success: false, 
+          message: `No customers found with balance above ${balance}.` 
+        });
+      }
+  
+      // Send bulk SMS
+      try {
+        await sendSms(tenantId, messages);
+        console.log('Bulk SMS sent successfully.');
+        res.status(200).json({
+          success: true,
+          message: `SMS sent to customers with balance above ${balance} successfully.`,
+          count: messages.length,
+        });
+      } catch (smsError) {
+        console.error('Failed to send bulk SMS:', smsError.message);
+        res.status(500).json({
+          success: false,
+          message: 'Failed to send SMS to customers.',
+        });
+      }
+    } catch (error) {
+      console.error('Error in sendCustomersAboveBalance:', error.message);
+      res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  };
 
 
   const sendLowBalanceCustomers = async (req, res) => {
@@ -792,5 +875,5 @@ module.exports = {
 
   sendLowBalanceCustomers,
 
-  sendHighBalanceCustomers
+  sendHighBalanceCustomers,sendCustomersAboveBalance
 };

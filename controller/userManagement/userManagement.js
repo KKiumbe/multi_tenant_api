@@ -32,7 +32,15 @@ const getAllUsers = async (req, res) => {
         lastName: true,
         email: true,
         role: true,
+        bagsHeld:true,
+        originalBagsIssued:true,
+        createdBy:true,
+        status:true,
         createdAt: true,
+        lastLogin :true,
+        loginCount:true,
+        userActivities:true,
+
       },
     });
 
@@ -55,6 +63,7 @@ const getAllUsers = async (req, res) => {
 
 const assignRole = async (req, res) => {
   const { userId, role } = req.body;
+
   const { role: requesterRole, tenantId: requesterTenantId } = req.user;
 
 
@@ -64,12 +73,12 @@ const assignRole = async (req, res) => {
     return res.status(400).json({ error: "User ID is required" });
   }
 
-  if (!Array.isArray(role)) {
+  if (!Array.isArray(requesterRole)) {
     return res.status(400).json({ error: "Roles must be an array" });
   }
 
   const validRoles = Object.keys(ROLE_PERMISSIONS);
-  const invalidRoles = role.filter(role => !validRoles.includes(role));
+  const invalidRoles = requesterRole.filter(role => !validRoles.includes(role));
 
   if (invalidRoles.length > 0) {
     return res.status(400).json({ 
@@ -113,6 +122,83 @@ const assignRole = async (req, res) => {
 };
 
 
+const removeRoles = async (req, res) => {
+  const { userId, rolesToRemove } = req.body;
+  const { role: requesterRole, tenantId: requesterTenantId } = req.user;
+
+  // Validate input
+  if (!userId) {
+    return res.status(400).json({ error: "User ID is required" });
+  }
+
+  if (!Array.isArray(rolesToRemove)) {
+    return res.status(400).json({ error: "Roles to remove must be an array" });
+  }
+
+  if (!Array.isArray(requesterRole)) {
+    return res.status(400).json({ error: "Requester roles must be an array" });
+  }
+
+  const validRoles = Object.keys(ROLE_PERMISSIONS);
+  const invalidRoles = rolesToRemove.filter(role => !validRoles.includes(role));
+
+  if (invalidRoles.length > 0) {
+    return res.status(400).json({ 
+      error: "Invalid roles specified for removal", 
+      details: invalidRoles 
+    });
+  }
+
+  try {
+    // Get the user and their current roles
+    const userToUpdate = await prisma.user.findUnique({
+      where: { id: parseInt(userId, 10) },
+      select: { 
+        tenantId: true,
+        role: true 
+      },
+    });
+
+    if (!userToUpdate) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (userToUpdate.tenantId !== requesterTenantId) {
+      return res.status(403).json({ 
+        error: "Access denied. You can only remove roles from users in your tenant." 
+      });
+    }
+
+    // Calculate new roles by filtering out the roles to remove
+    const currentRoles = Array.isArray(userToUpdate.role) ? userToUpdate.role : [];
+    const updatedRoles = currentRoles.filter(
+      role => !rolesToRemove.includes(role)
+    );
+
+    // Update the user with the new role set
+    const updatedUser = await prisma.user.update({
+      where: { id: parseInt(userId, 10) },
+      data: { role: updatedRoles },
+    });
+
+    res.status(200).json({ 
+      message: "Roles removed successfully", 
+      user: updatedUser 
+    });
+  } catch (error) {
+    console.error("Failed to remove roles:", error.message);
+    res.status(500).json({ 
+      error: "Failed to remove roles", 
+      details: "An unexpected error occurred" 
+    });
+  }
+};
+
+
+
+
+
+
 const updateUserDetails = async (req, res) => {
   const {
     userId,
@@ -124,24 +210,28 @@ const updateUserDetails = async (req, res) => {
     county,
     town,
     password,
- 
+    currentPassword,
   } = req.body;
 
-  const { role: requesterRole, tenantId: requesterTenantId } = req.user;
-  console.log(`the role of the admin is ${requesterRole}`);
+  // Log entire req.user for debugging
 
-  // Check if the requester is an admin
-  if (!requesterRole.includes('ADMIN')) {
-    return res.status(403).json({ message: 'Access denied. Only admins can create users.' });
+
+  const { user: requesterId, role: requesterRole, tenantId: requesterTenantId } = req.user || {};
+
+
+  if (!requesterId) {
+    return res.status(401).json({ error: "Authentication failed: No user ID in request" });
   }
 
-  // Validate input
-  if (!userId) {
-    return res.status(400).json({ error: "User ID is required" });
+  const targetUserId = userId || requesterId;
+  const isAdmin = requesterRole?.includes('ADMIN');
+  const isSelfUpdate = targetUserId === requesterId;
+
+
+  if (!isAdmin && !isSelfUpdate) {
+    return res.status(403).json({ message: 'Access denied. Only admins or the user themselves can update details.' });
   }
 
-
-  // Build the update data object dynamically
   const updateData = {};
   if (firstName) updateData.firstName = firstName;
   if (lastName) updateData.lastName = lastName;
@@ -150,30 +240,36 @@ const updateUserDetails = async (req, res) => {
   if (gender) updateData.gender = gender;
   if (county) updateData.county = county;
   if (town) updateData.town = town;
-  if (password) updateData.password = await bcrypt.hash(password, 10); // Hash the password
- 
 
   try {
-    // Fetch the user to verify tenant
     const userToUpdate = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { tenantId: true }, // Fetch only the tenantId
+      where: { id: targetUserId }, // Use targetUserId directly
+      select: { tenantId: true, password: true },
     });
 
     if (!userToUpdate) {
       return res.status(404).json({ error: "User not found" });
     }
 
-    // Verify tenant context
-    if (userToUpdate.tenantId !== requesterTenantId) {
+    if (isAdmin && userToUpdate.tenantId !== requesterTenantId) {
       return res.status(403).json({
         error: "Access denied. You can only update users in your tenant.",
       });
     }
 
-    // Perform the update
+    if (password) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: "Current password is required to update password" });
+      }
+      const isValid = await bcrypt.compare(currentPassword, userToUpdate.password);
+      if (!isValid) {
+        return res.status(401).json({ error: "Current password is incorrect" });
+      }
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
     const updatedUser = await prisma.user.update({
-      where: { id: userId },
+      where: { id: targetUserId },
       data: updateData,
     });
 
@@ -185,10 +281,14 @@ const updateUserDetails = async (req, res) => {
     console.error("Failed to update user details:", error.message);
     res.status(500).json({
       error: "Failed to update user details",
-      details: "An unexpected error occurred",
+      details: error.message,
     });
   }
 };
+
+
+
+
 
 
 
@@ -339,5 +439,6 @@ module.exports = {
   stripRoles,
   updateUserDetails,
 
-  fetchUser
+  fetchUser,
+  removeRoles
 };

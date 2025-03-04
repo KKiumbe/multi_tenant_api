@@ -1,24 +1,24 @@
 const { PrismaClient } = require('@prisma/client'); // Import Prisma Client
 const prisma = new PrismaClient(); // Create an instance of Prisma Client
 
-// Helper function to sanitize phone numbers
 const sanitizePhoneNumber = (phone) => {
     if (!phone) return null;
 
     // Remove all non-numeric characters
     let sanitized = phone.replace(/\D/g, '');
 
-    // Normalize the phone number to start with +254
-    if (sanitized.startsWith('0')) {
-        sanitized = '+254' + sanitized.substring(1);
-    } else if (sanitized.startsWith('254')) {
-        sanitized = '+254' + sanitized.substring(3);
-    } else if (!sanitized.startsWith('+254')) {
-        sanitized = '+254' + sanitized;
+    // Normalize to start with '0' (Kenyan numbers usually start with '07' or '01')
+    if (sanitized.startsWith('254')) {
+        sanitized = '0' + sanitized.substring(3); // Convert '2547...' to '07...' or '2541...' to '01...'
+    } else if (sanitized.startsWith('+254')) {
+        sanitized = '0' + sanitized.substring(4);
+    } else if (!sanitized.startsWith('0')) {
+        return sanitized; // Invalid number format
     }
 
     return sanitized;
 };
+
 
 const SearchCustomers = async (req, res) => {
     const { phone, name } = req.query;
@@ -74,15 +74,107 @@ const SearchCustomers = async (req, res) => {
         // Fetch customers based on the query
         const customers = await prisma.customer.findMany(query);
 
-        if (!customers.length) {
-            return res.status(404).json({ message: "No customers found" });
+        // Return response
+        if (customers.length > 0) {
+            res.json(customers);
+        } else {
+            res.status(404).json({ message: "No customer found " });
         }
 
-        res.json(customers);
+
     } catch (error) {
         console.error('Error fetching customers:', error);
         res.status(500).json({ message: 'Error fetching customers' });
     }
 };
 
-module.exports = { SearchCustomers };
+
+const SearchCustomersByName = async (req, res) => {
+    const { name } = req.query;
+    const tenantId = req.user?.tenantId; // Extract tenantId from authenticated user
+  
+    // Log incoming data for debugging
+    console.log("Tenant ID:", tenantId);
+    console.log("Search name:", name);
+  
+    // Validate required parameters
+    if (!tenantId) {
+      return res.status(400).json({ message: "Tenant ID is required" });
+    }
+  
+    if (!name) {
+      return res.status(400).json({ message: "Name is required" });
+    }
+  
+    try {
+      // Search for customers by name (case-insensitive) and tenantId
+      const customers = await prisma.customer.findMany({
+        where: {
+          tenantId,
+          OR: [
+            { firstName: { contains: name, mode: "insensitive" } },
+            { lastName: { contains: name, mode: "insensitive" } },
+          ],
+        },
+      });
+  
+      // Return response
+      if (customers.length > 0) {
+        res.json(customers);
+      } else {
+        res.status(404).json({ message: "No customers found with this name" });
+      }
+    } catch (error) {
+      console.error("Error searching customers by name:", error);
+      res.status(500).json({ message: "Failed to search customers", error: error.message });
+    }
+  };
+  
+  // Assuming you already have this from your previous code
+  const SearchCustomersByPhoneNumber = async (req, res) => {
+    const { phone } = req.query;
+    const tenantId = req.user?.tenantId;
+  
+    console.log("Tenant ID:", tenantId);
+    console.log("Raw phone number:", phone);
+  
+    if (!tenantId) {
+      return res.status(400).json({ message: "Tenant ID is required" });
+    }
+  
+    if (!phone) {
+      return res.status(400).json({ message: "Phone number is required" });
+    }
+  
+    try {
+      const sanitizedPhone = sanitizePhoneNumber(phone);
+      console.log("Sanitized phone number:", sanitizedPhone);
+  
+      const customer = await prisma.customer.findUnique({
+        where: {
+          phoneNumber: sanitizedPhone,
+          tenantId,
+        },
+      });
+  
+      if (customer) {
+        res.json(customer);
+        console.log(`this is the customer ${JSON.stringify(customer)}`);
+      } else {
+        res.status(404).json({ message: "No customer found with this phone number" });
+      }
+    } catch (error) {
+      console.error("Error searching customers by phone:", error);
+      res.status(500).json({ message: "Failed to search customers", error: error.message });
+    }
+  };
+
+  
+
+
+  
+
+  
+
+
+module.exports = { SearchCustomers,SearchCustomersByPhoneNumber,SearchCustomersByName };

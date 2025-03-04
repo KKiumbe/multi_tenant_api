@@ -56,25 +56,49 @@ async function updateSmsDeliveryStatus(req, res) {
 
 
 
-
-// Function to retrieve SMS messages from the database
 const getSmsMessages = async (req, res) => {
   try {
-    // Fetch the first 100 SMS messages from the database, ordered by the creation date in descending order
-    const smsMessages = await prisma.sMS.findMany({
-      orderBy: {
-        createdAt: 'desc', // Sort by latest first
-      },
-      take: 100, // Limit to 100 records
+    const tenantId = req.user?.tenantId; // Get tenantId from authenticated user
+
+    if (!tenantId) {
+      return res.status(400).json({ message: "Tenant ID is required" });
+    }
+
+    // Extract pagination parameters from request (default page = 1, limit = 10)
+    let { page = 1, limit = 10 } = req.query;
+    page = parseInt(page, 10);
+    limit = parseInt(limit, 10);
+
+    if (isNaN(page) || page < 1) page = 1;
+    if (isNaN(limit) || limit < 1) limit = 10;
+
+    const offset = (page - 1) * limit;
+
+    // Fetch paginated SMS records
+    const smsRecords = await prisma.sMS.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset,
     });
 
-    // Send a successful response with the fetched data
-    res.status(200).json({ success: true, data: smsMessages });
+    // Get total count of SMS records for this tenant
+    const totalRecords = await prisma.sMS.count({ where: { tenantId } });
+
+    res.json({
+      data: smsRecords,
+      currentPage: page,
+      totalPages: Math.ceil(totalRecords / limit),
+      totalRecords,
+    });
   } catch (error) {
-    console.error('Error fetching SMS messages:', error);
-    res.status(500).json({ success: false, message: 'Server error while retrieving SMS messages' });
+    console.error("Error fetching SMS:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
+
 
   
   // Export the functions

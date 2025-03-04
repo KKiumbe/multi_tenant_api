@@ -3,7 +3,7 @@ const express = require('express');
 const { createCustomer } = require('../../controller/customers/createCustomer.js');
 const { getAllCustomers } = require('../../controller/customers/getAllCustomers.js');
 const { editCustomer } = require('../../controller/customers/editCustomer.js');
-const { SearchCustomers } = require('../../controller/customers/searchCustomers.js');
+const { SearchCustomers, SearchCustomersByPhoneNumber, SearchCustomersByName } = require('../../controller/customers/searchCustomers.js');
 const checkAccess = require('../../middleware/roleVerify.js');
 const verifyToken = require('../../middleware/verifyToken.js');
 const { getCustomerDetails } = require('../../controller/customers/customerDetails.js');
@@ -22,8 +22,14 @@ router.post(
 router.get('/customers', verifyToken, checkAccess('customer','read') ,getAllCustomers);
 router.put('/customers/:id',verifyToken,checkAccess('customer','update'), editCustomer);
 router.get('/search-customers',verifyToken, SearchCustomers);
+
+router.get('/search-customer-by-phone',verifyToken, SearchCustomersByPhoneNumber);
+
+router.get('/search-customer-by-name',verifyToken, SearchCustomersByName
+);
 router.get('/customer-details/:id',verifyToken, getCustomerDetails);
-router.post('/delete-customers',clearCustomerData)
+router.post('/delete-customers',clearCustomerData)  
+
 
 
 module.exports = router;

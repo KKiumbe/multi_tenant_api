@@ -173,13 +173,17 @@ const manualCashPayment = async (req, res) => {
         //await sendSMS(text, customer);
 
         // Respond with success
+
         res.status(201).json({
             message: 'Payment and receipt created successfully, SMS notification sent.',
             receipt,
             updatedPayment,
             updatedInvoices: invoices,
             newClosingBalance,
+            paymentId: updatedPayment.id, // Explicitly including paymentId
         });
+        
+   
     } catch (error) {
         console.error('Error creating manual cash payment:', error);
         res.status(500).json({ error: 'Failed to create manual cash payment.', details: error.message });

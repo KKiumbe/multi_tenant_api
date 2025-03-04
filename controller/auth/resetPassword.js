@@ -1,16 +1,24 @@
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const { PrismaClient } = require('@prisma/client');
-const { sendSMS } = require('./sendSMS'); // Import the sendSMS utility function
+const { sendSMS } = require('../sms/sms'); // Adjust path as needed
 const prisma = new PrismaClient();
 
 const requestOTP = async (req, res) => {
   const { phoneNumber } = req.body;
 
-  try {
-    // Find the user by phone number
-    const user = await prisma.user.findUnique({ where: { phoneNumber } });
+  if (!phoneNumber) {
+    return res.status(400).json({ message: 'Phone number is required' });
+  }
 
+  try {
+    // Find the user by phone number, including tenant relation
+    const user = await prisma.user.findUnique({
+      where: { phoneNumber },
+      include: { tenant: true }, // Include tenant to get tenantId
+    });
+
+    // Return generic message even if user not found (security best practice)
     if (!user) {
       return res.status(404).json({ message: 'If the phone number exists, an OTP has been sent.' });
     }
@@ -34,9 +42,9 @@ const requestOTP = async (req, res) => {
       },
     });
 
-    // Send the OTP to the user via SMS
+    // Send the OTP to the user via SMS using tenantId from user
     const message = `Your one-time password (OTP) is: ${otp}`;
-    await sendSMS(message, user);
+    await sendSMS(user.tenantId, phoneNumber, message);
 
     res.status(200).json({ message: 'If the phone number exists, an OTP has been sent.' });
   } catch (error) {
@@ -47,6 +55,10 @@ const requestOTP = async (req, res) => {
 
 const verifyOTP = async (req, res) => {
   const { phoneNumber, otp } = req.body;
+
+  if (!phoneNumber || !otp) {
+    return res.status(400).json({ message: 'Phone number and OTP are required' });
+  }
 
   try {
     const user = await prisma.user.findUnique({ where: { phoneNumber } });
@@ -87,11 +99,15 @@ const verifyOTP = async (req, res) => {
 const resetPassword = async (req, res) => {
   const { phoneNumber, newPassword } = req.body;
 
-  try {
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ message: 'Password must be at least 6 characters long.' });
-    }
+  if (!phoneNumber || !newPassword) {
+    return res.status(400).json({ message: 'Phone number and new password are required' });
+  }
 
+  if (newPassword.length < 6) {
+    return res.status(400).json({ message: 'Password must be at least 6 characters long.' });
+  }
+
+  try {
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     await prisma.user.update({

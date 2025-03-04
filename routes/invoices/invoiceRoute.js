@@ -1,7 +1,7 @@
 const express = require('express');
 
-const { getAllInvoices, generateInvoices, cancelInvoiceById, createInvoice, getInvoiceDetails, generateInvoicesByDay } = require('../../controller/bill/billGenerator.js');
-const { SearchInvoices } = require('../../controller/bill/searchInvoice.js');
+const { getAllInvoices, generateInvoices, cancelInvoiceById, createInvoice, getInvoiceDetails, generateInvoicesByDay, generateInvoicesPerTenant, searchInvoices } = require('../../controller/bill/billGenerator.js');
+const { SearchInvoices, searchInvoicesByPhone, searchInvoicesByName } = require('../../controller/bill/searchInvoice.js');
 const { addSmsJob } = require('../../controller/bulkSMS/sendSMSJob.js');
 const { cancelSystemGenInvoices } = require('../../controller/bill/cancelJob.js');
 const verifyToken = require('../../middleware/verifyToken.js');
@@ -13,8 +13,10 @@ const router = express.Router();
 
 router.get('/invoices/all',verifyToken, getAllInvoices );
 
-router.get('/invoices/search',verifyToken, SearchInvoices)
-router.get('/invoices/:id/',verifyToken, getInvoiceDetails)
+router.get('/invoices/search-by-phone',verifyToken, searchInvoicesByPhone);
+
+router.get('/invoices/search-by-name',verifyToken, searchInvoicesByName);
+router.get('/invoices/:id/',verifyToken, getInvoiceDetails);
 router.put('/invoices/cancel/:invoiceId/', verifyToken, cancelInvoiceById);
 
 // Route to create a manual invoice
@@ -27,6 +29,9 @@ router.post('/send-bulk-sms', addSmsJob);
 router.post('/invoices/generate', verifyToken,generateInvoices);
 
 router.post('/invoices-generate-day',generateInvoicesByDay)
+
+
+router.post('/invoices-generate-tenant',generateInvoicesPerTenant)
 
 
 

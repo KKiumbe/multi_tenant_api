@@ -42,6 +42,11 @@ async function getCurrentMonthBill(customerId) {
 
 
 
+
+
+
+
+
 // Function to process a single batch of customers
 async function processCustomerBatch(customers, tenantId, currentMonth) {
   const invoices = [];
@@ -146,6 +151,81 @@ async function generateInvoices(req, res) {
     return res.status(500).json({ message: 'Failed to generate invoices', error: error.message });
   }
 }
+
+
+
+
+
+
+async function generateInvoicesPerTenant(req, res) {
+  const { tenantId } = req.body; // Extract tenantId from request body
+
+  // Validate tenantId
+  if (!tenantId || isNaN(tenantId)) {
+    return res.status(400).json({ message: 'Valid Tenant ID is required in request body' });
+  }
+
+  const currentDate = new Date();
+  const currentMonth = currentDate.getMonth() + 1; // 1-12
+  const currentYear = currentDate.getFullYear();
+  //const invoicePeriod = new Date(currentYear, currentMonth - 1, 1); // First of the month
+
+ 
+
+  try {
+    // Verify tenant exists
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: parseInt(tenantId) },
+    });
+
+    if (!tenant) {
+      return res.status(404).json({ message: `Tenant with ID ${tenantId} not found` });
+    }
+
+    console.time('Find Customers');
+    const customers = await prisma.customer.findMany({
+      where: {
+        tenantId: parseInt(tenantId), // Ensure integer for Prisma
+        status: 'ACTIVE', // Only active customers
+      },
+    });
+    console.timeEnd('Find Customers');
+    console.log(`Found ${customers.length} active customers for tenant ${tenantId}.`);
+
+    if (customers.length === 0) {
+      return res.status(200).json({ message: `No active customers found for tenant ${tenantId}`, data: [] });
+    }
+
+    // Process customers in batches
+    const batchSize = 20; // Number of customers to process per batch
+    const totalBatches = Math.ceil(customers.length / batchSize);
+    let allInvoices = [];
+
+    for (let i = 0; i < totalBatches; i++) {
+      const start = i * batchSize;
+      const end = Math.min(start + batchSize, customers.length);
+      const batch = customers.slice(start, end);
+
+      console.log(`Processing batch ${i + 1} of ${totalBatches} (${batch.length} customers) for tenant ${tenantId}...`);
+      console.time(`Batch ${i + 1}`);
+      const batchInvoices = await processCustomerBatch(batch, parseInt(tenantId), currentMonth);
+      console.timeEnd(`Batch ${i + 1}`);
+      allInvoices = allInvoices.concat(batchInvoices);
+    }
+
+    console.log(`Generated ${allInvoices.length} invoices for tenant ${tenantId}.`);
+    return res.status(200).json({
+      message: 'Invoices generated successfully',
+      data: allInvoices,
+    });
+  } catch (error) {
+    console.error(`Error generating invoices for tenant ${tenantId}:`, error);
+    return res.status(500).json({ message: 'Failed to generate invoices', error: error.message });
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
 
 
 
@@ -427,29 +507,64 @@ async function cancelSystemGeneratedInvoices() {
 
 // Get all invoices, ordered by the latest first
 async function getAllInvoices(req, res) {
-  const tenantId = req.user?.tenantId; // Extract tenantId from authenticated user
+  const tenantId = req.user?.tenantId;
 
   if (!tenantId) {
-    return res.status(403).json({ error: 'Tenant ID is required to fetch invoices' });
+    return res.status(403).json({ error: "Tenant ID is required to fetch invoices" });
   }
 
+  // Extract pagination parameters from query (default to page 1, limit 10)
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 10;
+  const skip = (page - 1) * limit; // Calculate offset
+
   try {
-    // Fetch invoices filtered by tenantId
+    // Fetch total count for pagination
+    const total = await prisma.invoice.count({
+      where: { tenantId },
+    });
+
+    // Fetch paginated invoices with selective fields
     const invoices = await prisma.invoice.findMany({
-      where: { tenantId }, // Filter by tenantId
-      include: {
-        customer: true, // Include customer details
-        items: true,    // Include invoice items
+      where: { tenantId },
+      skip, // Pagination offset
+      take: limit, // Number of records to fetch
+      select: {
+        id: true,
+        invoiceNumber: true,
+        invoiceAmount: true,
+        closingBalance: true,
+        invoicePeriod: true,
+        status: true,
+        isSystemGenerated: true,
+        createdAt: true,
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phoneNumber: true,
+          },
+        },
+        items: {
+          select: {
+            description: true,
+          },
+        },
       },
       orderBy: {
-        createdAt: 'desc', // Order by creation date in descending order
+        createdAt: "desc",
       },
     });
 
-    res.json(invoices);
+    // Format response to match frontend expectation
+    res.json({
+      invoices,
+      total,
+    });
   } catch (error) {
-    console.error('Error fetching invoices:', error);
-    res.status(500).json({ error: 'Error fetching invoices' });
+    console.error("Error fetching invoices:", error);
+    res.status(500).json({ error: "Internal server error while fetching invoices" });
   }
 }
 
@@ -575,6 +690,92 @@ async function getInvoiceDetails(req, res) {
   }
 }
 
+
+
+
+
+// Phone number sanitization function
+const sanitizePhoneNumber = (phone) => {
+    if (!phone) return null;
+
+    // Remove all non-numeric characters
+    let sanitized = phone.replace(/\D/g, '');
+
+    // Normalize to start with '0' (Kenyan numbers usually start with '07' or '01')
+    if (sanitized.startsWith('254')) {
+        sanitized = '0' + sanitized.substring(3); // Convert '2547...' to '07...' or '2541...' to '01...'
+    } else if (sanitized.startsWith('+254')) {
+        sanitized = '0' + sanitized.substring(4);
+    } else if (!sanitized.startsWith('0')) {
+        return null; // Invalid number format
+    }
+
+    return sanitized;
+};
+
+const searchInvoices = async (req, res) => {
+  const { phoneNumber, firstName, lastName } = req.query;
+  const tenantId = req.user?.tenantId;
+
+  // Validate tenantId from req.user
+  if (!tenantId) {
+    return res.status(401).json({ error: 'Unauthorized: Tenant ID not found' });
+  }
+
+  // Ensure at least one search parameter is provided
+  if (!phoneNumber && !firstName && !lastName) {
+    return res.status(400).json({ error: 'At least one of phoneNumber, firstName, or lastName is required' });
+  }
+
+  // Sanitize phone number if provided
+  const sanitizedPhoneNumber = phoneNumber ? sanitizePhoneNumber(phoneNumber) : null;
+
+  // If phoneNumber was provided but sanitization failed, return an error
+  if (phoneNumber && !sanitizedPhoneNumber) {
+    return res.status(400).json({ error: 'Invalid phone number format' });
+  }
+
+  try {
+    const invoices = await prisma.invoice.findMany({
+      where: {
+        tenantId: tenantId,
+        customer: {
+          OR: [
+            sanitizedPhoneNumber
+              ? {
+                  OR: [
+                    { phoneNumber: { contains: sanitizedPhoneNumber } },
+                    { secondaryPhoneNumber: { contains: sanitizedPhoneNumber } },
+                  ],
+                }
+              : undefined,
+            firstName ? { firstName: { contains: firstName, mode: 'insensitive' } } : undefined,
+            lastName ? { lastName: { contains: lastName, mode: 'insensitive' } } : undefined,
+          ].filter(Boolean),
+        },
+      },
+      include: {
+        customer: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phoneNumber: true,
+            secondaryPhoneNumber: true,
+          },
+        },
+      },
+    });
+
+    res.json(invoices);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+};
+
+
+
 // Exporting all functions
 module.exports = {
   createInvoice,
@@ -586,5 +787,6 @@ module.exports = {
   getInvoiceDetails,
   getCurrentClosingBalance,
   getCurrentMonthBill,
-  generateInvoicesByDay
+  generateInvoicesByDay,
+  generateInvoicesPerTenant,searchInvoices
 };
