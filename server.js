@@ -47,7 +47,7 @@ app.use(express.json());
 app.use(helmet());
 
 app.use(cors({
-  origin: "http://localhost:5173", // Allow only your frontend
+  origin: ["http://173.249.50.194","http://taqa.sikika-ke.co.ke"],// Allow only your frontend
   credentials: true, // Allow credentials
   //methods: ['GET', 'POST', 'PUT', 'DELETE']
 
