@@ -49,9 +49,9 @@ app.use(helmet());
 
 
 app.use(cors({
-  origin: 
-    //  frontend
-    "http://taqa.sikika-ke.co.ke", // Direct server access (optional)
+  origin: [
+   
+    "https://taqa.sikika-ke.co.ke","http://173.249.50.194/"], // Direct server access (optional)
  
   credentials: true, // Allow cookies & authentication headers
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
