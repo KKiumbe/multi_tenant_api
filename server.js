@@ -49,7 +49,7 @@ app.use(helmet());
 app.use(cors({
   origin: ["http://173.249.50.194","http://taqa.sikika-ke.co.ke"],// Allow only your frontend
   credentials: true, // Allow credentials
-  //methods: ['GET', 'POST', 'PUT', 'DELETE']
+  methods: ['GET', 'POST', 'PUT', 'DELETE']
 
 }));
 
