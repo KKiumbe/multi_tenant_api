@@ -46,7 +46,7 @@ app.use(express.json());
 
 app.use(helmet());
 
-const cors = require('cors');
+
 
 app.use(cors({
   origin: [
