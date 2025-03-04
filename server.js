@@ -55,7 +55,7 @@ app.use(cors({
   ],
   credentials: true, // Allow cookies & authentication headers
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'], // Allow necessary headers
+
   optionsSuccessStatus: 200 // Some browsers (legacy) need this
 }));
 
