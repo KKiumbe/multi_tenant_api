@@ -52,7 +52,7 @@ app.use(cors({
   origin: (origin, callback) => {
     const allowedOrigins = [
       'http://173.249.50.194', // Frontend IP without trailing slash
-      'https://taqa.sikika-ke.co.ke', // Domain
+      'https://sikika-ke.co.ke', // Domain
        // For local development (optional)
     ];
     if (!origin || allowedOrigins.includes(origin)) {
