@@ -2,7 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 //const { GarbageCollectionDay } = require('./enum.js'); // Adjust the path if needed
 
 const schedule = require('node-schedule'); // For scheduling jobs
-const invoiceQueue = require('./jobFunction.js');
+
 const prisma = new PrismaClient();
 
 // Function to generate a unique invoice number
@@ -34,6 +34,29 @@ async function getCurrentMonthBill(customerId) {
   }
 }
 
+
+
+async function generateInvoicesforAll() {
+  const currentMonth = new Date().getMonth() + 1;
+
+  try {
+    console.time('Find Customers');
+    const customers = await prisma.customer.findMany({
+      where: { status: 'ACTIVE' },
+    });
+    console.timeEnd('Find Customers');
+    console.log(`Found ${customers.length} active customers.`);
+
+    // Process all customers
+    const allInvoices = await processCustomerBatchforAll(customers, currentMonth);
+
+    console.log(`Generated ${allInvoices.length} invoices.`);
+    return allInvoices; // Return result for logging/debugging
+  } catch (error) {
+    console.error('Error generating invoices:', error);
+    throw error; // Ensure cron job logs the error properly
+  }
+}
 
 
 
@@ -111,6 +134,88 @@ async function processCustomerBatch(customers, tenantId, currentMonth) {
 
   return invoices;
 }
+
+
+async function processCustomerBatchforAll(customers, currentMonth) {
+  const invoices = [];
+
+  for (const customer of customers) {
+    try {
+      const invoiceNumber = generateInvoiceNumber(customer.id);
+      const invoicePeriod = new Date(new Date().getFullYear(), currentMonth - 1, 1);
+      const currentClosingBalance = await getCurrentClosingBalance(customer.id);
+      const currentMonthBill = await getCurrentMonthBill(customer.id);
+      const invoiceAmount = currentMonthBill;
+
+      // Determine the status of the invoice based on the current closing balance
+      let status = 'UNPAID'; // Default status
+      const newClosingBalance = currentClosingBalance + invoiceAmount;
+
+      if (newClosingBalance < 0 && Math.abs(currentClosingBalance) >= invoiceAmount) {
+        status = 'PAID';
+      } else if (newClosingBalance === 0) {
+        status = 'PAID';
+      } else if (newClosingBalance > 0 && newClosingBalance < invoiceAmount) {
+        status = 'PPAID';
+      }
+
+      // Create the new invoice
+     
+
+      const newInvoice = await prisma.invoice.create({
+        data: {
+          customer: {
+            connect: { id: customer.id }, // Ensure relation mapping
+          },
+          tenant: {
+            connect: { id: customer.tenantId }, // Ensure relation mapping
+          },
+          invoiceNumber,
+          invoicePeriod,
+          closingBalance: newClosingBalance,
+          invoiceAmount,
+          status,
+          isSystemGenerated: true,
+        },
+      });
+      
+
+      // Create invoice item only if invoice amount is greater than zero
+      if (invoiceAmount > 0) {
+        await prisma.invoiceItem.create({
+          data: {
+            invoiceId: newInvoice.id,
+            description: 'Monthly Charge',
+            amount: invoiceAmount,
+            quantity: 1,
+          },
+        });
+      }
+
+      // Update the customer’s closing balance
+      await prisma.customer.update({
+        where: { id: customer.id },
+        data: { closingBalance: newClosingBalance },
+      });
+
+      invoices.push(newInvoice);
+    } catch (error) {
+      console.error(`Error processing customer ${customer.id}:`, error);
+    }
+  }
+
+  return invoices;
+}
+
+
+
+
+
+
+
+
+
+
 
 async function generateInvoices(req, res) {
   const tenantId = req.user?.tenantId; // Extract tenantId from the authenticated user
@@ -647,15 +752,7 @@ async function cancelInvoiceById(req, res) {
 
 
 
-// Scheduled job to generate invoices on the 1st of every month
-schedule.scheduleJob('0 0 1 * *', async () => {
-  console.log('Running scheduled job to generate invoices...');
-  try {
-    await generateInvoices();
-  } catch (error) {
-    console.error('Error during scheduled job execution:', error);
-  }
-});
+
 
 // Get invoice details by ID
 async function getInvoiceDetails(req, res) {
@@ -788,5 +885,6 @@ module.exports = {
   getCurrentClosingBalance,
   getCurrentMonthBill,
   generateInvoicesByDay,
-  generateInvoicesPerTenant,searchInvoices
+  generateInvoicesPerTenant,searchInvoices,
+  generateInvoicesforAll
 };

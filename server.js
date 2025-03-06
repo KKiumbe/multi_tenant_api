@@ -2,6 +2,8 @@ const express = require('express');
 //const mongoose = require('mongoose');
 
 const { PrismaClient } = require('@prisma/client'); // Prisma Client import
+require('./controller/jobs/garbagecollectionStatus.js');
+require('./controller/jobs/invoicegen.js');
 
 const cors = require('cors');
 const helmet = require('helmet'); // Import Helmet
@@ -50,7 +52,7 @@ app.use(helmet());
 
 app.use(cors({
   origin: (origin, callback) => {
-    const allowedOrigins = [
+    const allowedOrigins = ['http://localhost:5173',
       'http://173.249.50.194', // Frontend IP without trailing slash
       'https://sikika-ke.co.ke', // Domain
        // For local development (optional)
