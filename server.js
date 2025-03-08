@@ -119,9 +119,12 @@ app.use('/api', tenantRoute);
 app.use('/api', taskRoute);
 
 // Start the HTTP server
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server is running on port ${PORT}`);
+const server = app.listen(5000, '127.0.0.1', () => { 
+  console.log('Server running on port 5000');
 });
+
+
+
 
 // Set server timeout
 const timeoutDuration = 80000; // Set timeout duration in milliseconds (e.g., 60000 ms = 60 seconds)
