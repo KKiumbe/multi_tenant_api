@@ -119,7 +119,7 @@ app.use('/api', tenantRoute);
 app.use('/api', taskRoute);
 
 // Start the HTTP server
-const server = app.listen(5000, '127.0.0.1', () => { 
+const server = app.listen(5000, '0.0.0.0', () => { 
   console.log('Server running on port 5000');
 });
 
