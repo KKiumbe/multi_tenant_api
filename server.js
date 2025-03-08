@@ -92,6 +92,11 @@ connectDatabase();
 app.get('/test',(req,res)=>{
   res.sendFile(path.join(__dirname, '/uploads/1737629268458.png  '))
 })
+
+app.get('/api/test', (req, res) => {
+  res.json({ message: "API is working!" });
+});
+
 // Use customer routes
 app.use('/api', customerRoutes); //done
 app.use('/api', userRoutes);
