@@ -100,6 +100,9 @@ const sendToOne = async (req, res) => {
   }
 };
 
+
+
+
 const sendSMS = async (tenantId, mobile, message) => {
     console.log(`Sending SMS to ${mobile}`);
     let clientsmsid;

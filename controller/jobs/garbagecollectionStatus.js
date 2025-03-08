@@ -4,35 +4,22 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 // Run every 20 minutes
-cron.schedule('*/5 * * * *', async () => {
-    console.log('Running test job: Updating collected status to false...');
 
+
+
+
+
+cron.schedule('0 0 * * 0', async () => {
+    console.log('🔄 Running weekly job: Resetting collected status...');
     try {
         await prisma.customer.updateMany({
             data: { collected: false },
         });
-
         console.log('✅ Successfully updated collected status for all customers.');
     } catch (error) {
         console.error('❌ Error updating collected status:', error);
     }
 });
-
-
-
-
-// Reset `collected` status every Sunday (weekly)
-// cron.schedule('0 0 * * 0', async () => {
-//     console.log('🔄 Running weekly job: Resetting collected status...');
-//     try {
-//         await prisma.customer.updateMany({
-//             data: { collected: false },
-//         });
-//         console.log('✅ Successfully updated collected status for all customers.');
-//     } catch (error) {
-//         console.error('❌ Error updating collected status:', error);
-//     }
-// });
 
 // Reset `trashBagsIssued` status on the 1st of every month at midnight
 cron.schedule('0 0 1 * *', async () => {
