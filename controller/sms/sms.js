@@ -232,7 +232,7 @@ const sendBills = async (req, res) => {
     const { tenantId } = req.user; 
 
     const { customerSupportPhoneNumber:customerSupport } = await getSMSConfigForTenant(tenantId);
-    const paybill = getShortCode(tenantId);
+    const paybill = await getShortCode(tenantId);
   try {
     const activeCustomers = await prisma.customer.findMany({
       where: { status: 'ACTIVE' },
@@ -306,7 +306,7 @@ const sendBill = async (req, res) => {
   const { customerId } = req.body;
   const { tenantId } = req.user; 
   const { customerSupportPhoneNumber } = await getSMSConfigForTenant(tenantId);
-  const paybill = getShortCode(tenantId);
+  const paybill = await getShortCode(tenantId);
   console.log(`this is the customer support number ${customerSupportPhoneNumber}`);
 
   if (!customerId) {
@@ -346,7 +346,7 @@ const sendBillPerDay = async (req, res) => {
   const { day } = req.body;
   const { tenantId } = req.user; 
   const { customerSupportPhoneNumber:customerSupport } = await getSMSConfigForTenant(tenantId);
-  const paybill = getShortCode(tenantId);
+  const paybill = await getShortCode(tenantId);
   if (!day) {
     return res.status(400).json({ error: 'Day is required.' });
   }
@@ -381,7 +381,7 @@ const billReminderPerDay = async (req, res) => {
   const { day } = req.body;
   const { tenantId } = req.user; 
   const { customerSupportPhoneNumber:customerSupport } = await getSMSConfigForTenant(tenantId);
-  const paybill = getShortCode(tenantId);
+  const paybill = await getShortCode(tenantId);
   if (!day) {
     return res.status(400).json({ error: 'Day is required.' });
   }
@@ -422,7 +422,7 @@ const billReminderPerDay = async (req, res) => {
 
 const billReminderForAll = async (req, res) => {
     const { tenantId } = req.user; 
-    const paybill = getShortCode(tenantId);
+    const paybill = await getShortCode(tenantId);
   try {
     // Fetch all active customers with a closingBalance less than monthlyCharge
     const customers = await prisma.customer.findMany({
@@ -457,7 +457,7 @@ const billReminderForAll = async (req, res) => {
 
 const harshBillReminder = async (req, res) => {
     const { tenantId } = req.user; 
-    const paybill = getShortCode(tenantId);
+    const paybill = await getShortCode(tenantId);
   try {
     // Fetch active customers with a closingBalance greater than 2x their monthlyCharge
     const customers = await prisma.customer.findMany({
@@ -591,7 +591,7 @@ const sendSms = async (tenantId, messages) => {
   const sendUnpaidCustomers = async (req, res) => {
     try {
       const { tenantId } = req.user; // Extract tenant ID from the request
-      const paybill = getShortCode(tenantId);
+      const paybill = await getShortCode(tenantId);
       if (!tenantId) {
         throw new Error('Tenant ID is required');
       }
@@ -662,7 +662,7 @@ const sendSms = async (tenantId, messages) => {
     try {
       const { tenantId } = req.user; // Extract tenant ID from the request
       const { balance } = req.body; // Extract custom balance from request body
-      const paybill = getShortCode(tenantId);
+      const paybill = await getShortCode(tenantId);
       // Validate inputs
       if (!tenantId) {
         throw new Error('Tenant ID is required');
@@ -737,7 +737,7 @@ const sendSms = async (tenantId, messages) => {
   const sendLowBalanceCustomers = async (req, res) => {
     try {
       const { tenantId } = req.user;
-      const paybill = getShortCode(tenantId);
+      const paybill = await getShortCode(tenantId);
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required.' });
       }
@@ -807,7 +807,7 @@ const sendSms = async (tenantId, messages) => {
   const sendHighBalanceCustomers = async (req, res) => {
     try {
       const { tenantId } = req.user; // Extract tenant ID from req.user
-      const paybill = getShortCode(tenantId);
+      const paybill = await getShortCode(tenantId);
     
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required.' });
