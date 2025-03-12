@@ -93,7 +93,7 @@ const createCustomer = async (req, res) => {
         trashBagsIssued :trashBagsIssued?? false,
         status: status ?? 'ACTIVE', // Use default if not provided
         collected: collected ?? false, // Default to false
-        closingBalance: closingBalance ?? 0, // Default to 0
+        closingBalance:parseFloat(closingBalance) ?? 0, // Default to 0
       },
     });
 

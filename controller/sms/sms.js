@@ -14,8 +14,23 @@ const SMS_ENDPOINT = process.env.SMS_ENDPOINT;
 const BULK_SMS_ENDPOINT = process.env.BULK_SMS_ENDPOINT;
 const SMS_BALANCE_URL = process.env.SMS_BALANCE_URL;
 
-const paybill = process.env.PAYBILL;
+
 // const customerSupport =  process.env.CUSTOMER_SUPPORT;
+
+
+async function getShortCode(tenantId) {
+  try {
+    const config = await prisma.mPESAConfig.findUnique({
+      where: { tenantId },
+      select: { shortCode: true },
+    });
+
+    return config ? config.shortCode : null;
+  } catch (error) {
+    console.error("Error fetching shortCode:", error);
+    return null;
+  }
+}
 
 
 
@@ -217,7 +232,7 @@ const sendBills = async (req, res) => {
     const { tenantId } = req.user; 
 
     const { customerSupportPhoneNumber:customerSupport } = await getSMSConfigForTenant(tenantId);
-
+    const paybill = getShortCode(tenantId);
   try {
     const activeCustomers = await prisma.customer.findMany({
       where: { status: 'ACTIVE' },
@@ -291,7 +306,7 @@ const sendBill = async (req, res) => {
   const { customerId } = req.body;
   const { tenantId } = req.user; 
   const { customerSupportPhoneNumber } = await getSMSConfigForTenant(tenantId);
-
+  const paybill = getShortCode(tenantId);
   console.log(`this is the customer support number ${customerSupportPhoneNumber}`);
 
   if (!customerId) {
@@ -331,7 +346,7 @@ const sendBillPerDay = async (req, res) => {
   const { day } = req.body;
   const { tenantId } = req.user; 
   const { customerSupportPhoneNumber:customerSupport } = await getSMSConfigForTenant(tenantId);
-
+  const paybill = getShortCode(tenantId);
   if (!day) {
     return res.status(400).json({ error: 'Day is required.' });
   }
@@ -366,7 +381,7 @@ const billReminderPerDay = async (req, res) => {
   const { day } = req.body;
   const { tenantId } = req.user; 
   const { customerSupportPhoneNumber:customerSupport } = await getSMSConfigForTenant(tenantId);
-
+  const paybill = getShortCode(tenantId);
   if (!day) {
     return res.status(400).json({ error: 'Day is required.' });
   }
@@ -407,6 +422,7 @@ const billReminderPerDay = async (req, res) => {
 
 const billReminderForAll = async (req, res) => {
     const { tenantId } = req.user; 
+    const paybill = getShortCode(tenantId);
   try {
     // Fetch all active customers with a closingBalance less than monthlyCharge
     const customers = await prisma.customer.findMany({
@@ -441,6 +457,7 @@ const billReminderForAll = async (req, res) => {
 
 const harshBillReminder = async (req, res) => {
     const { tenantId } = req.user; 
+    const paybill = getShortCode(tenantId);
   try {
     // Fetch active customers with a closingBalance greater than 2x their monthlyCharge
     const customers = await prisma.customer.findMany({
@@ -574,6 +591,7 @@ const sendSms = async (tenantId, messages) => {
   const sendUnpaidCustomers = async (req, res) => {
     try {
       const { tenantId } = req.user; // Extract tenant ID from the request
+      const paybill = getShortCode(tenantId);
       if (!tenantId) {
         throw new Error('Tenant ID is required');
       }
@@ -604,7 +622,7 @@ const sendSms = async (tenantId, messages) => {
         mobile: customer.phoneNumber,
         message: `Dear ${customer.firstName}, you have an outstanding balance of ${customer.closingBalance.toFixed(
           2
-        )}. Help us serve you better by always paying on time. Paybill No: 4107197, use your phone number as the account number. Customer support: 0726594923.`,
+        )}. Help us serve you better by always paying on time. Paybill No: ${paybill}, use your phone number as the account number. Customer support: 0726594923.`,
       }));
   
       console.log(`Prepared ${messages.length} messages for unpaid customers.`);
@@ -644,7 +662,7 @@ const sendSms = async (tenantId, messages) => {
     try {
       const { tenantId } = req.user; // Extract tenant ID from the request
       const { balance } = req.body; // Extract custom balance from request body
-  
+      const paybill = getShortCode(tenantId);
       // Validate inputs
       if (!tenantId) {
         throw new Error('Tenant ID is required');
@@ -677,7 +695,7 @@ const sendSms = async (tenantId, messages) => {
       // Create bulk SMS messages
       const messages = customersAboveBalance.map((customer) => ({
         mobile: customer.phoneNumber,
-        message: `Dear ${customer.firstName}, your outstanding balance is ${customer.closingBalance.toFixed(2)}, which exceeds ${balance.toFixed(2)}. Please settle your dues. Paybill No: 4107197, use your phone number as the account number. Customer support: 0726594923.`,
+        message: `Dear ${customer.firstName}, your outstanding balance is ${customer.closingBalance.toFixed(2)}, which exceeds ${balance.toFixed(2)}. Please settle your dues. Paybill No: ${paybill}, use your phone number as the account number. Customer support: 0726594923.`,
       }));
   
       console.log(`Prepared ${messages.length} messages for customers above balance ${balance}.`);
@@ -719,7 +737,7 @@ const sendSms = async (tenantId, messages) => {
   const sendLowBalanceCustomers = async (req, res) => {
     try {
       const { tenantId } = req.user;
-  
+      const paybill = getShortCode(tenantId);
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required.' });
       }
@@ -750,7 +768,7 @@ const sendSms = async (tenantId, messages) => {
         mobile: customer.phoneNumber,
         message: `Dear ${customer.firstName}, your balance is ${customer.closingBalance.toFixed(
           2
-        )}. Help us serve you better by always paying on time. Paybill No: 4107197, use your phone number as the account number. Customer support: 0726594923.`,
+        )}. Help us serve you better by always paying on time. Paybill No:${paybill}, use your phone number as the account number. Customer support: 0726594923.`,
       }));
   
       console.log(`Prepared ${messages.length} messages for low balance customers.`);
@@ -789,6 +807,8 @@ const sendSms = async (tenantId, messages) => {
   const sendHighBalanceCustomers = async (req, res) => {
     try {
       const { tenantId } = req.user; // Extract tenant ID from req.user
+      const paybill = getShortCode(tenantId);
+    
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required.' });
       }
@@ -819,7 +839,7 @@ const sendSms = async (tenantId, messages) => {
         mobile: customer.phoneNumber,
         message: `Dear ${customer.firstName}, your current balance is ${customer.closingBalance.toFixed(
           2
-        )}, which is quite high. Help us serve you better by always paying on time. Paybill No: 4107197, use your phone number as the account number. Customer support: 0726594923.`,
+        )}, which is quite high. Help us serve you better by always paying on time. Paybill No: ${paybill}, use your phone number as the account number. Customer support: 0726594923.`,
       }));
   
       console.log(`Prepared ${messages.length} messages for high balance customers.`);
