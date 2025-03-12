@@ -88,7 +88,7 @@ const createCustomer = async (req, res) => {
         building,
         houseNumber,
         category,
-        monthlyCharge,
+        monthlyCharge:parseFloat(monthlyCharge),
         garbageCollectionDay,
         trashBagsIssued :trashBagsIssued?? false,
         status: status ?? 'ACTIVE', // Use default if not provided
