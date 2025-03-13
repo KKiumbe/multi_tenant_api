@@ -24,8 +24,6 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-
-
 // Helper function to validate and transform customer data
 const validateCustomerData = (data) => {
   const requiredFields = [
@@ -33,7 +31,6 @@ const validateCustomerData = (data) => {
     'lastName',
     'phoneNumber',
     'monthlyCharge',
-    'garbageCollectionDay',
     'estateName',
     'building',
     'closingBalance'
@@ -65,8 +62,8 @@ const validateCustomerData = (data) => {
     return null;
   }
 
-  // Standardize garbageCollectionDay to title case for consistency
-  const garbageCollectionDay = trimmedData.garbageCollectionDay.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  // Set garbageCollectionDay to "MONDAY" if not provided or empty
+  const garbageCollectionDay = trimmedData.garbageCollectionDay ? trimmedData.garbageCollectionDay.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : 'MONDAY';
 
   // Parse fields
   return {
@@ -91,7 +88,7 @@ const validateCustomerData = (data) => {
   };
 };
 
-// Controller function to upload and process CSV (unchanged structure, using updated validateCustomerData)
+// Controller function to upload and process CSV
 const uploadCustomers = async (req, res) => {
   const { tenantId } = req.user; // Extract tenantId from the authenticated user
   console.log('Tenant ID from authenticated user:', tenantId);
@@ -112,7 +109,6 @@ const uploadCustomers = async (req, res) => {
     'lastName',
     'phoneNumber',
     'monthlyCharge',
-    'garbageCollectionDay',
     'estateName',
     'building',
     'closingBalance'
@@ -160,13 +156,13 @@ const uploadCustomers = async (req, res) => {
         // Check for extra fields
         const extraFields = headers.filter((header) =>
           !requiredFields.includes(header) &&
-          !['email', 'secondaryPhoneNumber', 'gender', 'county', 'town', 'location', 'houseNumber', 'category', 'collected'].includes(header)
+          !['email', 'secondaryPhoneNumber', 'gender', 'county', 'town', 'location', 'houseNumber', 'category', 'collected', 'garbageCollectionDay'].includes(header)
         );
         if (extraFields.length > 0) {
           stream.destroy(); // Stop the stream
           fs.unlinkSync(filePath); // Delete the uploaded file
           return res.status(400).json({
-            message: `CSV file contains invalid fields: ${extraFields.join(', ')}. Only allowed fields are: ${requiredFields.join(', ')} plus optional fields (email, secondaryPhoneNumber, gender, county, town, location, houseNumber, category, collected)`,
+            message: `CSV file contains invalid fields: ${extraFields.join(', ')}. Only allowed fields are: ${requiredFields.join(', ')} plus optional fields (email, secondaryPhoneNumber, gender, county, town, location, houseNumber, category, collected, garbageCollectionDay)`,
           });
         }
 
