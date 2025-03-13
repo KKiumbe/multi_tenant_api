@@ -24,6 +24,8 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+
+
 // Helper function to validate and transform customer data
 const validateCustomerData = (data) => {
   const requiredFields = [
@@ -37,45 +39,59 @@ const validateCustomerData = (data) => {
     'closingBalance'
   ];
 
-  // Check for missing required fields
+  // Trim whitespace from all fields
+  const trimmedData = {};
+  for (const field in data) {
+    trimmedData[field] = typeof data[field] === 'string' ? data[field].trim() : data[field];
+  }
+
+  // Check for missing or empty required fields
   for (const field of requiredFields) {
-    if (data[field] === undefined || data[field] === null || data[field] === '') {
-      console.warn(`Missing or empty required field: ${field} for customer ${data.firstName || 'Unknown'}`);
+    if (!trimmedData[field] || trimmedData[field] === '') {
+      console.warn(`Missing or empty required field: ${field} for customer ${trimmedData.firstName || 'Unknown'}`);
       return null;
     }
   }
 
-  // Validate closingBalance is a valid number
-  const closingBalance = parseFloat(data.closingBalance);
+  // Validate numeric fields
+  const monthlyCharge = parseFloat(trimmedData.monthlyCharge);
+  const closingBalance = parseFloat(trimmedData.closingBalance);
+  if (isNaN(monthlyCharge)) {
+    console.warn(`Invalid monthlyCharge: ${trimmedData.monthlyCharge} for customer ${trimmedData.firstName || 'Unknown'}`);
+    return null;
+  }
   if (isNaN(closingBalance)) {
-    console.warn(`Invalid closingBalance: ${data.closingBalance} for customer ${data.firstName || 'Unknown'}`);
+    console.warn(`Invalid closingBalance: ${trimmedData.closingBalance} for customer ${trimmedData.firstName || 'Unknown'}`);
     return null;
   }
 
+  // Standardize garbageCollectionDay to title case for consistency
+  const garbageCollectionDay = trimmedData.garbageCollectionDay.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+
   // Parse fields
   return {
-    firstName: data.firstName,
-    lastName: data.lastName,
-    email: data.email || null,
-    phoneNumber: data.phoneNumber,
-    secondaryPhoneNumber: data.secondaryPhoneNumber || null,
-    gender: data.gender || null,
-    county: data.county || null,
-    town: data.town || null,
-    location: data.location || null,
-    estateName: data.estateName,
-    building: data.building,
-    houseNumber: data.houseNumber || null,
-    category: data.category || null,
-    monthlyCharge: parseFloat(data.monthlyCharge),
+    firstName: trimmedData.firstName,
+    lastName: trimmedData.lastName,
+    email: trimmedData.email || null,
+    phoneNumber: trimmedData.phoneNumber,
+    secondaryPhoneNumber: trimmedData.secondaryPhoneNumber || null,
+    gender: trimmedData.gender || null,
+    county: trimmedData.county || null,
+    town: trimmedData.town || null,
+    location: trimmedData.location || null,
+    estateName: trimmedData.estateName,
+    building: trimmedData.building,
+    houseNumber: trimmedData.houseNumber || null,
+    category: trimmedData.category || null,
+    monthlyCharge: monthlyCharge,
     status: 'ACTIVE', // default status
-    garbageCollectionDay: data.garbageCollectionDay,
-    collected: data.collected ? data.collected.toLowerCase() === 'true' : false,
+    garbageCollectionDay: garbageCollectionDay,
+    collected: trimmedData.collected ? trimmedData.collected.toLowerCase() === 'true' : false,
     closingBalance: closingBalance,
   };
 };
 
-// Controller function to upload and process CSV
+// Controller function to upload and process CSV (unchanged structure, using updated validateCustomerData)
 const uploadCustomers = async (req, res) => {
   const { tenantId } = req.user; // Extract tenantId from the authenticated user
   console.log('Tenant ID from authenticated user:', tenantId);
@@ -203,7 +219,7 @@ const uploadCustomers = async (req, res) => {
   }
 };
 
-// Controller function to update customers' closing balance
+// Controller function to update customers' closing balance (unchanged)
 const updateCustomersClosingBalance = async (req, res) => {
   const { tenantId } = req.user; // Extract tenantId from authenticated user
 
