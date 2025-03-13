@@ -26,17 +26,31 @@ const upload = multer({ storage });
 
 // Helper function to validate and transform customer data
 const validateCustomerData = (data) => {
-  const requiredFields = ['firstName', 'lastName', 'phoneNumber', 'monthlyCharge', 'garbageCollectionDay'];
+  const requiredFields = [
+    'firstName',
+    'lastName',
+    'phoneNumber',
+    'monthlyCharge',
+    'garbageCollectionDay',
+    'estateName',
+    'building',
+    'closingBalance'
+  ];
 
   // Check for missing required fields
   for (const field of requiredFields) {
-    if (!data[field]) {
-      console.warn(`Missing required field: ${field} for customer ${data.firstName || 'Unknown'}`);
+    if (data[field] === undefined || data[field] === null || data[field] === '') {
+      console.warn(`Missing or empty required field: ${field} for customer ${data.firstName || 'Unknown'}`);
       return null;
     }
   }
 
-
+  // Validate closingBalance is a valid number
+  const closingBalance = parseFloat(data.closingBalance);
+  if (isNaN(closingBalance)) {
+    console.warn(`Invalid closingBalance: ${data.closingBalance} for customer ${data.firstName || 'Unknown'}`);
+    return null;
+  }
 
   // Parse fields
   return {
@@ -49,26 +63,22 @@ const validateCustomerData = (data) => {
     county: data.county || null,
     town: data.town || null,
     location: data.location || null,
-    estateName: data.estateName || null,
-    building: data.building || null,
+    estateName: data.estateName,
+    building: data.building,
     houseNumber: data.houseNumber || null,
     category: data.category || null,
     monthlyCharge: parseFloat(data.monthlyCharge),
     status: 'ACTIVE', // default status
     garbageCollectionDay: data.garbageCollectionDay,
     collected: data.collected ? data.collected.toLowerCase() === 'true' : false,
-    closingBalance: parseFloat(data.closingBalance) || 0.0,
+    closingBalance: closingBalance,
   };
 };
 
 // Controller function to upload and process CSV
-
-
 const uploadCustomers = async (req, res) => {
   const { tenantId } = req.user; // Extract tenantId from the authenticated user
-
   console.log('Tenant ID from authenticated user:', tenantId);
-
 
   if (!tenantId) {
     return res.status(403).json({ message: 'Tenant ID is required for uploading customers.' });
@@ -81,10 +91,18 @@ const uploadCustomers = async (req, res) => {
   const filePath = path.join(uploadsDir, req.file.filename);
   const customers = [];
   const existingPhoneNumbers = new Set();
+  const requiredFields = [
+    'firstName',
+    'lastName',
+    'phoneNumber',
+    'monthlyCharge',
+    'garbageCollectionDay',
+    'estateName',
+    'building',
+    'closingBalance'
+  ];
 
   try {
-
-    
     // Validate tenantId
     const tenantExists = await prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -103,53 +121,89 @@ const uploadCustomers = async (req, res) => {
     existingCustomers.forEach((customer) => {
       if (customer.phoneNumber) existingPhoneNumbers.add(customer.phoneNumber);
     });
+
+    // Validate CSV headers
+    let headersValidated = false;
+    let headers = [];
+
+    const stream = fs.createReadStream(filePath).pipe(csv());
+
+    stream
+      .on('headers', (headerList) => {
+        headers = headerList.map((header) => header.trim()); // Trim any whitespace from headers
+        const missingFields = requiredFields.filter((field) => !headers.includes(field));
+
+        if (missingFields.length > 0) {
+          stream.destroy(); // Stop the stream
+          fs.unlinkSync(filePath); // Delete the uploaded file
+          return res.status(400).json({
+            message: `CSV file is missing required fields: ${missingFields.join(', ')}. Required fields are: ${requiredFields.join(', ')}`,
+          });
+        }
+
+        // Check for extra fields
+        const extraFields = headers.filter((header) =>
+          !requiredFields.includes(header) &&
+          !['email', 'secondaryPhoneNumber', 'gender', 'county', 'town', 'location', 'houseNumber', 'category', 'collected'].includes(header)
+        );
+        if (extraFields.length > 0) {
+          stream.destroy(); // Stop the stream
+          fs.unlinkSync(filePath); // Delete the uploaded file
+          return res.status(400).json({
+            message: `CSV file contains invalid fields: ${extraFields.join(', ')}. Only allowed fields are: ${requiredFields.join(', ')} plus optional fields (email, secondaryPhoneNumber, gender, county, town, location, houseNumber, category, collected)`,
+          });
+        }
+
+        headersValidated = true;
+      })
+      .on('data', (data) => {
+        if (!headersValidated) return; // Skip data processing if headers are invalid
+
+        const customer = validateCustomerData(data);
+        if (!customer) return; // Skip invalid data
+
+        // Check for duplicate phone numbers within the tenant
+        if (existingPhoneNumbers.has(customer.phoneNumber)) {
+          console.warn(`Duplicate phone number found: ${customer.phoneNumber}. Skipping entry.`);
+          return;
+        }
+
+        // Add tenantId to each customer
+        customer.tenantId = tenantId;
+
+        // Add to customers array if valid
+        customers.push(customer);
+        existingPhoneNumbers.add(customer.phoneNumber);
+      })
+      .on('end', async () => {
+        if (!headersValidated) return; // If headers were invalid, the response was already sent
+
+        try {
+          if (customers.length > 0) {
+            await prisma.customer.createMany({ data: customers });
+            res.status(200).json({ message: 'Customers uploaded successfully', customers });
+          } else {
+            res.status(400).json({ message: 'No valid customers to upload' });
+          }
+        } catch (error) {
+          console.error('Error saving customers:', error);
+          res.status(500).json({ message: 'Error saving customers' });
+        } finally {
+          // Clean up the uploaded file
+          fs.unlinkSync(filePath);
+        }
+      })
+      .on('error', (error) => {
+        console.error('Error reading CSV file:', error);
+        res.status(500).json({ message: 'Error processing file' });
+      });
   } catch (error) {
     console.error('Error validating tenant or fetching existing customers:', error);
-    return res.status(500).json({ message: 'Error validating tenant or checking existing customers.' });
+    res.status(500).json({ message: 'Error validating tenant or checking existing customers.' });
   }
-
-  fs.createReadStream(filePath)
-    .pipe(csv())
-    .on('data', (data) => {
-      const customer = validateCustomerData(data);
-
-      if (!customer) return; // Skip invalid data
-
-      // Check for duplicate phone numbers within the tenant
-      if (existingPhoneNumbers.has(customer.phoneNumber)) {
-        console.warn(`Duplicate phone number found: ${customer.phoneNumber}. Skipping entry.`);
-        return;
-      }
-
-      // Add tenantId to each customer
-      customer.tenantId = tenantId;
-
-      // Add to customers array if valid
-      customers.push(customer);
-      existingPhoneNumbers.add(customer.phoneNumber);
-    })
-    .on('end', async () => {
-      try {
-        if (customers.length > 0) {
-          await prisma.customer.createMany({ data: customers });
-          res.status(200).json({ message: 'Customers uploaded successfully', customers });
-        } else {
-          res.status(400).json({ message: 'No valid customers to upload' });
-        }
-      } catch (error) {
-        console.error('Error saving customers:', error);
-        res.status(500).json({ message: 'Error saving customers' });
-      }
-    })
-    .on('error', (error) => {
-      console.error('Error reading CSV file:', error);
-      res.status(500).json({ message: 'Error processing file' });
-    });
 };
 
-
-
-
+// Controller function to update customers' closing balance
 const updateCustomersClosingBalance = async (req, res) => {
   const { tenantId } = req.user; // Extract tenantId from authenticated user
 
@@ -163,49 +217,92 @@ const updateCustomersClosingBalance = async (req, res) => {
 
   const filePath = path.join(uploadsDir, req.file.filename);
   const updates = [];
+  const requiredFields = ['phoneNumber', 'closingBalance'];
 
-  fs.createReadStream(filePath)
-    .pipe(csv())
-    .on('data', (data) => {
-      if (data.phoneNumber && data.closingBalance) {
-        updates.push({
-          phoneNumber: data.phoneNumber,
-          closingBalance: parseFloat(data.closingBalance),
-        });
-      } else {
-        console.warn('Invalid data row, missing phoneNumber or closingBalance:', data);
-      }
-    })
-    .on('end', async () => {
-      try {
-        for (const update of updates) {
-          await prisma.customer.updateMany({
-            where: {
-              phoneNumber: update.phoneNumber,
-              tenantId, // Ensure the customer belongs to the authenticated tenant
-            },
-            data: { closingBalance: update.closingBalance },
+  try {
+    // Validate CSV headers for update
+    let headersValidated = false;
+    let headers = [];
+
+    const stream = fs.createReadStream(filePath).pipe(csv());
+
+    stream
+      .on('headers', (headerList) => {
+        headers = headerList.map((header) => header.trim());
+        const missingFields = requiredFields.filter((field) => !headers.includes(field));
+
+        if (missingFields.length > 0) {
+          stream.destroy();
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: `CSV file is missing required fields: ${missingFields.join(', ')}. Required fields are: ${requiredFields.join(', ')}`,
           });
         }
 
-        res.status(200).json({ message: 'Customers updated successfully', updates });
-      } catch (error) {
-        console.error('Error updating customers:', error);
-        res.status(500).json({ message: 'Error updating customers' });
-      }
-    })
-    .on('error', (error) => {
-      console.error('Error reading CSV file:', error);
-      res.status(500).json({ message: 'Error processing file' });
-    });
+        // Check for extra fields
+        const extraFields = headers.filter((header) => !requiredFields.includes(header));
+        if (extraFields.length > 0) {
+          stream.destroy();
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: `CSV file contains invalid fields: ${extraFields.join(', ')}. Only allowed fields are: ${requiredFields.join(', ')}`,
+          });
+        }
+
+        headersValidated = true;
+      })
+      .on('data', (data) => {
+        if (!headersValidated) return;
+
+        if (data.phoneNumber && data.closingBalance) {
+          const closingBalance = parseFloat(data.closingBalance);
+          if (isNaN(closingBalance)) {
+            console.warn(`Invalid closingBalance: ${data.closingBalance} for phoneNumber: ${data.phoneNumber}`);
+            return;
+          }
+          updates.push({
+            phoneNumber: data.phoneNumber,
+            closingBalance: closingBalance,
+          });
+        } else {
+          console.warn('Invalid data row, missing phoneNumber or closingBalance:', data);
+        }
+      })
+      .on('end', async () => {
+        if (!headersValidated) return;
+
+        try {
+          for (const update of updates) {
+            await prisma.customer.updateMany({
+              where: {
+                phoneNumber: update.phoneNumber,
+                tenantId, // Ensure the customer belongs to the authenticated tenant
+              },
+              data: { closingBalance: update.closingBalance },
+            });
+          }
+
+          res.status(200).json({ message: 'Customers updated successfully', updates });
+        } catch (error) {
+          console.error('Error updating customers:', error);
+          res.status(500).json({ message: 'Error updating customers' });
+        } finally {
+          fs.unlinkSync(filePath);
+        }
+      })
+      .on('error', (error) => {
+        console.error('Error reading CSV file:', error);
+        res.status(500).json({ message: 'Error processing file' });
+      });
+  } catch (error) {
+    console.error('Error in updateCustomersClosingBalance:', error);
+    res.status(500).json({ message: 'Error processing update' });
+  }
 };
 
-
-
-
- 
-// Export the upload middleware and controller function for use in other files
+// Export the upload middleware and controller functions
 module.exports = {
   upload,
-  uploadCustomers,updateCustomersClosingBalance
+  uploadCustomers,
+  updateCustomersClosingBalance,
 };
