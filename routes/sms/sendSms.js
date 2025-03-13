@@ -1,6 +1,6 @@
 const express = require('express');
 const verifyToken = require('../../middleware/verifyToken.js');
-const { sendBills, sendToAll, sendBill, sendBillPerDay, sendToGroup, sendToOne, sendUnpaidCustomers, sendLowBalanceCustomers, sendHighBalanceCustomers, sendCustomersAboveBalance, sendBillsEstate } = require('../../controller/sms/sms.js');
+const { sendBills, sendToAll, sendBill, sendBillPerDay, sendToGroup, sendToOne, sendUnpaidCustomers, sendLowBalanceCustomers, sendHighBalanceCustomers, sendCustomersAboveBalance, sendBillsEstate, sendToEstate } = require('../../controller/sms/sms.js');
 const checkAccess = require('../../middleware/roleVerify.js');
 const { updateSMSConfig, createSMSConfig } = require('../../controller/smsConfig/smsConfig.js');
 const { updateSmsDeliveryStatus, getSmsMessages } = require('../../controller/bulkSMS/deliveryStatus.js');
@@ -17,6 +17,8 @@ router.post('/send-bills', verifyToken, checkAccess('customer', 'read'), sendBil
 
 router.post('/send-bills-per-estate', verifyToken, checkAccess('customer', 'read'), sendBillsEstate);//done
 router.post('/send-to-all', verifyToken, checkAccess('customer', 'read'), sendToAll);//done
+router.post('/send-to-estate', verifyToken, checkAccess('customer', 'read'), sendToEstate);//done
+
 router.post('/send-bill', verifyToken, checkAccess('customer', 'read'), sendBill);//done
 router.post('/send-bill-perday', verifyToken, checkAccess('customer', 'read'), sendBillPerDay); //done
 router.post('/send-to-group', verifyToken, checkAccess('customer', 'read'), sendToGroup); //done

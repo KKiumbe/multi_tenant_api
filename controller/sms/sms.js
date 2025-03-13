@@ -354,6 +354,69 @@ const sendToAll = async (req, res) => {
   }
 };
 
+const sendToEstate = async (req, res) => {
+  const { tenantId } = req.user;
+  const { estateName, message } = req.body;
+
+  // Validate request body
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({ error: 'Message is required and must be a string.' });
+  }
+  if (!estateName || typeof estateName !== 'string') {
+    return res.status(400).json({ error: 'Estate name is required and must be a string.' });
+  }
+
+  try {
+    // Check if SMS configuration exists for the tenant
+    const smsConfig = await prisma.sMSConfig.findUnique({
+      where: { tenantId },
+    });
+
+    if (!smsConfig) {
+      return res.status(400).json({ error: 'Missing SMS configuration for tenant.' });
+    }
+
+    // Fetch active customers for the specified estate (case-insensitive)
+    const activeCustomers = await prisma.customer.findMany({
+      where: {
+        tenantId,
+        status: 'ACTIVE',
+        estateName: {
+          equals: estateName,
+          mode: 'insensitive', // Case-insensitive matching
+        },
+      },
+    });
+
+    if (activeCustomers.length === 0) {
+      return res.status(200).json({
+        message: `No active customers found in estate ${estateName} for tenant ${tenantId}.`,
+      });
+    }
+
+    // Prepare messages
+    const messages = activeCustomers.map((customer) => ({
+      phoneNumber: customer.phoneNumber,
+      message,
+    }));
+
+    // Send SMS in batches to avoid timeouts (reusing your existing logic)
+    const smsResponses = await sendSms(tenantId, messages);
+
+    // Respond with success message
+    res.status(200).json({
+      message: `SMS sent to ${activeCustomers.length} active customers in estate ${estateName}.`,
+      smsResponses,
+    });
+  } catch (error) {
+    console.error(`Error sending SMS to customers in estate ${estateName}:`, error);
+    res.status(500).json({
+      error: `Failed to send SMS to customers in estate ${estateName}.`,
+      details: error.message,
+    });
+  }
+};
+
 // Send bill SMS for a specific customer
 const sendBill = async (req, res) => {
   const { customerId } = req.body;
@@ -951,6 +1014,7 @@ module.exports = {
 
   sendLowBalanceCustomers,
   sendBillsEstate,
+  sendToEstate,
 
   sendHighBalanceCustomers,sendCustomersAboveBalance
 };
