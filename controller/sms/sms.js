@@ -252,6 +252,59 @@ const sendBills = async (req, res) => {
   }
 };
 
+
+const sendBillsEstate = async (req, res) => {
+  const { tenantId } = req.user;
+  const { estateName } = req.body; // Extract estateName from request body
+
+  // Validate estateName in the request body
+  if (!estateName || typeof estateName !== 'string') {
+    return res.status(400).json({ error: 'Estate name is required and must be a string.' });
+  }
+
+  try {
+    // Fetch SMS configuration and paybill for the tenant
+    const { customerSupportPhoneNumber: customerSupport } = await getSMSConfigForTenant(tenantId);
+    const paybill = await getShortCode(tenantId);
+
+    // Fetch active customers for the tenant in the specified estate (case-insensitive)
+    const activeCustomers = await prisma.customer.findMany({
+      where: {
+        tenantId: tenantId,
+        status: 'ACTIVE',
+        estateName: {
+          equals: estateName,
+          mode: 'insensitive', // Case-insensitive matching
+        },
+      },
+    });
+
+    if (!activeCustomers || activeCustomers.length === 0) {
+      return res.status(404).json({
+        message: `No active customers found for tenant ${tenantId} in estate ${estateName}.`,
+      });
+    }
+
+    // Prepare SMS messages for the customers in the specified estate
+    const messages = activeCustomers.map((customer) => {
+      const message = `Dear ${customer.firstName}, your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}. Use paybill No: ${paybill}; your phone number is the account number. Inquiries? Call: ${customerSupport}. Thank you for being a loyal customer.`;
+      return { phoneNumber: customer.phoneNumber, message };
+    });
+
+    // Send SMS messages
+    const smsResponses = await sendSms(tenantId, messages);
+
+    // Respond with success message and SMS responses
+    res.status(200).json({
+      message: `Bills sent successfully to ${activeCustomers.length} customers in estate ${estateName}`,
+      smsResponses,
+    });
+  } catch (error) {
+    console.error(`Error sending bills for estate ${estateName}:`, error);
+    res.status(500).json({ error: `Failed to send bills for estate ${estateName}.` });
+  }
+};
+
 // Send SMS to all active customers
 const sendToAll = async (req, res) => {
   const { tenantId } = req.user;
@@ -897,6 +950,7 @@ module.exports = {
   sendUnpaidCustomers,
 
   sendLowBalanceCustomers,
+  sendBillsEstate,
 
   sendHighBalanceCustomers,sendCustomersAboveBalance
 };
