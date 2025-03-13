@@ -173,7 +173,7 @@ async function settleInvoice() {
                 ? `Your Current balance is an overpayment of KES ${Math.abs(finalClosingBalance)}`
                 : `Your Current balance is KES ${finalClosingBalance}`;
 
-            const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. ${formattedBalanceMessage}. Help us server you better by using Paybill No :4107197 , your phone number as the account number.Customer support number: 0726594923`;
+            const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. ${formattedBalanceMessage}.`;
 
             await sendSMS(tenantId, customer.phoneNumber,message);
             console.log(`Processed payment and created receipt for transaction ${MpesaCode}.`);

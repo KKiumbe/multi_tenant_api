@@ -101,7 +101,7 @@ const manualCashPayment = async (req, res) => {
                 : `KES ${newClosingBalance}`;
 
             const text = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ` +
-                `Your balance is ${balanceMessage}. Help us serve you better by using Paybill No: 4107197, your phone number as the account number. Customer support: 0726594923.`;
+                `Your balance is ${balanceMessage}.`;
 
             await sendSMS(tenantId,customer.phoneNumber, text);
 
@@ -168,7 +168,7 @@ const manualCashPayment = async (req, res) => {
             ? `an overpayment of KES ${Math.abs(newClosingBalance)}`
             : `KES ${newClosingBalance}`;
         const text = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ` +
-            `Your balance is ${balanceMessage}. Help us serve you better by using Paybill No: 4107197, your phone number as the account number. Customer support: 0726594923.`;
+            `Your balance is ${balanceMessage}. Thank you.`;
 
         //await sendSMS(text, customer);
 
