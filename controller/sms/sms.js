@@ -310,50 +310,72 @@ const sendToAll = async (req, res) => {
   const { tenantId } = req.user;
   const { message } = req.body;
 
-  if (!message) {
-      return res.status(400).json({ error: 'Message is required.' });
+  // Validate request body
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({ error: 'Message is required and must be a string.' });
   }
- 
 
   try {
-      // Check if SMS configuration exists for the tenant
-      const smsConfig = await prisma.sMSConfig.findUnique({
-          where: { tenantId },
-      });
+    // Check if SMS configuration exists for the tenant
+    const smsConfig = await prisma.sMSConfig.findUnique({
+      where: { tenantId },
+    });
 
-      if (!smsConfig) {
-          return res.status(400).json({ error: 'Missing SMS configuration for tenant.' });
+    if (!smsConfig) {
+      return res.status(400).json({ error: 'Missing SMS configuration for tenant.' });
+    }
+
+    // Fetch active customers
+    const activeCustomers = await prisma.customer.findMany({
+      where: { status: 'ACTIVE', tenantId },
+    });
+
+    if (activeCustomers.length === 0) {
+      return res.status(200).json({ message: 'No active customers found.' });
+    }
+
+    // Prepare messages
+    const messages = activeCustomers.map((customer) => ({
+      phoneNumber: customer.phoneNumber,
+      message,
+    }));
+
+    // Batch size limit (set to 1000 based on API constraint)
+    const batchSize = 1000;
+    const smsResponses = [];
+
+    // Process messages in batches
+    for (let i = 0; i < messages.length; i += batchSize) {
+      const batch = messages.slice(i, i + batchSize);
+      try {
+        const batchResponses = await sendSms(tenantId, batch);
+        smsResponses.push(...batchResponses);
+      } catch (batchError) {
+        console.error(`Error sending batch ${i / batchSize + 1}:`, batchError);
+        // Optionally, you could collect failed responses or retry the batch
+        smsResponses.push(
+          ...batch.map((msg) => ({
+            phoneNumber: msg.phoneNumber,
+            status: 'error',
+            details: batchError.message,
+          }))
+        );
       }
+    }
 
-      // Fetch active customers
-      const activeCustomers = await prisma.customer.findMany({
-          where: { status: 'ACTIVE', tenantId },
-      });
-
-      if (activeCustomers.length === 0) {
-          return res.status(200).json({ message: 'No active customers found.' });
-      }
-
-      // Prepare messages
-      const messages = activeCustomers.map((customer) => ({
-          phoneNumber: customer.phoneNumber,
-          message,
-      }));
-
-      // Send SMS in batches to avoid timeouts
- 
-
-        const smsResponses = await sendSms(tenantId, messages);
-      
-      
-
-      res.status(200).json({ message: 'SMS sent to all active customers.', smsResponses });
+    // Respond with success message and all SMS responses
+    res.status(200).json({
+      message: `SMS sent to ${activeCustomers.length} active customers in ${Math.ceil(messages.length / batchSize)} batches.`,
+      smsResponses,
+    });
   } catch (error) {
-      console.error('Error sending SMS to all customers:', error);
-      res.status(500).json({ error: 'Failed to send SMS to all customers.', details: error.message });
+    console.error('Error sending SMS to all customers:', error);
+    res.status(500).json({
+      error: 'Failed to send SMS to all customers.',
+      details: error.message,
+    });
   }
 };
-
 const sendToEstate = async (req, res) => {
   const { tenantId } = req.user;
   const { estateName, message } = req.body;
