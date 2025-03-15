@@ -189,112 +189,17 @@ async function settleInvoice() {
 
 
 
-async function processInvoices(paymentAmount, customerId, paymentId) {
-    // Fetch unpaid and partially paid invoices
-    const invoices = await prisma.invoice.findMany({
-        where: {
-            customerId,
-            status: {
-                in: ['UNPAID', 'PPAID'], // Only unpaid or partially paid invoices
-            },
-        },
-        orderBy: { createdAt: 'asc' }, // Process oldest invoices first
-    });
-
-    let remainingAmount = paymentAmount;
-    const receipts = [];
-    let totalPaidToInvoices = 0;
-
-    // Mark the payment as receipted
-    await prisma.payment.update({
-        where: { id: paymentId },
-        data: { receipted: true },
-    });
-
-    // Case 1: No unpaid or partially paid invoices
-    if (invoices.length === 0) {
-        const customer = await prisma.customer.findUnique({
-            where: { id: customerId },
-            select: { closingBalance: true },
-        });
-
-        const newClosingBalance = customer.closingBalance - paymentAmount;
-
-        // Update the customer's closing balance
-        await prisma.customer.update({
-            where: { id: customerId },
-            data: { closingBalance: newClosingBalance },
-        });
-
-        // Generate a receipt for closing balance adjustment
-        receipts.push({
-            invoiceId: null, // Indicates adjustment to closing balance
-        });
-
-        remainingAmount = 0;
-
-        return { receipts, remainingAmount, newClosingBalance };
-    }
-
-    // Case 2: Apply payment across invoices
-    for (const invoice of invoices) {
-        if (remainingAmount <= 0) break;
-
-        const invoiceDueAmount = invoice.invoiceAmount - invoice.amountPaid;
-        const paymentForInvoice = Math.min(remainingAmount, invoiceDueAmount);
-
-        // Update the invoice with the paid amount
-        const updatedInvoice = await prisma.invoice.update({
-            where: { id: invoice.id },
-            data: {
-                amountPaid: invoice.amountPaid + paymentForInvoice,
-                status: invoice.amountPaid + paymentForInvoice >= invoice.invoiceAmount ? 'PAID' : 'PPAID', // Update status
-            },
-        });
-
-        receipts.push({ invoiceId: updatedInvoice.id });
-        remainingAmount -= paymentForInvoice;
-        totalPaidToInvoices += paymentForInvoice;
-    }
-
-    // Fetch the customer's closing balance after invoice processing
-    const customer = await prisma.customer.findUnique({
-        where: { id: customerId },
-        select: { closingBalance: true },
-    });
-
-    // Always adjust the closing balance based on the initial amount paid
-    const newClosingBalance = customer.closingBalance - paymentAmount;
-
-    // Case 3: Apply remaining payment to closing balance (if applicable)
-    if (remainingAmount > 0) {
-        // Update the customer's closing balance
-        await prisma.customer.update({
-            where: { id: customerId },
-            data: { closingBalance: newClosingBalance },
-        });
-
-        // Generate a receipt for closing balance adjustment
-        receipts.push({
-            invoiceId: null, // Indicates adjustment to closing balance
-        });
-
-        remainingAmount = 0;
-    }
-
-    return { receipts, remainingAmount, newClosingBalance };
-}
 
 
 
 async function processInvoices(paymentAmount, customerId, paymentId, tenantId) {
-    // Fetch unpaid and partially paid invoices for the tenant
+    // Fetch unpaid and partially paid invoices
     const invoices = await prisma.invoice.findMany({
         where: {
             customerId,
-            tenantId, // Ensure invoices belong to the tenant
+            tenantId,
             status: {
-                in: ['UNPAID', 'PPAID'], // Only unpaid or partially paid invoices
+                in: ['UNPAID', 'PPAID'],
             },
         },
         orderBy: { createdAt: 'asc' }, // Process oldest invoices first
@@ -304,30 +209,36 @@ async function processInvoices(paymentAmount, customerId, paymentId, tenantId) {
     const receipts = [];
     let totalPaidToInvoices = 0;
 
-    // Mark the payment as receipted
+    // Mark payment as receipted
     await prisma.payment.update({
         where: { id: paymentId },
         data: { receipted: true },
     });
 
+    // Fetch current customer data
+    const customer = await prisma.customer.findUnique({
+        where: { id: customerId },
+        select: { closingBalance: true },
+    });
+
+    if (!customer) {
+        throw new Error('Customer not found');
+    }
+
+    const currentBalance = customer.closingBalance || 0;
+
     // Case 1: No unpaid or partially paid invoices
     if (invoices.length === 0) {
-        const customer = await prisma.customer.findUnique({
-            where: { id: customerId },
-            select: { closingBalance: true },
-        });
+        const newClosingBalance = Math.max(currentBalance - paymentAmount, 0);
 
-        const newClosingBalance = customer.closingBalance - paymentAmount;
-
-        // Update the customer's closing balance
         await prisma.customer.update({
             where: { id: customerId },
             data: { closingBalance: newClosingBalance },
         });
 
-        // Generate a receipt for closing balance adjustment
         receipts.push({
-            invoiceId: null, // Indicates adjustment to closing balance
+            invoiceId: null,
+            amount: paymentAmount,
         });
 
         remainingAmount = 0;
@@ -342,43 +253,47 @@ async function processInvoices(paymentAmount, customerId, paymentId, tenantId) {
         const invoiceDueAmount = invoice.invoiceAmount - invoice.amountPaid;
         const paymentForInvoice = Math.min(remainingAmount, invoiceDueAmount);
 
-        // Update the invoice with the paid amount
+        // Update the invoice
         const updatedInvoice = await prisma.invoice.update({
             where: { id: invoice.id },
             data: {
                 amountPaid: invoice.amountPaid + paymentForInvoice,
-                status: invoice.amountPaid + paymentForInvoice >= invoice.invoiceAmount ? 'PAID' : 'PPAID', // Update status
+                status: invoice.amountPaid + paymentForInvoice >= invoice.invoiceAmount ? 'PAID' : 'PPAID',
             },
         });
 
-        receipts.push({ invoiceId: updatedInvoice.id });
+        receipts.push({
+            invoiceId: updatedInvoice.id,
+            amount: paymentForInvoice,
+        });
         remainingAmount -= paymentForInvoice;
         totalPaidToInvoices += paymentForInvoice;
     }
 
-    // Fetch the customer's closing balance after invoice processing
-    const customer = await prisma.customer.findUnique({
+    // Update customer's closingBalance based on amount paid to invoices
+    const newClosingBalance = Math.max(currentBalance - totalPaidToInvoices, 0);
+
+    await prisma.customer.update({
         where: { id: customerId },
-        select: { closingBalance: true },
+        data: { closingBalance: newClosingBalance },
     });
 
-    // Always adjust the closing balance based on the initial amount paid
-    const newClosingBalance = customer.closingBalance - paymentAmount;
-
-    // Case 3: Apply remaining payment to closing balance (if applicable)
+    // Case 3: Apply remaining payment to closingBalance (if any)
     if (remainingAmount > 0) {
-        // Update the customer's closing balance
+        const updatedBalance = Math.max(newClosingBalance - remainingAmount, 0);
+
         await prisma.customer.update({
             where: { id: customerId },
-            data: { closingBalance: newClosingBalance },
+            data: { closingBalance: updatedBalance },
         });
 
-        // Generate a receipt for closing balance adjustment
         receipts.push({
-            invoiceId: null, // Indicates adjustment to closing balance
+            invoiceId: null,
+            amount: remainingAmount,
         });
-
         remainingAmount = 0;
+
+        return { receipts, remainingAmount, newClosingBalance: updatedBalance };
     }
 
     return { receipts, remainingAmount, newClosingBalance };
