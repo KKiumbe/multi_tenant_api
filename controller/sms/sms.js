@@ -2,6 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const axios = require('axios');
 
 const {getSMSConfigForTenant }= require('../smsConfig/getSMSConfig.js')
+const {fetchTenant} = require('../tenants/tenantupdate.js')
 const { v4: uuidv4 } = require('uuid');
 
 
@@ -674,46 +675,55 @@ const sendSms = async (tenantId, messages) => {
       throw new Error('Missing SMS configuration for tenant.');
     }
 
-    // Prepare the SMS payload
-    const smsList = messages.map((msg) => {
-      const clientsmsid = uuidv4(); // Generate unique client SMS ID
-      return {
-        clientsmsid,
-        partnerID,
-        apikey,
-        pass_type: 'plain',
-        message: msg.message,
-        shortcode: shortCode,
-        mobile: sanitizePhoneNumber(msg.phoneNumber),
-      };
-    });
-
-    // Send SMS request
-    let response;
-    try {
-      response = await axios.post(process.env.BULK_SMS_ENDPOINT, {
-        count: smsList.length,
-        smslist: smsList,
-      });
-      console.log('SMS sent successfully:', response.data);
-    } catch (error) {
-      console.error('Bulk SMS API error:', error.response?.data || error.message);
-      response = { data: { status: 'FAILED' } }; // Simulate failure response
-    }
-
-    // Log SMS details in the database
-    const smsLogs = smsList.map((sms) => ({
-      clientsmsid: sms.clientsmsid, // Store the unique clientsmsid
-      tenantId, // ✅ Ensure tenantId is logged
-      mobile: sms.mobile,
-      message: sms.message,
-      status: response.data.status === 'FAILED' ? 'FAILED' : 'SENT', // Mark failure if API failed
-      createdAt: new Date(),
+    // Prepare the SMS payloads
+    const smsList = messages.map((msg) => ({
+      clientsmsid: uuidv4(), // Generate unique client SMS ID
+      partnerID,
+      apikey,
+      pass_type: 'plain',
+      message: msg.message,
+      shortcode: shortCode,
+      mobile: sanitizePhoneNumber(msg.phoneNumber),
     }));
 
-    await prisma.sMS.createMany({ data: smsLogs });
+    // Split the messages into batches of 500
+    const batchSize = 450;
+    const batches = [];
+    for (let i = 0; i < smsList.length; i += batchSize) {
+      batches.push(smsList.slice(i, i + batchSize));
+    }
 
-    return response.data;
+    let allResponses = [];
+
+    // Process each batch separately
+    for (const batch of batches) {
+      let response;
+      try {
+        response = await axios.post(process.env.BULK_SMS_ENDPOINT, {
+          count: batch.length,
+          smslist: batch,
+        });
+        console.log(`Batch of ${batch.length} SMS sent successfully:`, response.data);
+      } catch (error) {
+        console.error('Bulk SMS API error:', error.response?.data || error.message);
+        response = { data: { status: 'FAILED' } }; // Simulate failure response
+      }
+
+      // Store logs for each batch
+      const smsLogs = batch.map((sms) => ({
+        clientsmsid: sms.clientsmsid, // Store unique clientsmsid
+        tenantId, // ✅ Ensure tenantId is logged
+        mobile: sms.mobile,
+        message: sms.message,
+        status: response.data.status === 'FAILED' ? 'FAILED' : 'SENT', // Mark failure if API failed
+        createdAt: new Date(),
+      }));
+
+      await prisma.sMS.createMany({ data: smsLogs });
+      allResponses.push(response.data);
+    }
+
+    return allResponses;
   } catch (error) {
     console.error('Error sending SMS:', error);
     throw new Error('Failed to send SMS.');
@@ -730,6 +740,7 @@ const sendSms = async (tenantId, messages) => {
     try {
       const { tenantId } = req.user; // Extract tenant ID from the request
       const paybill = await getShortCode(tenantId);
+      const { phoneNumber: customerCarePhoneNumber } = await fetchTenantDetails(tenantId);
       if (!tenantId) {
         throw new Error('Tenant ID is required');
       }
@@ -760,7 +771,7 @@ const sendSms = async (tenantId, messages) => {
         mobile: customer.phoneNumber,
         message: `Dear ${customer.firstName}, you have an outstanding balance of ${customer.closingBalance.toFixed(
           2
-        )}. Help us serve you better by always paying on time. Paybill No: ${paybill}, use your phone number as the account number. Customer support: 0726594923.`,
+        )}. Help us serve you better by always paying on time. Paybill No: ${paybill}, use your phone number as the account number. Customer support: ${customerCarePhoneNumber}.`,
       }));
   
       console.log(`Prepared ${messages.length} messages for unpaid customers.`);
@@ -801,6 +812,8 @@ const sendSms = async (tenantId, messages) => {
       const { tenantId } = req.user; // Extract tenant ID from the request
       const { balance } = req.body; // Extract custom balance from request body
       const paybill = await getShortCode(tenantId);
+
+      const { phoneNumber: customerCarePhoneNumber } = await fetchTenantDetails(tenantId);
       // Validate inputs
       if (!tenantId) {
         throw new Error('Tenant ID is required');
@@ -833,7 +846,7 @@ const sendSms = async (tenantId, messages) => {
       // Create bulk SMS messages
       const messages = customersAboveBalance.map((customer) => ({
         mobile: customer.phoneNumber,
-        message: `Dear ${customer.firstName}, your outstanding balance is ${customer.closingBalance.toFixed(2)}, which exceeds ${balance.toFixed(2)}. Please settle your dues. Paybill No: ${paybill}, use your phone number as the account number. Customer support: 0726594923.`,
+        message: `Dear ${customer.firstName}, your outstanding balance is ${customer.closingBalance.toFixed(2)}, which exceeds ${balance.toFixed(2)}. Please settle your dues. Paybill No: ${paybill}, use your phone number as the account number. Customer support: ${customerCarePhoneNumber} .`,
       }));
   
       console.log(`Prepared ${messages.length} messages for customers above balance ${balance}.`);
@@ -876,6 +889,7 @@ const sendSms = async (tenantId, messages) => {
     try {
       const { tenantId } = req.user;
       const paybill = await getShortCode(tenantId);
+      const { phoneNumber: customerCarePhoneNumber } = await fetchTenantDetails(tenantId);
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required.' });
       }
@@ -906,7 +920,7 @@ const sendSms = async (tenantId, messages) => {
         mobile: customer.phoneNumber,
         message: `Dear ${customer.firstName}, your balance is ${customer.closingBalance.toFixed(
           2
-        )}. Help us serve you better by always paying on time. Paybill No:${paybill}, use your phone number as the account number. Customer support: 0726594923.`,
+        )}. Help us serve you better by always paying on time. Paybill No:${paybill}, use your phone number as the account number. Customer support: ${customerCarePhoneNumber}.`,
       }));
   
       console.log(`Prepared ${messages.length} messages for low balance customers.`);
@@ -946,6 +960,7 @@ const sendSms = async (tenantId, messages) => {
     try {
       const { tenantId } = req.user; // Extract tenant ID from req.user
       const paybill = await getShortCode(tenantId);
+      const { phoneNumber: customerCarePhoneNumber } = await fetchTenantDetails(tenantId);
     
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required.' });
@@ -977,7 +992,7 @@ const sendSms = async (tenantId, messages) => {
         mobile: customer.phoneNumber,
         message: `Dear ${customer.firstName}, your current balance is ${customer.closingBalance.toFixed(
           2
-        )}, which is quite high. Help us serve you better by always paying on time. Paybill No: ${paybill}, use your phone number as the account number. Customer support: 0726594923.`,
+        )}, which is quite high. Help us serve you better by always paying on time. Paybill No: ${paybill}, use your phone number as the account number. Customer support: ${customerCarePhoneNumber}.`,
       }));
   
       console.log(`Prepared ${messages.length} messages for high balance customers.`);
