@@ -846,10 +846,10 @@ const sendSms = async (tenantId, messages) => {
       // Create bulk SMS messages
       const messages = customersAboveBalance.map((customer) => ({
         mobile: customer.phoneNumber,
-        message: `Dear ${customer.firstName}, your outstanding balance is ${customer.closingBalance.toFixed(2)}, which exceeds ${balance.toFixed(2)}. Please settle your dues. Paybill No: ${paybill}, use your phone number as the account number. Customer support: ${customerCarePhoneNumber} .`,
+        message: `Dear ${customer.firstName},your outstanding balance is KSH.${customer.closingBalance.toFixed(2)}, your monthly charge is KSH.${customer.monthlyCharge.toFixed(2)}. Use Paybill No: ${paybill}, use your phone number as the account number. For any concern, call us on: ${customerCarePhoneNumber} .`,
       }));
   
-      console.log(`Prepared ${messages.length} messages for customers above balance ${balance}.`);
+  
   
       // Check if there are messages to send
       if (messages.length === 0) {
