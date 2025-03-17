@@ -806,14 +806,23 @@ const sendSms = async (tenantId, messages) => {
     }
   };
   
-
   const sendCustomersAboveBalance = async (req, res) => {
     try {
-      const { tenantId } = req.user; // Extract tenant ID from the request
-      const { balance } = req.body; // Extract custom balance from request body
+      const { tenantId } = req.user; // Extract tenant ID from request
+      const { balance } = req.body; // Extract balance from request body
       const paybill = await getShortCode(tenantId);
-
-      const { phoneNumber: customerCarePhoneNumber } = await fetchTenant(tenantId);
+  
+      // Fetch tenant details and sanitize customer care phone number
+      const tenantDetails = await fetchTenant(tenantId);
+      if (!tenantDetails || !tenantDetails.phoneNumber) {
+        return res.status(400).json({
+          success: false,
+          message: 'Customer care phone number not found for this tenant',
+        });
+      }
+  
+      const customerCarePhoneNumber = sanitizePhoneNumber(tenantDetails.phoneNumber);
+  
       // Validate inputs
       if (!tenantId) {
         throw new Error('Tenant ID is required');
@@ -824,14 +833,14 @@ const sendSms = async (tenantId, messages) => {
   
       console.log(`Fetching customers above balance ${balance} for tenant ID: ${tenantId}`);
   
-      // Fetch customers for the specific tenant with an active status
+      // Fetch active customers
       const activeCustomers = await prisma.customer.findMany({
         where: {
           status: 'ACTIVE',
-          tenantId: tenantId, // Ensure customers belong to the specified tenant
+          tenantId: tenantId,
         },
         select: {
-          phoneNumber: true,
+          phoneNumber: true,  // ✅ Customer's phone number
           firstName: true,
           closingBalance: true,
           monthlyCharge: true,
@@ -843,38 +852,40 @@ const sendSms = async (tenantId, messages) => {
         (customer) => customer.closingBalance > balance
       );
   
-      // Create bulk SMS messages
-      const messages = customersAboveBalance.map((customer) => ({
-        mobile: customer.phoneNumber,
-        message: `Dear ${customer.firstName},your outstanding balance is KSH.${customer.closingBalance.toFixed(2)}, your monthly charge is KSH.${customer.monthlyCharge.toFixed(2)}. Use Paybill No: ${paybill}, use your phone number as the account number. For any concern, call us on: ${customerCarePhoneNumber} .`,
-      }));
-  
-  
-  
-      // Check if there are messages to send
-      if (messages.length === 0) {
+      if (customersAboveBalance.length === 0) {
         return res.status(404).json({ 
           success: false, 
           message: `No customers found with balance above ${balance}.` 
         });
       }
   
-      // Send bulk SMS
-      try {
-        await sendSms(tenantId, messages);
-        console.log('Bulk SMS sent successfully.');
-        res.status(200).json({
-          success: true,
-          message: `SMS sent to customers with balance above ${balance} successfully.`,
-          count: messages.length,
-        });
-      } catch (smsError) {
-        console.error('Failed to send bulk SMS:', smsError.message);
-        res.status(500).json({
-          success: false,
-          message: 'Failed to send SMS to customers.',
-        });
+      // Create SMS messages with sanitized phone numbers
+      const messages = customersAboveBalance.map((customer) => {
+        const sanitizedPhone = sanitizePhoneNumber(customer.phoneNumber); // ✅ Pass phone number here
+  
+        return {
+          mobile: sanitizedPhone,
+          message: `Dear ${customer.firstName}, your outstanding balance is KSH.${customer.closingBalance.toFixed(2)}, your monthly charge is KSH.${customer.monthlyCharge.toFixed(2)}. Use Paybill No: ${paybill}, use your phone number as the account number. For any concerns, call us on: ${customerCarePhoneNumber}.`,
+        };
+      });
+  
+      // Send bulk SMS in batches of 400
+      for (let i = 0; i < messages.length; i += 400) {
+        const batch = messages.slice(i, i + 400);
+        try {
+          await sendSms(tenantId, batch);
+          console.log(`Sent batch ${i / 400 + 1}`);
+        } catch (smsError) {
+          console.error('Failed to send SMS batch:', smsError.message);
+        }
       }
+  
+      res.status(200).json({
+        success: true,
+        message: `SMS sent to customers with balance above ${balance} successfully.`,
+        count: messages.length,
+      });
+  
     } catch (error) {
       console.error('Error in sendCustomersAboveBalance:', error.message);
       res.status(500).json({
@@ -883,6 +894,8 @@ const sendSms = async (tenantId, messages) => {
       });
     }
   };
+  
+  
 
 
   const sendLowBalanceCustomers = async (req, res) => {
