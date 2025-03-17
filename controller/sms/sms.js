@@ -674,15 +674,26 @@ const sendSms = async (tenantId, messages) => {
       throw new Error('Missing SMS configuration for tenant.');
     }
 
+    // Prepare the SMS list for bulk sending
+    const smsList = messages.map((msg) => ({
+      apikey,
+      partnerID,
+      message: msg.message,
+      shortcode: shortCode,
+      mobile: String(msg.mobile),
+    }));
+
+    const batchSize = 450; // Adjust based on API limits
+    const batches = [];
+    for (let i = 0; i < smsList.length; i += batchSize) {
+      batches.push(smsList.slice(i, i + batchSize));
+    }
+
     let allResponses = [];
 
-    for (const msg of messages) {
+    for (const batch of batches) {
       const payload = {
-        apikey,
-        partnerID,
-        message: msg.message,
-        shortcode: shortCode,
-        mobile: String(msg.mobile),
+        smslist: batch, // Use smslist as the key
       };
 
       console.log("📞 Sending SMS payload:", payload);
@@ -690,22 +701,23 @@ const sendSms = async (tenantId, messages) => {
       let response;
       try {
         response = await axios.post(process.env.BULK_SMS_ENDPOINT, payload);
-        console.log(`SMS sent successfully to ${payload.mobile}:`, response.data);
+        console.log(`Batch of ${batch.length} SMS sent successfully:`, response.data);
       } catch (error) {
-        console.error(`SMS API error for ${payload.mobile}:`, error.response?.data || error.message);
-        response = { data: { status: 'FAILED' } };
+        console.error('Bulk SMS API error:', error.response?.data || error.message);
+        response = { data: { status: 'FAILED' } }; // Simulate failure response
       }
 
-      const smsLog = {
-        clientsmsid: uuidv4(),
+      // Log each SMS in the batch
+      const smsLogs = batch.map((sms) => ({
+        clientsmsid: uuidv4(), // Unique ID for logging
         tenantId,
-        mobile: payload.mobile,
-        message: payload.message,
+        mobile: sms.mobile,
+        message: sms.message,
         status: response.data.status === 'FAILED' ? 'FAILED' : 'SENT',
         createdAt: new Date(),
-      };
+      }));
 
-      await prisma.sMS.create({ data: smsLog });
+      await prisma.sMS.createMany({ data: smsLogs });
       allResponses.push(response.data);
     }
 
