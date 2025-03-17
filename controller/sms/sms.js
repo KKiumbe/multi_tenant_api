@@ -668,58 +668,44 @@ const sendToGroup = async (req, res) => {
 
 const sendSms = async (tenantId, messages) => {
   try {
-    // Fetch tenant-specific SMS configuration
     const { partnerID, apikey, shortCode } = await getSMSConfigForTenant(tenantId);
 
     if (!partnerID || !apikey || !shortCode) {
       throw new Error('Missing SMS configuration for tenant.');
     }
 
-    // Prepare the SMS payloads
-    const smsList = messages.map((msg) => ({
-      clientsmsid: uuidv4(), // Generate unique client SMS ID
-      partnerID,
-      apikey,
-      pass_type: 'plain',
-      message: msg.message,
-      shortcode: shortCode,
-      mobile: String(msg.phoneNumber),
-    }));
-
-    // Split the messages into batches of 500
-    const batchSize = 450;
-    const batches = [];
-    for (let i = 0; i < smsList.length; i += batchSize) {
-      batches.push(smsList.slice(i, i + batchSize));
-    }
-
     let allResponses = [];
 
-    // Process each batch separately
-    for (const batch of batches) {
+    for (const msg of messages) {
+      const payload = {
+        apikey,
+        partnerID,
+        message: msg.message,
+        shortcode: shortCode,
+        mobile: String(msg.mobile),
+      };
+
+      console.log("📞 Sending SMS payload:", payload);
+
       let response;
       try {
-        response = await axios.post(process.env.BULK_SMS_ENDPOINT, {
-          count: batch.length,
-          smslist: batch,
-        });
-        console.log(`Batch of ${batch.length} SMS sent successfully:`, response.data);
+        response = await axios.post(process.env.BULK_SMS_ENDPOINT, payload);
+        console.log(`SMS sent successfully to ${payload.mobile}:`, response.data);
       } catch (error) {
-        console.error('Bulk SMS API error:', error.response?.data || error.message);
-        response = { data: { status: 'FAILED' } }; // Simulate failure response
+        console.error(`SMS API error for ${payload.mobile}:`, error.response?.data || error.message);
+        response = { data: { status: 'FAILED' } };
       }
 
-      // Store logs for each batch
-      const smsLogs = batch.map((sms) => ({
-        clientsmsid: sms.clientsmsid, // Store unique clientsmsid
-        tenantId, // ✅ Ensure tenantId is logged
-        mobile: sms.mobile,
-        message: sms.message,
-        status: response.data.status === 'FAILED' ? 'FAILED' : 'SENT', // Mark failure if API failed
+      const smsLog = {
+        clientsmsid: uuidv4(),
+        tenantId,
+        mobile: payload.mobile,
+        message: payload.message,
+        status: response.data.status === 'FAILED' ? 'FAILED' : 'SENT',
         createdAt: new Date(),
-      }));
+      };
 
-      await prisma.sMS.createMany({ data: smsLogs });
+      await prisma.sMS.create({ data: smsLog });
       allResponses.push(response.data);
     }
 
@@ -808,10 +794,9 @@ const sendSms = async (tenantId, messages) => {
   
   const sendCustomersAboveBalance = async (req, res) => {
     try {
-      const { tenantId } = req.user; // Extract tenant ID from the request
-      const { balance } = req.body; // Extract custom balance from request body
+      const { tenantId } = req.user;
+      const { balance } = req.body;
       const paybill = await getShortCode(tenantId);
-  
       const { phoneNumber: customerCarePhoneNumber } = await fetchTenant(tenantId);
   
       if (!tenantId) throw new Error('Tenant ID is required');
@@ -830,20 +815,19 @@ const sendSms = async (tenantId, messages) => {
         (customer) => customer.closingBalance > balance
       );
   
-      // ✅ Ensure all numbers are properly formatted before sending
       const messages = customersAboveBalance.map((customer) => ({
-        mobile: sanitizePhoneNumber(customer.phoneNumber), // Sanitize number
+        mobile: sanitizePhoneNumber(customer.phoneNumber),
         message: `Dear ${customer.firstName}, your outstanding balance is KSH.${customer.closingBalance.toFixed(2)}, your monthly charge is KSH.${customer.monthlyCharge.toFixed(2)}. Use Paybill No: ${paybill}, use your phone number as the account number. For any concern, call us on: ${sanitizePhoneNumber(customerCarePhoneNumber)}.`,
       }));
   
-      console.log("📞 Sanitized phone numbers before sending:", messages.map(m => m.mobile));
+      console.log("📞 Prepared messages:", messages);
   
       if (messages.length === 0) {
         return res.status(404).json({ success: false, message: `No customers found with balance above ${balance}.` });
       }
   
       await sendSms(tenantId, messages);
-      console.log('Bulk SMS sent successfully.');
+      console.log('SMS sent successfully.');
       res.status(200).json({
         success: true,
         message: `SMS sent to customers with balance above ${balance} successfully.`,
@@ -854,7 +838,6 @@ const sendSms = async (tenantId, messages) => {
       res.status(500).json({ success: false, message: error.message });
     }
   };
-  
   
   
 
