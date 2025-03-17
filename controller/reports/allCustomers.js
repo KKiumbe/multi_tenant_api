@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 const fs = require('fs');
 const { promises: fsPromises } = require('fs');
 const path = require('path');
-const { fetchTenantDetails } = require('../tenants/tenantupdate.js');
+const {  fetchTenant } = require('../tenants/tenantupdate.js');
 const { generatePDFHeader } = require('./header.js');
  // Import header function
 
@@ -37,7 +37,7 @@ const { generatePDFHeader } = require('./header.js');
        return res.status(404).json({ message: "No active customers found." });
      }
  
-     const tenant = await fetchTenantDetails(tenantId);
+     const tenant = await fetchTenant(tenantId);
      if (!tenant) {
        return res.status(404).json({ message: "Tenant details not found." });
      }
@@ -195,7 +195,7 @@ async function generatePDF(customers, tenant, filePath) {
 async function generateGarbageCollectionReport(req, res) {
   try {
     const tenantId = req.user.tenantId;
-    const tenant = await fetchTenantDetails(tenantId);
+    const tenant = await fetchTenant(tenantId);
 
     // Fetch customers with garbage collection information
     const customers = await prisma.customer.findMany({

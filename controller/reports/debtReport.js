@@ -3,7 +3,7 @@ const PDFDocument = require('pdfkit');
 const prisma = new PrismaClient();
 const fs = require('fs');
 const path = require('path');
-const { fetchTenantDetails } = require('../tenants/tenantupdate');
+const { fetchTenant } = require('../tenants/tenantupdate');
 const { generatePDFHeader } = require('./header');
 const fsPromises = require('fs').promises;
 
@@ -43,7 +43,7 @@ async function getCustomersWithHighDebt(req, res) {
     }
 
     // Fetch tenant details
-    const tenant = await fetchTenantDetails(tenantId);
+    const tenant = await fetchTenant(tenantId);
     if (!tenant) {
       return res.status(404).json({ message: "Tenant details not found." });
     }
@@ -164,7 +164,7 @@ async function getCustomersWithLowBalance(req, res) {
     }
 
     // Fetch tenant details
-    const tenant = await fetchTenantDetails(tenantId);
+    const tenant = await fetchTenant(tenantId);
     if (!tenant) {
       return res.status(404).json({ message: "Tenant details not found." });
     }
