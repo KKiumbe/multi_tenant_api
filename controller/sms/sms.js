@@ -828,9 +828,10 @@ const sendSms = async (tenantId, messages) => {
       const customersAboveBalance = activeCustomers.filter((customer) => customer.closingBalance > balance);
   
       const messages = customersAboveBalance.map((customer) => ({
-        mobile: customer.phoneNumber, // ✅ Pass raw number (sendSms will sanitize)
+        mobile: sanitizePhoneNumber(customer.phoneNumber), // Ensure correct format
         message: `Dear ${customer.firstName}, your outstanding balance is KSH.${customer.closingBalance.toFixed(2)}, your monthly charge is KSH.${customer.monthlyCharge.toFixed(2)}. Use Paybill No: ${paybill}, use your phone number as the account number. For any concern, call us on: ${customerCarePhoneNumber}.`,
       }));
+      
   
       if (messages.length === 0) {
         return res.status(404).json({ success: false, message: `No customers found with balance above ${balance}.` });
