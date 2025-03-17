@@ -813,7 +813,7 @@ const sendSms = async (tenantId, messages) => {
       const { balance } = req.body; // Extract custom balance from request body
       const paybill = await getShortCode(tenantId);
 
-      const { phoneNumber: customerCarePhoneNumber } = await fetchTenantDetails(tenantId);
+      const { phoneNumber: customerCarePhoneNumber } = await fetchTenant(tenantId);
       // Validate inputs
       if (!tenantId) {
         throw new Error('Tenant ID is required');
