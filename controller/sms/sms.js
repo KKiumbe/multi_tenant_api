@@ -808,9 +808,10 @@ const sendSms = async (tenantId, messages) => {
   
   const sendCustomersAboveBalance = async (req, res) => {
     try {
-      const { tenantId } = req.user;
-      const { balance } = req.body;
+      const { tenantId } = req.user; // Extract tenant ID from the request
+      const { balance } = req.body; // Extract custom balance from request body
       const paybill = await getShortCode(tenantId);
+  
       const { phoneNumber: customerCarePhoneNumber } = await fetchTenant(tenantId);
   
       if (!tenantId) throw new Error('Tenant ID is required');
@@ -825,32 +826,31 @@ const sendSms = async (tenantId, messages) => {
         select: { phoneNumber: true, firstName: true, closingBalance: true, monthlyCharge: true },
       });
   
-      const customersAboveBalance = activeCustomers.filter((customer) => customer.closingBalance > balance);
+      const customersAboveBalance = activeCustomers.filter(
+        (customer) => customer.closingBalance > balance
+      );
   
+      // ✅ Ensure all numbers are properly formatted before sending
       const messages = customersAboveBalance.map((customer) => ({
-        mobile: sanitizePhoneNumber(customer.phoneNumber), // Ensure correct format
-        message: `Dear ${customer.firstName}, your outstanding balance is KSH.${customer.closingBalance.toFixed(2)}, your monthly charge is KSH.${customer.monthlyCharge.toFixed(2)}. Use Paybill No: ${paybill}, use your phone number as the account number. For any concern, call us on: ${customerCarePhoneNumber}.`,
+        mobile: sanitizePhoneNumber(customer.phoneNumber), // Sanitize number
+        message: `Dear ${customer.firstName}, your outstanding balance is KSH.${customer.closingBalance.toFixed(2)}, your monthly charge is KSH.${customer.monthlyCharge.toFixed(2)}. Use Paybill No: ${paybill}, use your phone number as the account number. For any concern, call us on: ${sanitizePhoneNumber(customerCarePhoneNumber)}.`,
       }));
-      
+  
+      console.log("📞 Sanitized phone numbers before sending:", messages.map(m => m.mobile));
   
       if (messages.length === 0) {
         return res.status(404).json({ success: false, message: `No customers found with balance above ${balance}.` });
       }
   
-      try {
-        await sendSms(tenantId, messages);
-        console.log('✅ Bulk SMS sent successfully.');
-        res.status(200).json({
-          success: true,
-          message: `SMS sent to customers with balance above ${balance} successfully.`,
-          count: messages.length,
-        });
-      } catch (smsError) {
-        console.error('❌ Failed to send bulk SMS:', smsError.message);
-        res.status(500).json({ success: false, message: 'Failed to send SMS to customers.' });
-      }
+      await sendSms(tenantId, messages);
+      console.log('Bulk SMS sent successfully.');
+      res.status(200).json({
+        success: true,
+        message: `SMS sent to customers with balance above ${balance} successfully.`,
+        count: messages.length,
+      });
     } catch (error) {
-      console.error('❌ Error in sendCustomersAboveBalance:', error.message);
+      console.error('Error in sendCustomersAboveBalance:', error.message);
       res.status(500).json({ success: false, message: error.message });
     }
   };
