@@ -13,7 +13,7 @@ async function generateIncomeReport(req, res) {
       const tenantId = req.user?.tenantId;
       if (!tenantId) throw new Error("Tenant ID is required");
 
-      const tenant = await fetchTenantDetails(tenantId);
+      const tenant = await fetchTenant(tenantId);
       if (!tenant) return res.status(404).json({ message: "Tenant not found" });
 
       const doc = new PDFDocument({ margin: 50 });
@@ -243,7 +243,7 @@ async function generateMpesaReport(req, res) {
     const tenantId = req.user?.tenantId;
     if (!tenantId) throw new Error("Tenant ID is required");
 
-    const tenant = await fetchTenantDetails(tenantId);
+    const tenant = await fetchTenant(tenantId);
     if (!tenant) return res.status(404).json({ message: "Tenant not found" });
 
     // Get first and last day of current month
@@ -358,7 +358,7 @@ async function generateReceiptReport(req, res) {
     const tenantId = req.user?.tenantId;
     if (!tenantId) throw new Error("Tenant ID is required");
 
-    const tenant = await fetchTenantDetails(tenantId);
+    const tenant = await fetchTenant(tenantId);
     if (!tenant) return res.status(404).json({ message: "Tenant not found" });
 
     // Create PDF document
