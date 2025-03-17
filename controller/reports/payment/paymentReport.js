@@ -1,7 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const PDFDocument = require('pdfkit');
 const { generatePDFHeader } = require('../header.js');
-const { fetchTenantDetails } = require('../../tenants/tenantupdate.js');
+const { fetchTenant } = require('../../tenants/tenantupdate.js');
 
 const prisma = new PrismaClient();
 
@@ -114,7 +114,7 @@ async function generatePaymentReportPDF(req, res) {
     const tenantId = req.user?.tenantId;
     if (!tenantId) throw new Error("Tenant ID is required");
 
-    const tenant = await fetchTenantDetails(tenantId);
+    const tenant = await fetchTenant(tenantId);
     if (!tenant) return res.status(404).json({ message: "Tenant not found" });
 
     // Get first and last day of the current month
