@@ -683,7 +683,7 @@ const sendSms = async (tenantId, messages) => {
       pass_type: 'plain',
       message: msg.message,
       shortcode: shortCode,
-      mobile: sanitizePhoneNumber(msg.phoneNumber),
+      mobile: String(msg.phoneNumber),
     }));
 
     // Split the messages into batches of 500
