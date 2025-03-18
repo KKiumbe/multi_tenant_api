@@ -5,11 +5,15 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const fs = require('fs').promises;
 
+console.log('DB_PASSWORD right after dotenv:', process.env.DB_PASSWORD); // Log 1
+
 const DB_USER = process.env.DB_USER;
 const DB_PASSWORD = process.env.DB_PASSWORD;
 const DB_HOST = process.env.DB_HOST || 'localhost';
 const DB_NAME = process.env.DB_NAME;
 const BACKUP_DIR = process.env.BACKUP_DIR || './backups';
+
+console.log('DB_PASSWORD assigned to const:', DB_PASSWORD); // Log 2
 
 const backupDatabase = async () => {
   try {
@@ -21,11 +25,9 @@ const backupDatabase = async () => {
       console.log(`Created backup directory: ${BACKUP_DIR}`);
     }
 
-    // Escape special characters in the password
-    const escapedPassword = DB_PASSWORD.replace(/([#!@$%^&*])/g, '\\$1');
-    const backupCommand = `PGPASSWORD="${escapedPassword}" pg_dump -U ${DB_USER} -h ${DB_HOST} ${DB_NAME} > ${backupFile}`;
-
-    console.log(`Executing: ${backupCommand}`); // Log the command for debugging
+    const backupCommand = `PGPASSWORD="${DB_PASSWORD}" pg_dump -U ${DB_USER} -h ${DB_HOST} ${DB_NAME} > ${backupFile}`;
+    console.log('DB_PASSWORD before command:', DB_PASSWORD); // Log 3
+    console.log(`Executing: ${backupCommand}`);
 
     await new Promise((resolve, reject) => {
       exec(backupCommand, (error, stdout, stderr) => {
