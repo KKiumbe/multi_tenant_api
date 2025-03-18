@@ -1,11 +1,9 @@
-
-
 require('dotenv').config();
 const { exec } = require('child_process');
 const cron = require('node-cron');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const fs = require('fs').promises; // Use promises for cleaner async handling
+const fs = require('fs').promises;
 
 const DB_USER = process.env.DB_USER;
 const DB_PASSWORD = process.env.DB_PASSWORD;
@@ -18,13 +16,16 @@ const backupDatabase = async () => {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const backupFile = `${BACKUP_DIR}/backup-${timestamp}.sql`;
 
-    // Ensure backup directory exists
     if (!(await fs.stat(BACKUP_DIR).catch(() => false))) {
       await fs.mkdir(BACKUP_DIR, { recursive: true });
       console.log(`Created backup directory: ${BACKUP_DIR}`);
     }
 
-    const backupCommand = `PGPASSWORD="${DB_PASSWORD}" pg_dump -U ${DB_USER} -h ${DB_HOST} ${DB_NAME} > ${backupFile}`;
+    // Escape special characters in the password
+    const escapedPassword = DB_PASSWORD.replace(/([#!@$%^&*])/g, '\\$1');
+    const backupCommand = `PGPASSWORD="${escapedPassword}" pg_dump -U ${DB_USER} -h ${DB_HOST} ${DB_NAME} > ${backupFile}`;
+
+    console.log(`Executing: ${backupCommand}`); // Log the command for debugging
 
     await new Promise((resolve, reject) => {
       exec(backupCommand, (error, stdout, stderr) => {
@@ -76,13 +77,11 @@ const runTask = async () => {
 };
 
 module.exports = () => {
-  // Check if environment variables are loaded
   if (!DB_USER || !DB_PASSWORD || !DB_NAME) {
     console.error('Missing required environment variables (DB_USER, DB_PASSWORD, DB_NAME). Check your .env file.');
     return;
   }
 
-  // Schedule to run every 5 minutes
   cron.schedule('*/5 * * * *', () => {
     console.log('Running task at:', new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
     runTask();
@@ -92,5 +91,3 @@ module.exports = () => {
   });
   console.log('Scheduler started. Task will run every 5 minutes.');
 };
-
-
