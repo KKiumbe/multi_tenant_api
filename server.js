@@ -2,7 +2,7 @@ const express = require('express');
 
 
 const { PrismaClient } = require('@prisma/client'); // Prisma Client import
-const startGarbageCollection = require('./controller/jobs/garbagecollectionStatus.js');
+//const startGarbageCollection = require('./controller/jobs/garbagecollectionStatus.js');
 const startInvoiceGen = require('./controller/jobs/invoicegen.js');
 const startBackup = require('./controller/jobs/backup.js');
 const cors = require('cors');
@@ -122,7 +122,6 @@ app.use('/api', taskRoute);
 
 // Start scheduled jobs
 startBackup(); // Invoke the backup scheduler
-startGarbageCollection(); // Invoke if this script exports a function
 startInvoiceGen(); // Invoke if this script exports a function
 
 // Start the HTTP server
