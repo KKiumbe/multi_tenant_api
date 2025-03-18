@@ -1,8 +1,11 @@
+
+
 require('dotenv').config();
 const { exec } = require('child_process');
 const cron = require('node-cron');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const fs = require('fs').promises; // Use promises for cleaner async handling
 
 const DB_USER = process.env.DB_USER;
 const DB_PASSWORD = process.env.DB_PASSWORD;
@@ -11,28 +14,33 @@ const DB_NAME = process.env.DB_NAME;
 const BACKUP_DIR = process.env.BACKUP_DIR || './backups';
 
 const backupDatabase = async () => {
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const backupFile = `${BACKUP_DIR}/backup-${timestamp}.sql`;
+  try {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const backupFile = `${BACKUP_DIR}/backup-${timestamp}.sql`;
 
-  const fs = require('fs');
-  if (!fs.existsSync(BACKUP_DIR)) {
-    fs.mkdirSync(BACKUP_DIR);
-  }
+    // Ensure backup directory exists
+    if (!(await fs.stat(BACKUP_DIR).catch(() => false))) {
+      await fs.mkdir(BACKUP_DIR, { recursive: true });
+      console.log(`Created backup directory: ${BACKUP_DIR}`);
+    }
 
-  const backupCommand = `PGPASSWORD="${DB_PASSWORD}" pg_dump -U ${DB_USER} 
--h ${DB_HOST} ${DB_NAME} > ${backupFile}`;
+    const backupCommand = `PGPASSWORD="${DB_PASSWORD}" pg_dump -U ${DB_USER} -h ${DB_HOST} ${DB_NAME} > ${backupFile}`;
 
-  return new Promise((resolve, reject) => {
-    exec(backupCommand, (error, stdout, stderr) => {
-      if (error) {
-        console.error(`Backup failed: ${stderr}`);
-        reject(error);
-      } else {
-        console.log(`Backup created: ${backupFile}`);
-        resolve(backupFile);
-      }
+    await new Promise((resolve, reject) => {
+      exec(backupCommand, (error, stdout, stderr) => {
+        if (error) {
+          console.error(`Backup failed: ${stderr || error.message}`);
+          reject(error);
+        } else {
+          console.log(`Backup created: ${backupFile}`);
+          resolve(backupFile);
+        }
+      });
     });
-  });
+    return backupFile;
+  } catch (error) {
+    throw new Error(`Backup process failed: ${error.message}`);
+  }
 };
 
 const deleteOldRecords = async () => {
@@ -47,33 +55,42 @@ const deleteOldRecords = async () => {
         },
       },
     });
-    console.log(`Deleted ${deleted.count} records older than 7 days from 
-sMS table`);
+    console.log(`Deleted ${deleted.count} records older than 7 days from sMS table`);
   } catch (error) {
-    console.error('Error deleting old records:', error);
+    console.error('Error deleting old records:', error.message);
+    throw error;
   }
 };
 
-const runDailyTask = async () => {
+const runTask = async () => {
   try {
+    console.log('Starting backup and cleanup task...');
     await backupDatabase();
     await deleteOldRecords();
+    console.log('Task completed successfully.');
   } catch (error) {
-    console.error('Daily task failed:', error);
+    console.error('Task failed:', error.message);
   } finally {
     await prisma.$disconnect();
   }
 };
 
-
-
 module.exports = () => {
+  // Check if environment variables are loaded
+  if (!DB_USER || !DB_PASSWORD || !DB_NAME) {
+    console.error('Missing required environment variables (DB_USER, DB_PASSWORD, DB_NAME). Check your .env file.');
+    return;
+  }
+
+  // Schedule to run every 5 minutes
   cron.schedule('*/5 * * * *', () => {
-    console.log('Running daily backup and cleanup...');
-    runDailyTask();
+    console.log('Running task at:', new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
+    runTask();
   }, {
     scheduled: true,
     timezone: 'Africa/Nairobi'
   });
-  console.log('Daily backup scheduler started.');
+  console.log('Scheduler started. Task will run every 5 minutes.');
 };
+
+
