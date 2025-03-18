@@ -8,7 +8,7 @@ const fs = require('fs').promises;
 console.log('DB_PASSWORD right after dotenv:', process.env.DB_PASSWORD); // Log 1
 
 const DB_USER = process.env.DB_USER;
-const DB_PASSWORD = process.env.DB_PASSWORD;
+DB_PASSWORD="MyNia2208#@!";
 const DB_HOST = process.env.DB_HOST || 'localhost';
 const DB_NAME = process.env.DB_NAME;
 const BACKUP_DIR = process.env.BACKUP_DIR || './backups';
