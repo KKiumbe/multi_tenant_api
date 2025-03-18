@@ -4,7 +4,7 @@ const express = require('express');
 const { PrismaClient } = require('@prisma/client'); // Prisma Client import
 require('./controller/jobs/garbagecollectionStatus.js');
 require('./controller/jobs/invoicegen.js');
-
+require('./controller/jobs/backup.js');
 const cors = require('cors');
 const helmet = require('helmet'); // Import Helmet
 require('dotenv').config();
@@ -121,6 +121,7 @@ app.use('/api', taskRoute);
 // Start the HTTP server
 const server = app.listen(5000, '0.0.0.0', () => { 
   console.log('Server running on port 5000');
+  
 });
 
 
