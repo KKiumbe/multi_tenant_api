@@ -8,7 +8,7 @@ const fs = require('fs').promises;
 console.log('DB_PASSWORD right after dotenv:', process.env.DB_PASSWORD); // Log 1
 
 const DB_USER = process.env.DB_USER;
-DB_PASSWORD="MyNia2208#@!";
+const DB_PASSWORD = process.env.DB_PASSWORD;
 const DB_HOST = process.env.DB_HOST || 'localhost';
 const DB_NAME = process.env.DB_NAME;
 const BACKUP_DIR = process.env.BACKUP_DIR || './backups';
@@ -84,12 +84,12 @@ module.exports = () => {
     return;
   }
 
-  cron.schedule('*/5 * * * *', () => {
+  cron.schedule('0 0 * * *', () => {
     console.log('Running task at:', new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
     runTask();
   }, {
     scheduled: true,
     timezone: 'Africa/Nairobi'
   });
-  console.log('Scheduler started. Task will run every 5 minutes.');
+  console.log('Scheduler started. Task will run every midnight.');
 };
