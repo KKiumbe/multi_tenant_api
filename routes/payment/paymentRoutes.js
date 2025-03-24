@@ -11,7 +11,7 @@ router.get('/payments/search-by-name',verifyToken,checkAccess('payments','read')
 router.get('/payments/search-by-phone',verifyToken,checkAccess('payments','read'), searchPaymentsByPhone);
 
 router.get('/payments/:paymentId', verifyToken,checkAccess('payments','read'), fetchPaymentById);
-router.get('/payments-search',checkAccess('payments','read'), fetchPaymentsByTransactionId);
+router.get('/payments-search', verifyToken, checkAccess('payments','read'), fetchPaymentsByTransactionId);
 
 
 module.exports = router;

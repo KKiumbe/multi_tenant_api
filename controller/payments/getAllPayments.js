@@ -32,41 +32,35 @@ const fetchAllPayments = async (req, res) => {
 
 // Controller to fetch payments by Mpesa transaction ID
 const fetchPaymentsByTransactionId = async (req, res) => {
-    const { transactionId } = req.query; // Get the transaction ID from query parameters
+  try {
+    const { transactionId } = req.params;
+    const tenantId = req.user?.tenantId; // Ensure the user is from the same organization
 
     if (!transactionId) {
-        return res.status(400).json({ message: 'Transaction ID is required' });
+        return res.status(400).json({ error: 'Transaction ID is required' });
     }
 
-    try {
-        const payments = await prisma.payment.findUnique({
-            where: {
-                TransactionId: transactionId, // Search by transactionId as a string
-            },
-            include: {
-                receipt: {
-                    include: {
-                        receiptInvoices: {
-                            include: {
-                                invoice: true, // Include associated invoices
-                            },
-                        },
-                    },
-                },
-            },
-        });
+    const payment = await prisma.payment.findUnique({
+        where: {
+            transactionId,
+            tenantId, // Ensuring the user is only accessing their own organization's data
+        },
+        include: {
+            tenant: true,
+            receipt: true,
+        },
+    });
 
-        if (payments.length === 0) {
-            return res.status(404).json({ message: 'No payments found for this transaction ID' });
-        }
-
-        res.status(200).json(payments); // Respond with the found payments
-    } catch (error) {
-        console.error('Error fetching payments by transaction ID:', error);
-        res.status(500).json({ message: 'Internal server error' });
+    if (!payment) {
+        return res.status(404).json({ error: 'Payment not found or not accessible' });
     }
+
+    res.json(payment);
+} catch (error) {
+    console.error('Error searching payment:', error);
+    res.status(500).json({ error: 'Internal server error' });
+}
 };
-
 
 
 
