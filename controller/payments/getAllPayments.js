@@ -222,15 +222,15 @@ const searchPaymentsByPhone = async (req, res) => {
 
 // Search payments by name
 const searchPaymentsByName = async (req, res) => {
-  const { firstName, lastName, page = 1, limit = 10 } = req.query;
+  const { name, page = 1, limit = 10 } = req.query;
   const tenantId = req.user?.tenantId;
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized: Tenant ID not found' });
   }
-  if (!firstName && !lastName) {
-    return res.status(400).json({ error: 'At least one of firstName or lastName is required' });
+  if (!name) {
+    return res.status(400).json({ error: 'Name parameter is required' });
   }
 
   try {
@@ -239,18 +239,12 @@ const searchPaymentsByName = async (req, res) => {
         where: {
           tenantId,
           OR: [
-            { firstName: firstName ? { contains: firstName, mode: 'insensitive' } : undefined },
-            {
-              receipt: {
-                customer: {
-                  OR: [
-                    firstName ? { firstName: { contains: firstName, mode: 'insensitive' } } : undefined,
-                    lastName ? { lastName: { contains: lastName, mode: 'insensitive' } } : undefined,
-                  ].filter(Boolean),
-                },
-              },
-            },
-          ].filter(Boolean),
+            { firstName: { contains: name, mode: 'insensitive' } },
+            { receipt: { customer: { OR: [
+              { firstName: { contains: name, mode: 'insensitive' } },
+              { lastName: { contains: name, mode: 'insensitive' } }
+            ]}}},
+          ],
         },
         skip,
         take: parseInt(limit),
@@ -266,18 +260,12 @@ const searchPaymentsByName = async (req, res) => {
         where: {
           tenantId,
           OR: [
-            { firstName: firstName ? { contains: firstName, mode: 'insensitive' } : undefined },
-            {
-              receipt: {
-                customer: {
-                  OR: [
-                    firstName ? { firstName: { contains: firstName, mode: 'insensitive' } } : undefined,
-                    lastName ? { lastName: { contains: lastName, mode: 'insensitive' } } : undefined,
-                  ].filter(Boolean),
-                },
-              },
-            },
-          ].filter(Boolean),
+            { firstName: { contains: name, mode: 'insensitive' } },
+            { receipt: { customer: { OR: [
+              { firstName: { contains: name, mode: 'insensitive' } },
+              { lastName: { contains: name, mode: 'insensitive' } }
+            ]}}},
+          ],
         },
       }),
     ]);
@@ -342,8 +330,10 @@ const getUnreceiptedPayments = async (req, res) => {
 
 
 
+
 // Export the controller functions
 module.exports = { 
+  fetchUnreceiptedPayments,
     fetchAllPayments, 
     fetchPaymentById, 
     fetchPaymentsByTransactionId ,getAllPayments,searchPaymentsByPhone,searchPaymentsByName,getUnreceiptedPayments
