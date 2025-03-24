@@ -2,7 +2,7 @@ const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
-const { fetchTenantDetails } = require('../tenants/tenantupdate.js');
+const { fetchTenant } = require('../tenants/tenantupdate.js');
 const { generatePDFHeader } = require('./header.js');
 
 const prisma = new PrismaClient();
@@ -18,7 +18,7 @@ async function generateInvoicePDF(invoiceId) {
 
     if (!invoice) throw new Error('Invoice not found');
 
-    const tenant = await fetchTenantDetails(invoice.customer.tenantId);
+    const tenant = await fetchTenant(invoice.customer.tenantId);
     if (!tenant) throw new Error('Tenant not found');
 
     const doc = new PDFDocument({ margin: 50 });

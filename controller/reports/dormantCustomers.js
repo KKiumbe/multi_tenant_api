@@ -1,4 +1,4 @@
-const { fetchTenantDetails } = require('../tenants/tenantupdate.js');
+const { fetchTenantDetails, fetchTenant } = require('../tenants/tenantupdate.js');
 const { generatePDFHeader } = require('./header.js');
 const { PrismaClient } = require('@prisma/client');
 const PDFDocument = require('pdfkit');
@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 async function generateDormantCustomersReport(req, res) {
   try {
     const tenantId = req.user.tenantId;
-    const tenant = await fetchTenantDetails(tenantId);
+    const tenant = await fetchTenant(tenantId);
 
     // Fetch inactive customers belonging to the tenant
     const customers = await prisma.customer.findMany({

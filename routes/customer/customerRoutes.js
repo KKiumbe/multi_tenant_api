@@ -6,7 +6,7 @@ const { editCustomer } = require('../../controller/customers/editCustomer.js');
 const { SearchCustomers, SearchCustomersByPhoneNumber, SearchCustomersByName } = require('../../controller/customers/searchCustomers.js');
 const checkAccess = require('../../middleware/roleVerify.js');
 const verifyToken = require('../../middleware/verifyToken.js');
-const { getCustomerDetails } = require('../../controller/customers/customerDetails.js');
+const { getCustomerDetails, deleteCustomer } = require('../../controller/customers/customerDetails.js');
 const { clearCustomerData } = require('../../controller/customers/delete/delete.js');
 
 
@@ -22,6 +22,7 @@ router.post(
 router.get('/customers', verifyToken, checkAccess('customer','read') ,getAllCustomers);
 router.put('/customers/:id',verifyToken,checkAccess('customer','update'), editCustomer);
 router.get('/search-customers',verifyToken, SearchCustomers);
+router.delete('/customers/:id',verifyToken,checkAccess('customer','delete'), deleteCustomer);
 
 router.get('/search-customer-by-phone',verifyToken, SearchCustomersByPhoneNumber);
 

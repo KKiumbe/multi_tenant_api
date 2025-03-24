@@ -2,7 +2,7 @@ const pdfMake = require("pdfmake/build/pdfmake");
 const pdfFonts = require("pdfmake/build/vfs_fonts");
 const PDFDocument = require("pdfkit");
 
-const { fetchTenantDetails } = require("../tenants/tenantupdate.js");
+const { fetchTenantDetails, fetchTenant } = require("../tenants/tenantupdate.js");
 const { PrismaClient } = require("@prisma/client");
 const { generatePDFHeader } = require("./header.js");
 
@@ -12,7 +12,7 @@ const generateMonthlyInvoiceReport = async (req, res, month) => {
     const tenantId = req.user?.tenantId;
     if (!tenantId) throw new Error("Tenant ID is required");
   
-    const tenant = await fetchTenantDetails(tenantId);
+    const tenant = await fetchTenant(tenantId);
   
     const invoices = await prisma.invoice.findMany({
       where: { tenantId },

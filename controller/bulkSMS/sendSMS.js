@@ -133,7 +133,7 @@ function generateSanitizedMessage(customerName, currentMonthBill, closingBalance
     balanceMessage = `Your total balance is KSH${closingBalance}.`;
   }
 
-  return `Dear ${customerName}, your ${month} bill is KSH${currentMonthBill}. ${balanceMessage} Help us serve you better by always paying on time. Paybill No: 4107197, use your phone number as the account number. Customer support: 0726594923.`;
+  return `Dear ${customerName}, your ${month} bill is KSH${currentMonthBill}. ${balanceMessage}`;
 }
 
 module.exports = { generateBulkBillSmsMessage };
