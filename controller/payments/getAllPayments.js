@@ -33,7 +33,7 @@ const fetchAllPayments = async (req, res) => {
 // Controller to fetch payments by Mpesa transaction ID
 const fetchPaymentsByTransactionId = async (req, res) => {
   try {
-    const { transactionId } = req.params;
+    const { transactionId } = req.query; 
     const tenantId = req.user?.tenantId; // Ensure the user is from the same organization
 
     if (!transactionId) {
