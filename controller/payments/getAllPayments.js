@@ -333,7 +333,7 @@ const getUnreceiptedPayments = async (req, res) => {
 
 // Export the controller functions
 module.exports = { 
-  fetchUnreceiptedPayments,
+ 
     fetchAllPayments, 
     fetchPaymentById, 
     fetchPaymentsByTransactionId ,getAllPayments,searchPaymentsByPhone,searchPaymentsByName,getUnreceiptedPayments

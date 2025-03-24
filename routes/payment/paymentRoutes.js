@@ -5,6 +5,7 @@ const checkAccess = require('../../middleware/roleVerify.js');
 
 const router = express.Router();
 
+
 router.get('/payments',verifyToken,checkAccess('payments','read'), getAllPayments);
 router.get('/payments/unreceipted',verifyToken,checkAccess('payments','read'), getUnreceiptedPayments);
 router.get('/payments/search-by-name',verifyToken,checkAccess('payments','read'), searchPaymentsByName);
