@@ -293,7 +293,7 @@ const sendBillsEstate = async (req, res) => {
 
     const messages = activeCustomers.map((customer) => ({
       mobile: sanitizePhoneNumber(customer.phoneNumber), // Assumes sanitizePhoneNumber exists
-      message: `Dear ${customer.firstName}, your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}. Use paybill No: ${paybill}; your phone number is the account number. Inquiries? Call: ${customerSupport}. Thank you for being a loyal customer.`;, // Use the message from req.body directly
+      message: `Dear ${customer.firstName}, your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}. Use paybill No: ${paybill}; your phone number is the account number. Inquiries? Call: ${customerSupport}. Thank you for being a loyal customer.` // Use the message from req.body directly
     }));
 
    
