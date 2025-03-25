@@ -245,12 +245,12 @@ const sendBills = async (req, res) => {
       },
     });
 
-    const text = `Dear ${customer.firstName},your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}.Use paybill No:${paybill};your phone number,is the account number.Inquiries? call:${customerSupport}.Thank you for being a loyal customer.`;
+   
 
 
     const messages = activeCustomers.map((customer) => ({
       mobile: sanitizePhoneNumber(customer.phoneNumber), // Assumes sanitizePhoneNumber exists
-      message: text, // Use the message from req.body directly
+      message: `Dear ${customer.firstName},your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}.Use paybill No:${paybill};your phone number,is the account number.Inquiries? call:${customerSupport}.Thank you for being a loyal customer.`, // Use the message from req.body directly
     }));
 
     const smsResponses = await sendSms(tenantId,messages);
