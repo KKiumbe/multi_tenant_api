@@ -444,7 +444,7 @@ const sendToEstate = async (req, res) => {
 
     // Prepare messages
     const messages = activeCustomers.map((customer) => ({
-      phoneNumber: sanitizePhoneNumber(customer.phoneNumber),
+      mobile: sanitizePhoneNumber(customer.phoneNumber),
       message,
     }));
 
@@ -528,7 +528,7 @@ const sendBillPerDay = async (req, res) => {
     });
 
     const messages = customers.map((customer) => ({
-      phoneNumber: sanitizePhoneNumber(customer.phoneNumber),
+      mobile: sanitizePhoneNumber(customer.phoneNumber),
 
      message : `Dear ${customer.firstName}, your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}.Use paybill No :${paybill} ;your phone number is the account number.Inquiries? call: ${customerSupport}.Thank you for being a loyal customer.`
 
@@ -579,7 +579,7 @@ const billReminderPerDay = async (req, res) => {
 
     // Prepare SMS messages
     const messages = customers.map((customer) => ({
-      phoneNumber: sanitizePhoneNumber(customer.phoneNumber),
+      mobile: sanitizePhoneNumber(customer.phoneNumber),
       message: `Dear ${customer.firstName}, your garbage collection is scheduled today, Your balance is ksh ${customer.closingBalance}. Please pay immediately to avoid service disruption. Use Paybill ${paybill}, and your phone number as the account number. Inquiries? Call ${customerSupport}.`,
 
 
@@ -621,7 +621,7 @@ const billReminderForAll = async (req, res) => {
 
     // Prepare SMS messages
     const messages = customers.map((customer) => ({
-      phoneNumber: sanitizePhoneNumber(customer.phoneNumber),
+      mobile: sanitizePhoneNumber(customer.phoneNumber),
       message: `Dear ${customer.firstName},you have a pending balance of $${customer.closingBalance},Help us server you better by settling your bill.Pay via ${paybill}, your phone is the the account number `,
     }));
 
@@ -662,7 +662,7 @@ const harshBillReminder = async (req, res) => {
 
     // Prepare harsher SMS messages
     const messages = customers.map((customer) => ({
-      phoneNumber: sanitizePhoneNumber(customer.phoneNumber),
+      mobile: sanitizePhoneNumber(customer.phoneNumber),
       message: `Dear ${customer.firstName}, Please settle your pending bill of ${customer.closingBalance}. Immediate action is required to avoid service disruption. Pay via ${paybill}, your phone is the the account number`,
     }));
 
@@ -702,7 +702,7 @@ const sendToGroup = async (req, res) => {
     });
 
     const messages = customers.map((customer) => ({
-      phoneNumber: sanitizePhoneNumber(customer.phoneNumber),
+      mobile: sanitizePhoneNumber(customer.phoneNumber),
       message,
     }));
 
