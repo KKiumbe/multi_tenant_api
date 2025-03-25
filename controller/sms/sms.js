@@ -236,13 +236,16 @@ const sendBills = async (req, res) => {
     const paybill = await getShortCode(tenantId);
   try {
     const activeCustomers = await prisma.customer.findMany({
-      where: { status: 'ACTIVE' },
+      where: { status: 'ACTIVE', tenantId },
     });
 
-    const messages = activeCustomers.map((customer) => {
-      const message = `Dear ${customer.firstName},your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}.Use paybill No:${paybill};your phone number,is the account number.Inquiries? call:${customerSupport}.Thank you for being a loyal customer.`;
-      return { phoneNumber: customer.phoneNumber, message };
-    });
+    const text = `Dear ${customer.firstName},your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}.Use paybill No:${paybill};your phone number,is the account number.Inquiries? call:${customerSupport}.Thank you for being a loyal customer.`;
+
+
+    const messages = activeCustomers.map((customer) => ({
+      mobile: sanitizePhoneNumber(customer.phoneNumber), // Assumes sanitizePhoneNumber exists
+      message: text, // Use the message from req.body directly
+    }));
 
     const smsResponses = await sendSms(tenantId,messages);
 
@@ -287,11 +290,13 @@ const sendBillsEstate = async (req, res) => {
     }
 
     // Prepare SMS messages for the customers in the specified estate
-    const messages = activeCustomers.map((customer) => {
-      const message = `Dear ${customer.firstName}, your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}. Use paybill No: ${paybill}; your phone number is the account number. Inquiries? Call: ${customerSupport}. Thank you for being a loyal customer.`;
-      return { phoneNumber: customer.phoneNumber, message };
-    });
 
+    const messages = activeCustomers.map((customer) => ({
+      mobile: sanitizePhoneNumber(customer.phoneNumber), // Assumes sanitizePhoneNumber exists
+      message: `Dear ${customer.firstName}, your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}. Use paybill No: ${paybill}; your phone number is the account number. Inquiries? Call: ${customerSupport}. Thank you for being a loyal customer.`;, // Use the message from req.body directly
+    }));
+
+   
     // Send SMS messages
     const smsResponses = await sendSms(tenantId, messages);
 
@@ -462,7 +467,7 @@ const sendBill = async (req, res) => {
   try {
     // Fetch the customer
     const customer = await prisma.customer.findUnique({
-      where: { id: customerId },
+      where: { id: customerId,tenantId },
     });
 
     if (!customer) {
@@ -499,7 +504,7 @@ const sendBillPerDay = async (req, res) => {
 
   try {
     const customers = await prisma.customer.findMany({
-      where: { garbageCollectionDay: day.toUpperCase() },
+      where: { tenantId, garbageCollectionDay: day.toUpperCase() },
     });
 
     const messages = customers.map((customer) => ({
@@ -537,7 +542,7 @@ const billReminderPerDay = async (req, res) => {
     const customers = await prisma.customer.findMany({
       where: {
         garbageCollectionDay: day.toUpperCase(),
-        status: 'ACTIVE', // Ensure customer is active
+        status: 'ACTIVE',tenantId, // Ensure customer is active
         closingBalance: { lt: prisma.customer.monthlyCharge }, // Check if closingBalance is less than monthlyCharge
       },
     });
@@ -573,7 +578,7 @@ const billReminderForAll = async (req, res) => {
     // Fetch all active customers with a closingBalance less than monthlyCharge
     const customers = await prisma.customer.findMany({
       where: {
-        status: 'ACTIVE', // Ensure customer is active
+        status: 'ACTIVE', tenantId,// Ensure customer is active
         closingBalance: { lt: prisma.customer.monthlyCharge }, // Check if closingBalance is less than monthlyCharge
       },
     });
@@ -608,7 +613,7 @@ const harshBillReminder = async (req, res) => {
     // Fetch active customers with a closingBalance greater than 2x their monthlyCharge
     const customers = await prisma.customer.findMany({
       where: {
-        status: 'ACTIVE', // Only active customers
+        status: 'ACTIVE',tenantId, // Only active customers
         closingBalance: { gt: { multiply: prisma.customer.monthlyCharge, factor: 2 } }, // Closing balance > 2x monthly charge
       },
     });
