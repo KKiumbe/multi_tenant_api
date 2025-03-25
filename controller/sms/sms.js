@@ -237,6 +237,12 @@ const sendBills = async (req, res) => {
   try {
     const activeCustomers = await prisma.customer.findMany({
       where: { status: 'ACTIVE', tenantId },
+      select: { phoneNumber: true, 
+
+                firstName:true,
+                closingBalance:true,
+                monthlyCharge:true,
+      },
     });
 
     const text = `Dear ${customer.firstName},your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}.Use paybill No:${paybill};your phone number,is the account number.Inquiries? call:${customerSupport}.Thank you for being a loyal customer.`;
@@ -281,6 +287,12 @@ const sendBillsEstate = async (req, res) => {
           mode: 'insensitive', // Case-insensitive matching
         },
       },
+      select: { phoneNumber: true, 
+
+        firstName:true,
+        closingBalance:true,
+        monthlyCharge:true,
+},
     });
 
     if (!activeCustomers || activeCustomers.length === 0) {
@@ -421,6 +433,7 @@ const sendToEstate = async (req, res) => {
           mode: 'insensitive', // Case-insensitive matching
         },
       },
+      select: { phoneNumber: true },
     });
 
     if (activeCustomers.length === 0) {
@@ -431,7 +444,7 @@ const sendToEstate = async (req, res) => {
 
     // Prepare messages
     const messages = activeCustomers.map((customer) => ({
-      phoneNumber: customer.phoneNumber,
+      phoneNumber: sanitizePhoneNumber(customer.phoneNumber),
       message,
     }));
 
@@ -468,6 +481,7 @@ const sendBill = async (req, res) => {
     // Fetch the customer
     const customer = await prisma.customer.findUnique({
       where: { id: customerId,tenantId },
+      select: { phoneNumber: true },
     });
 
     if (!customer) {
@@ -505,10 +519,16 @@ const sendBillPerDay = async (req, res) => {
   try {
     const customers = await prisma.customer.findMany({
       where: { tenantId, garbageCollectionDay: day.toUpperCase() },
+      select: { phoneNumber: true, 
+
+        firstName:true,
+        closingBalance:true,
+        monthlyCharge:true,
+},
     });
 
     const messages = customers.map((customer) => ({
-      phoneNumber: customer.phoneNumber,
+      phoneNumber: sanitizePhoneNumber(customer.phoneNumber),
 
      message : `Dear ${customer.firstName}, your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}.Use paybill No :${paybill} ;your phone number is the account number.Inquiries? call: ${customerSupport}.Thank you for being a loyal customer.`
 
@@ -545,6 +565,12 @@ const billReminderPerDay = async (req, res) => {
         status: 'ACTIVE',tenantId, // Ensure customer is active
         closingBalance: { lt: prisma.customer.monthlyCharge }, // Check if closingBalance is less than monthlyCharge
       },
+      select: { phoneNumber: true, 
+
+        firstName:true,
+        closingBalance:true,
+        monthlyCharge:true,
+},
     });
 
     if (customers.length === 0) {
@@ -553,8 +579,8 @@ const billReminderPerDay = async (req, res) => {
 
     // Prepare SMS messages
     const messages = customers.map((customer) => ({
-      phoneNumber: customer.phoneNumber,
-      message: `Dear ${customer.firstName}, your garbage collection is scheduled today. Please pay immediately to avoid service disruption. Use Paybill ${paybill}, and your phone number as the account number. Inquiries? Call ${customerSupport}.`,
+      phoneNumber: sanitizePhoneNumber(customer.phoneNumber),
+      message: `Dear ${customer.firstName}, your garbage collection is scheduled today, Your balance is ksh ${customer.closingBalance}. Please pay immediately to avoid service disruption. Use Paybill ${paybill}, and your phone number as the account number. Inquiries? Call ${customerSupport}.`,
 
 
     }));
@@ -581,6 +607,12 @@ const billReminderForAll = async (req, res) => {
         status: 'ACTIVE', tenantId,// Ensure customer is active
         closingBalance: { lt: prisma.customer.monthlyCharge }, // Check if closingBalance is less than monthlyCharge
       },
+      select: { phoneNumber: true, 
+
+        firstName:true,
+        closingBalance:true,
+        monthlyCharge:true,
+},
     });
 
     if (customers.length === 0) {
@@ -589,7 +621,7 @@ const billReminderForAll = async (req, res) => {
 
     // Prepare SMS messages
     const messages = customers.map((customer) => ({
-      phoneNumber: customer.phoneNumber,
+      phoneNumber: sanitizePhoneNumber(customer.phoneNumber),
       message: `Dear ${customer.firstName},you have a pending balance of $${customer.closingBalance},Help us server you better by settling your bill.Pay via ${paybill}, your phone is the the account number `,
     }));
 
@@ -616,6 +648,12 @@ const harshBillReminder = async (req, res) => {
         status: 'ACTIVE',tenantId, // Only active customers
         closingBalance: { gt: { multiply: prisma.customer.monthlyCharge, factor: 2 } }, // Closing balance > 2x monthly charge
       },
+      select: { phoneNumber: true, 
+
+        firstName:true,
+        closingBalance:true,
+        monthlyCharge:true,
+},
     });
 
     if (customers.length === 0) {
@@ -624,7 +662,7 @@ const harshBillReminder = async (req, res) => {
 
     // Prepare harsher SMS messages
     const messages = customers.map((customer) => ({
-      phoneNumber: customer.phoneNumber,
+      phoneNumber: sanitizePhoneNumber(customer.phoneNumber),
       message: `Dear ${customer.firstName}, Please settle your pending bill of ${customer.closingBalance}. Immediate action is required to avoid service disruption. Pay via ${paybill}, your phone is the the account number`,
     }));
 
@@ -651,14 +689,20 @@ const sendToGroup = async (req, res) => {
   if (!day || !message) {
     return res.status(400).json({ error: 'Day and message are required.' });
   }
-
+  
   try {
     const customers = await prisma.customer.findMany({
-      where: { garbageCollectionDay: day.toUpperCase() },
+      where: {status: 'ACTIVE', tenantId, garbageCollectionDay: day.toUpperCase() },
+      select: { phoneNumber: true, 
+
+        firstName:true,
+        closingBalance:true,
+        monthlyCharge:true,
+},
     });
 
     const messages = customers.map((customer) => ({
-      phoneNumber: customer.phoneNumber,
+      phoneNumber: sanitizePhoneNumber(customer.phoneNumber),
       message,
     }));
 
@@ -778,7 +822,7 @@ const sendSms = async (tenantId, messages) => {
   
       // Create bulk SMS messages
       const messages = unpaidCustomers.map((customer) => ({
-        mobile: customer.phoneNumber,
+        mobile: sanitizePhoneNumber(customer.phoneNumber),
         message: `Dear ${customer.firstName}, you have an outstanding balance of ${customer.closingBalance.toFixed(
           2
         )}. Help us serve you better by always paying on time. Paybill No: ${paybill}, use your phone number as the account number. Customer support: ${customerCarePhoneNumber}.`,
@@ -898,7 +942,7 @@ const sendSms = async (tenantId, messages) => {
   
       // Create SMS messages for low balance customers
       const messages = lowBalanceCustomers.map((customer) => ({
-        mobile: customer.phoneNumber,
+        mobile: sanitizePhoneNumber(customer.phoneNumber),
         message: `Dear ${customer.firstName}, your balance is ${customer.closingBalance.toFixed(
           2
         )}. Help us serve you better by always paying on time. Paybill No:${paybill}, use your phone number as the account number. Customer support: ${customerCarePhoneNumber}.`,
@@ -970,7 +1014,7 @@ const sendSms = async (tenantId, messages) => {
   
       // Prepare messages for high balance customers
       const messages = highBalanceCustomers.map((customer) => ({
-        mobile: customer.phoneNumber,
+        mobile: sanitizePhoneNumber(customer.phoneNumber),
         message: `Dear ${customer.firstName}, your current balance is ${customer.closingBalance.toFixed(
           2
         )}, which is quite high. Help us serve you better by always paying on time. Paybill No: ${paybill}, use your phone number as the account number. Customer support: ${customerCarePhoneNumber}.`,
