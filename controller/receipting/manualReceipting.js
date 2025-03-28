@@ -3,10 +3,10 @@ const { sendSMS } = require('../sms/sms');
 
 const prisma = new PrismaClient();
 
-function generateReceiptNumber() {
-  const randomDigits = Math.floor(10000 + Math.random() * 90000);
-  return `RCPT${randomDigits}`;
-}
+// function generateReceiptNumber() {
+//   const randomDigits = Math.floor(10000 + Math.random() * 90000);
+//   return `RCPT${randomDigits}`;
+// }
 
 function generateTransactionId() {
   const randomDigits = Math.floor(10000000 + Math.random() * 90000000);
@@ -17,7 +17,6 @@ const manualCashPayment = async (req, res) => {
   const { customerId, totalAmount, modeOfPayment, paidBy, paymentId } = req.body;
   const { tenantId } = req.user;
 
-  // Validate required fields
   if (!tenantId) {
     return res.status(403).json({ message: 'Tenant ID is required to make payments.' });
   }
@@ -33,7 +32,7 @@ const manualCashPayment = async (req, res) => {
   }
 
   try {
-    // Fetch customer with closing balance
+    // Fetch customer
     const customer = await prisma.customer.findUnique({
       where: { id: customerId, tenantId },
       select: { phoneNumber: true, firstName: true, closingBalance: true },
@@ -44,9 +43,13 @@ const manualCashPayment = async (req, res) => {
     }
 
     const transactionId = generateTransactionId();
-    let availableFunds = totalAmount + (customer.closingBalance < 0 ? Math.abs(customer.closingBalance) : 0); // Include overpayment
     const receipts = [];
-    let totalPaidToInvoices = 0;
+    const updatedInvoices = [];
+
+    // Calculate new closing balance after payment
+    const oldClosingBalance = customer.closingBalance;
+    const newClosingBalanceBeforeInvoices = oldClosingBalance - totalAmount; // Payment reduces balance
+    let availableFunds = newClosingBalanceBeforeInvoices < 0 ? Math.abs(newClosingBalanceBeforeInvoices) : 0; // Overpayment available
 
     // Update or create payment record
     let updatedPayment;
@@ -78,93 +81,67 @@ const manualCashPayment = async (req, res) => {
     // Fetch unpaid or partially paid invoices
     const invoices = await prisma.invoice.findMany({
       where: { customerId, status: { in: ['UNPAID', 'PPAID'] } },
-      orderBy: { createdAt: 'asc' }, // Oldest first
+      orderBy: { createdAt: 'asc' },
     });
 
-    if (invoices.length === 0) {
-      // No invoices: Apply payment to closing balance
-      const newClosingBalance = customer.closingBalance - totalAmount;
+    // Use transaction to ensure consistency
+    await prisma.$transaction(async (tx) => {
+      if (invoices.length === 0) {
+        // No invoices: Just update closing balance
+        await tx.customer.update({
+          where: { id: customerId },
+          data: { closingBalance: newClosingBalanceBeforeInvoices },
+        });
+        receipts.push({ invoiceId: null });
+      } else {
+        // Process invoices with available funds from overpayment
+        let remainingFunds = availableFunds;
+        for (const invoice of invoices) {
+          if (remainingFunds <= 0) break;
 
-      await prisma.customer.update({
-        where: { id: customerId },
-        data: { closingBalance: newClosingBalance },
-      });
+          const invoiceDueAmount = invoice.invoiceAmount - invoice.amountPaid;
+          const paymentForInvoice = Math.min(remainingFunds, invoiceDueAmount);
 
-      receipts.push({ invoiceId: null });
+          const updatedInvoice = await tx.invoice.update({
+            where: { id: invoice.id },
+            data: {
+              amountPaid: invoice.amountPaid + paymentForInvoice,
+              status: invoice.amountPaid + paymentForInvoice >= invoice.invoiceAmount ? 'PAID' : 'PPAID',
+              closingBalance: invoice.closingBalance - paymentForInvoice, // Reflect payment in invoice balance
+            },
+          });
 
-      const balanceMessage = newClosingBalance < 0
-        ? `an overpayment of KES ${Math.abs(newClosingBalance)}`
-        : `KES ${newClosingBalance}`;
+          updatedInvoices.push(updatedInvoice);
+          receipts.push({ invoiceId: updatedInvoice.id });
+          remainingFunds -= paymentForInvoice;
+        }
 
-      const text = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ` +
-        `Your balance is ${balanceMessage}.`;
+        // Update customer closing balance (already reduced by totalAmount, adjusted by invoices)
+        const totalAppliedToInvoices = availableFunds - remainingFunds;
+        const finalClosingBalance = newClosingBalanceBeforeInvoices + totalAppliedToInvoices;
 
-      await sendSMS(tenantId, customer.phoneNumber, text);
+        await tx.customer.update({
+          where: { id: customerId },
+          data: { closingBalance: finalClosingBalance },
+        });
 
-      return res.status(201).json({
-        message: 'Payment applied to closing balance successfully. SMS notification sent.',
-        receipt: receipts,
-        newClosingBalance,
-      });
-    }
-
-    // Process invoices with available funds (payment + overpayment)
-    const updatedInvoices = [];
-    for (const invoice of invoices) {
-      if (availableFunds <= 0) break;
-
-      const invoiceDueAmount = invoice.invoiceAmount - invoice.amountPaid;
-      const paymentForInvoice = Math.min(availableFunds, invoiceDueAmount);
-
-      const updatedInvoice = await prisma.invoice.update({
-        where: { id: invoice.id },
-        data: {
-          amountPaid: invoice.amountPaid + paymentForInvoice,
-          status: invoice.amountPaid + paymentForInvoice >= invoice.invoiceAmount ? 'PAID' : 'PPAID',
-        },
-      });
-
-      updatedInvoices.push(updatedInvoice);
-      receipts.push({ invoiceId: updatedInvoice.id });
-      totalPaidToInvoices += paymentForInvoice;
-      availableFunds -= paymentForInvoice;
-    }
-
-    // Calculate new closing balance: original balance - total payment + amount applied to invoices
-    const newClosingBalance = customer.closingBalance - totalAmount + totalPaidToInvoices;
-
-    // Update customer's closing balance
-    await prisma.customer.update({
-      where: { id: customerId },
-      data: { closingBalance: newClosingBalance },
-    });
-
-    if (availableFunds > 0) {
-      receipts.push({
-        invoiceId: null,
-        description: `Remaining KES ${availableFunds} applied to overpayment`,
-      });
-    }
-
-    // Create receipt
-    const receiptNumber = generateReceiptNumber();
-    const receipt = await prisma.receipt.create({
-      data: {
-        customerId,
-        tenantId,
-        amount: totalAmount,
-        modeOfPayment,
-        receiptNumber,
-        paymentId: updatedPayment.id,
-        paidBy,
-        createdAt: new Date(),
-      },
+        if (remainingFunds > 0) {
+          receipts.push({
+            invoiceId: null,
+            description: `Remaining KES ${remainingFunds} as overpayment`,
+          });
+        }
+      }
     });
 
     // SMS Notification
-    const balanceMessage = newClosingBalance < 0
-      ? `an overpayment of KES ${Math.abs(newClosingBalance)}`
-      : `KES ${newClosingBalance}`;
+    const finalClosingBalance = invoices.length > 0 
+      ? newClosingBalanceBeforeInvoices + (availableFunds - (availableFunds - updatedInvoices.reduce((sum, inv) => sum + (inv.invoiceAmount - inv.amountPaid), 0)))
+      : newClosingBalanceBeforeInvoices;
+
+    const balanceMessage = finalClosingBalance < 0
+      ? `an overpayment of KES ${Math.abs(finalClosingBalance)}`
+      : `KES ${finalClosingBalance}`;
     const text = `Dear ${customer.firstName}, payment of KES ${totalAmount} received successfully. ` +
       `Your balance is ${balanceMessage}. Thank you.`;
 
@@ -172,10 +149,10 @@ const manualCashPayment = async (req, res) => {
 
     res.status(201).json({
       message: 'Payment and receipt created successfully, SMS notification sent.',
-      receipt,
+      receipt: receipts,
       updatedPayment,
       updatedInvoices,
-      newClosingBalance,
+      newClosingBalance: finalClosingBalance,
       paymentId: updatedPayment.id,
     });
   } catch (error) {
