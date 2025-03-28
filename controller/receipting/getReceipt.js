@@ -19,7 +19,8 @@ const getReceipts = async (req, res) => {
         prisma.receipt.findMany({
           where: { tenantId },
           skip, // Offset for pagination
-          take: limit, // Limit the number of records
+          take: limit,
+          orderBy: { createdAt: 'desc' }, 
           include: {
             payment: true, // Include payment details
             customer: {
@@ -36,9 +37,7 @@ const getReceipts = async (req, res) => {
               },
             },
           },
-          orderBy: {
-            id: 'desc', // Order by ID in descending order
-          },
+        
         }),
         prisma.receipt.count({ where: { tenantId } }), // Get total count for pagination
       ]);
