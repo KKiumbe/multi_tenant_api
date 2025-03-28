@@ -229,7 +229,7 @@ async function processInvoices(paymentAmount, customerId, paymentId, tenantId) {
 
     // Case 1: No unpaid or partially paid invoices
     if (invoices.length === 0) {
-        const newClosingBalance = Math.max(currentBalance - paymentAmount, 0);
+        const newClosingBalance = currentBalance - paymentAmount;
 
         await prisma.customer.update({
             where: { id: customerId },
