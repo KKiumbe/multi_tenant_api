@@ -128,6 +128,7 @@ const getAllPayments = async (req, res) => {
     const [payments, total] = await Promise.all([
       prisma.payment.findMany({
         where: { tenantId },
+        orderBy: { createdAt: 'desc' }, 
         skip,
         take: limit,
         include: {
@@ -299,6 +300,7 @@ const getUnreceiptedPayments = async (req, res) => {
           },
           skip,
           take: limit,
+          orderBy: { createdAt: 'desc' }, 
        
         }),
         prisma.payment.count({
