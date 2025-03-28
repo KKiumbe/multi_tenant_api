@@ -36,27 +36,121 @@ async function getCurrentMonthBill(customerId) {
 
 
 
-async function generateInvoicesforAll() {
+// Endpoint handler
+async function generateInvoicesForAll(req, res) {
+  const { tenantId } = req.user;
   const currentMonth = new Date().getMonth() + 1;
 
   try {
     console.time('Find Customers');
     const customers = await prisma.customer.findMany({
-      where: { status: 'ACTIVE' },
+      where: { 
+        status: 'ACTIVE',
+        tenantId: tenantId
+      },
+      select: { // Include necessary fields
+        id: true,
+        tenantId: true,
+        monthlyCharge: true,
+        closingBalance: true
+      }
     });
     console.timeEnd('Find Customers');
-    console.log(`Found ${customers.length} active customers.`);
+    console.log(`Found ${customers.length} active customers for tenant ${tenantId}.`);
 
-    // Process all customers
-    const allInvoices = await processCustomerBatchforAll(customers, currentMonth);
+    const allInvoices = await processCustomerBatchForAll(customers, currentMonth);
 
-    console.log(`Generated ${allInvoices.length} invoices.`);
-    return allInvoices; // Return result for logging/debugging
+    console.log(`Generated ${allInvoices.length} invoices for tenant ${tenantId}.`);
+    
+    res.status(200).json({
+      success: true,
+      count: allInvoices.length,
+      invoices: allInvoices
+    });
   } catch (error) {
-    console.error('Error generating invoices:', error);
-    throw error; // Ensure cron job logs the error properly
+    console.error(`Error generating invoices for tenant ${tenantId}:`, error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate invoices'
+    });
+    throw error;
   }
 }
+
+
+
+async function processCustomerBatchForAll(customers, currentMonth) {
+  const invoices = [];
+  const year = new Date().getFullYear();
+
+  for (const customer of customers) {
+    // Generate unique invoice number
+    const invoiceNumber = generateInvoiceNumber(customer.id);
+
+    // Set invoice period to the 1st of the current month
+    const invoicePeriod = new Date(year, currentMonth - 1, 1);
+
+    // Get invoice amount from customer's monthly charge
+    const invoiceAmount = customer?.monthlyCharge || 0;
+
+    // Fetch current closing balance from customer (previous balance)
+    const previousClosingBalance = customer?.closingBalance || 0;
+
+    // Variables for invoice status and amount paid
+    let status = 'UNPAID';
+    let amountPaid = 0;
+    let newClosingBalance = previousClosingBalance + invoiceAmount;
+
+    // Check if customer has a negative closing balance (credit)
+    if (previousClosingBalance < 0) {
+      const availableCredit = Math.abs(previousClosingBalance); // Credit before invoice
+
+      if (availableCredit >= invoiceAmount) {
+        // Full credit covers invoice
+        status = 'PAID';
+        amountPaid = invoiceAmount;
+        newClosingBalance = previousClosingBalance + invoiceAmount; // Reduces credit
+      } else {
+        // Partial credit covers invoice
+        status = 'PPAID';
+        amountPaid = availableCredit; // Only the credit amount is paid
+        newClosingBalance = previousClosingBalance + invoiceAmount; // Full invoice applied
+      }
+    }
+
+    // Build invoice object matching the schema
+    const invoice = {
+      id: undefined, // Let Prisma generate UUID
+      tenantId: customer.tenantId, // From customer relation
+      customerId: customer.id,
+      invoicePeriod: invoicePeriod,
+      invoiceNumber: invoiceNumber,
+      invoiceAmount: invoiceAmount,
+      closingBalance: newClosingBalance, // Updated balance after applying invoice
+      status: status,
+      isSystemGenerated: true, // Auto-generated invoice
+      createdAt: new Date(), // Current timestamp
+      amountPaid: amountPaid,
+    };
+
+    invoices.push(invoice);
+  }
+
+  // Batch insert invoices into the database
+  try {
+    await prisma.invoice.createMany({
+      data: invoices,
+      skipDuplicates: true, // Safety net for invoiceNumber uniqueness
+    });
+    return invoices; // Return generated invoices for logging or response
+  } catch (error) {
+    console.error('Error creating invoices in batch:', error);
+    throw error;
+  }
+}
+
+
+
 
 
 
@@ -886,5 +980,5 @@ module.exports = {
   getCurrentMonthBill,
   generateInvoicesByDay,
   generateInvoicesPerTenant,searchInvoices,
-  generateInvoicesforAll
+  generateInvoicesForAll 
 };

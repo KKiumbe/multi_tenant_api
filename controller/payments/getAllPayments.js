@@ -299,13 +299,7 @@ const getUnreceiptedPayments = async (req, res) => {
           },
           skip,
           take: limit,
-          include: {
-            receipt: {
-              include: {
-                receiptInvoices: { include: { invoice: true } },
-              },
-            },
-          },
+       
         }),
         prisma.payment.count({
           where: {
