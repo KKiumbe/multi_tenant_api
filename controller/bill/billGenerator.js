@@ -36,6 +36,78 @@ async function getCurrentMonthBill(customerId) {
 
 
 
+
+
+
+// Process customer batch for invoices and update customer balances
+async function processCustomerBatchForAll(customers, currentMonth) {
+  const invoices = [];
+  const year = new Date().getFullYear();
+
+  for (const customer of customers) {
+    const invoiceNumber = generateInvoiceNumber(customer.id);
+    const invoicePeriod = new Date(year, currentMonth - 1, 1);
+    const invoiceAmount = customer?.monthlyCharge || 0;
+    const previousClosingBalance = customer?.closingBalance || 0;
+
+    let status = 'UNPAID';
+    let amountPaid = 0;
+    let newClosingBalance = previousClosingBalance + invoiceAmount;
+
+    if (previousClosingBalance < 0) {
+      const availableCredit = Math.abs(previousClosingBalance);
+      if (availableCredit >= invoiceAmount) {
+        status = 'PAID';
+        amountPaid = invoiceAmount;
+        newClosingBalance = previousClosingBalance + invoiceAmount;
+      } else {
+        status = 'PPAID';
+        amountPaid = availableCredit;
+        newClosingBalance = previousClosingBalance + invoiceAmount;
+      }
+    }
+
+    const invoice = {
+      id: undefined,
+      tenantId: customer.tenantId,
+      customerId: customer.id,
+      invoicePeriod: invoicePeriod,
+      invoiceNumber: invoiceNumber,
+      invoiceAmount: invoiceAmount,
+      closingBalance: newClosingBalance,
+      status: status,
+      isSystemGenerated: true,
+      createdAt: new Date(),
+      amountPaid: amountPaid,
+    };
+
+    invoices.push(invoice);
+  }
+
+  // Use a transaction to create invoices and update customer balances atomically
+  try {
+    const result = await prisma.$transaction([
+      // Step 1: Create all invoices
+      prisma.invoice.createMany({
+        data: invoices,
+        skipDuplicates: true,
+      }),
+      // Step 2: Update customer closing balances
+      ...invoices.map(invoice =>
+        prisma.customer.update({
+          where: { id: invoice.customerId },
+          data: { closingBalance: invoice.closingBalance },
+        })
+      ),
+    ]);
+
+    return invoices; // Return generated invoices for response
+  } catch (error) {
+    console.error('Error in transaction (invoices and customer updates):', error);
+    throw error;
+  }
+}
+
 // Endpoint handler
 async function generateInvoicesForAll(req, res) {
   const { tenantId } = req.user;
@@ -48,7 +120,7 @@ async function generateInvoicesForAll(req, res) {
         status: 'ACTIVE',
         tenantId: tenantId
       },
-      select: { // Include necessary fields
+      select: {
         id: true,
         tenantId: true,
         monthlyCharge: true,
@@ -60,7 +132,7 @@ async function generateInvoicesForAll(req, res) {
 
     const allInvoices = await processCustomerBatchForAll(customers, currentMonth);
 
-    console.log(`Generated ${allInvoices.length} invoices for tenant ${tenantId}.`);
+    console.log(`Generated ${allInvoices.length} invoices and updated customer balances for tenant ${tenantId}.`);
     
     res.status(200).json({
       success: true,
@@ -71,83 +143,12 @@ async function generateInvoicesForAll(req, res) {
     console.error(`Error generating invoices for tenant ${tenantId}:`, error);
     res.status(500).json({
       success: false,
-      error: 'Failed to generate invoices'
+      error: 'Failed to generate invoices and update balances'
     });
     throw error;
   }
 }
 
-
-
-async function processCustomerBatchForAll(customers, currentMonth) {
-  const invoices = [];
-  const year = new Date().getFullYear();
-
-  for (const customer of customers) {
-    // Generate unique invoice number
-    const invoiceNumber = generateInvoiceNumber(customer.id);
-
-    // Set invoice period to the 1st of the current month
-    const invoicePeriod = new Date(year, currentMonth - 1, 1);
-
-    // Get invoice amount from customer's monthly charge
-    const invoiceAmount = customer?.monthlyCharge || 0;
-
-    // Fetch current closing balance from customer (previous balance)
-    const previousClosingBalance = customer?.closingBalance || 0;
-
-    // Variables for invoice status and amount paid
-    let status = 'UNPAID';
-    let amountPaid = 0;
-    let newClosingBalance = previousClosingBalance + invoiceAmount;
-
-    // Check if customer has a negative closing balance (credit)
-    if (previousClosingBalance < 0) {
-      const availableCredit = Math.abs(previousClosingBalance); // Credit before invoice
-
-      if (availableCredit >= invoiceAmount) {
-        // Full credit covers invoice
-        status = 'PAID';
-        amountPaid = invoiceAmount;
-        newClosingBalance = previousClosingBalance + invoiceAmount; // Reduces credit
-      } else {
-        // Partial credit covers invoice
-        status = 'PPAID';
-        amountPaid = availableCredit; // Only the credit amount is paid
-        newClosingBalance = previousClosingBalance + invoiceAmount; // Full invoice applied
-      }
-    }
-
-    // Build invoice object matching the schema
-    const invoice = {
-      id: undefined, // Let Prisma generate UUID
-      tenantId: customer.tenantId, // From customer relation
-      customerId: customer.id,
-      invoicePeriod: invoicePeriod,
-      invoiceNumber: invoiceNumber,
-      invoiceAmount: invoiceAmount,
-      closingBalance: newClosingBalance, // Updated balance after applying invoice
-      status: status,
-      isSystemGenerated: true, // Auto-generated invoice
-      createdAt: new Date(), // Current timestamp
-      amountPaid: amountPaid,
-    };
-
-    invoices.push(invoice);
-  }
-
-  // Batch insert invoices into the database
-  try {
-    await prisma.invoice.createMany({
-      data: invoices,
-      skipDuplicates: true, // Safety net for invoiceNumber uniqueness
-    });
-    return invoices; // Return generated invoices for logging or response
-  } catch (error) {
-    console.error('Error creating invoices in batch:', error);
-    throw error;
-  }
-}
 
 
 
