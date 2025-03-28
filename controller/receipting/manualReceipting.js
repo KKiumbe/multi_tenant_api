@@ -45,11 +45,10 @@ const manualCashPayment = async (req, res) => {
     const transactionId = generateTransactionId();
     const receipts = [];
     const updatedInvoices = [];
+   
 
-    // Calculate new closing balance after payment
-    const oldClosingBalance = customer.closingBalance;
-    const newClosingBalanceBeforeInvoices = oldClosingBalance - totalAmount; // Payment reduces balance
-    let availableFunds = newClosingBalanceBeforeInvoices < 0 ? Math.abs(newClosingBalanceBeforeInvoices) : 0; // Overpayment available
+
+    let finalClosingBalance = customer.closingBalance - totalAmount; 
 
     // Update or create payment record
     let updatedPayment;
@@ -90,12 +89,12 @@ const manualCashPayment = async (req, res) => {
         // No invoices: Just update closing balance
         await tx.customer.update({
           where: { id: customerId },
-          data: { closingBalance: newClosingBalanceBeforeInvoices },
+          data: { closingBalance: finalClosingBalance },
         });
         receipts.push({ invoiceId: null });
       } else {
         // Process invoices with available funds from overpayment
-        let remainingFunds = availableFunds;
+        let remainingFunds = totalAmount;
         for (const invoice of invoices) {
           if (remainingFunds <= 0) break;
 
@@ -117,8 +116,7 @@ const manualCashPayment = async (req, res) => {
         }
 
         // Update customer closing balance (already reduced by totalAmount, adjusted by invoices)
-        const totalAppliedToInvoices = availableFunds - remainingFunds;
-        const finalClosingBalance = newClosingBalanceBeforeInvoices + totalAppliedToInvoices;
+        finalClosingBalance = customer.closingBalance - totalAmount;
 
         await tx.customer.update({
           where: { id: customerId },
@@ -134,10 +132,9 @@ const manualCashPayment = async (req, res) => {
       }
     });
 
-    // SMS Notification
-    const finalClosingBalance = invoices.length > 0 
-      ? newClosingBalanceBeforeInvoices + (availableFunds - (availableFunds - updatedInvoices.reduce((sum, inv) => sum + (inv.invoiceAmount - inv.amountPaid), 0)))
-      : newClosingBalanceBeforeInvoices;
+
+   
+ 
 
     const balanceMessage = finalClosingBalance < 0
       ? `an overpayment of KES ${Math.abs(finalClosingBalance)}`
