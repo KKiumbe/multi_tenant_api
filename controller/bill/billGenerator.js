@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const { json } = require('express');
 //const { GarbageCollectionDay } = require('./enum.js'); // Adjust the path if needed
 
 const schedule = require('node-schedule'); // For scheduling jobs
@@ -914,6 +915,115 @@ async function getInvoiceDetails(req, res) {
 }
 
 
+async function cancelCustomerInvoice(req, res) {
+  const { id } = req.params;
+  const { tenantId, user } = req.user; // Assuming userId from auth middleware
+console.log(`this is userid ${JSON.stringify(req.user)}`);
+  try {
+    // Validate invoiceId
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({ message: 'Invalid invoice ID' });
+    }
+
+    // Fetch the invoice with customer details
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: id },
+      include: { customer: true },
+    });
+
+    if (!invoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+
+    // Permission check using tenantId scalar field
+    if (!tenantId ) {
+      return res.status(403).json({ message: 'You are not authorized to cancel this invoice' });
+    }
+
+    // Check if invoice can be canceled
+    if (invoice.status === 'CANCELLED') {
+      return res.status(400).json({ message: 'Invoice is already canceled' });
+    }
+    if (invoice.status === 'PAID') {
+      return res.status(400).json({ message: 'Cannot cancel a fully paid invoice' });
+    }
+
+    // Use a transaction to update invoice, customer, and create audit log
+    const [updatedInvoice, updatedCustomer] = await prisma.$transaction([
+      // Update invoice status to CANCELLED
+    
+      // Update customer's closingBalance
+      prisma.invoice.update({
+        where: { id: id },
+        data: {
+          status: 'CANCELLED',
+          tenant: {
+            connect: { id: tenantId }, // Connect invoice to the correct tenant
+          },
+        },
+      }),
+      
+
+      prisma.customer.update({
+        where: { id: invoice.customerId },
+        data: {
+          closingBalance: {
+            decrement: invoice.invoiceAmount,
+          },
+          tenant: {
+            connect: { id: tenantId }, // Connect invoice to the correct tenant
+          },
+        },
+      }),
+      
+      // Create audit log entry
+      prisma.auditLog.create({
+        data: {
+          tenant: {
+            connect: { id: tenantId }, // Connect invoice to the correct tenant
+          },
+          user:  {
+            connect: { id: user }
+          },
+          action: 'CANCEL',
+          resource: 'INVOICE',
+          details: {
+            invoiceId: id,
+            invoiceNumber: invoice.invoiceNumber,
+            previousStatus: invoice.status,
+            customerId: invoice.customerId,
+            invoiceAmount: invoice.invoiceAmount,
+          },
+          description: `Invoice ${invoice.invoiceNumber} canceled by user ${user}`,
+        },
+      }),
+    ]);
+
+    // Return success response
+    return res.status(200).json({
+      message: 'Invoice canceled successfully',
+      invoice: {
+        id: updatedInvoice.id,
+        invoiceNumber: updatedInvoice.invoiceNumber,
+        status: updatedInvoice.status,
+     
+      },
+      customer: {
+        id: updatedCustomer.id,
+        firstName: updatedCustomer.firstName,
+        lastName: updatedCustomer.lastName,
+        closingBalance: updatedCustomer.closingBalance,
+      },
+    });
+  } catch (error) {
+    console.error('Error canceling invoice:', error);
+    return res.status(500).json({ message: 'Failed to cancel invoice' });
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+
 
 
 
@@ -1012,5 +1122,5 @@ module.exports = {
   getCurrentMonthBill,
   generateInvoicesByDay,
   generateInvoicesPerTenant,searchInvoices,
-  generateInvoicesForAll 
+  generateInvoicesForAll ,cancelCustomerInvoice
 };

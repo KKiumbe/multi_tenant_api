@@ -249,8 +249,8 @@ const sendBills = async (req, res) => {
 
 
     const messages = activeCustomers.map((customer) => ({
-      mobile: sanitizePhoneNumber(customer.phoneNumber), // Assumes sanitizePhoneNumber exists
-      message: `Dear ${customer.firstName},your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}.Use paybill No:${paybill};your phone number,is the account number.Inquiries? call:${customerSupport}.Thank you for being a loyal customer.`, // Use the message from req.body directly
+      mobile: sanitizePhoneNumber(customer.phoneNumber), 
+      message:`Dear ${customer.firstName}, your bill is KES ${customer.monthlyCharge},balance KES ${customer.closingBalance}.Paybill:${paybill},acct:your phone number.inquiries?:${customerSupport}`
     }));
 
     const smsResponses = await sendSms(tenantId,messages);
@@ -304,8 +304,9 @@ const sendBillsEstate = async (req, res) => {
     // Prepare SMS messages for the customers in the specified estate
 
     const messages = activeCustomers.map((customer) => ({
-      mobile: sanitizePhoneNumber(customer.phoneNumber), // Assumes sanitizePhoneNumber exists
-      message: `Dear ${customer.firstName}, your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}. Use paybill No: ${paybill}; your phone number is the account number. Inquiries? Call: ${customerSupport}. Thank you for being a loyal customer.` // Use the message from req.body directly
+      mobile: sanitizePhoneNumber(customer.phoneNumber),
+      message:`Dear ${customer.firstName}, your bill is KES ${customer.monthlyCharge}, balance KES ${customer.closingBalance}. Paybill: ${paybill}, acct: your phone number. inquiries?: ${customerSupport}`
+
     }));
 
    
@@ -492,10 +493,9 @@ const sendBill = async (req, res) => {
       return res.status(404).json({ error: 'Customer not found.' });
     }
 
-    // Prepare the message
-    const message = `Dear ${customer.firstName}, your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}.Use paybill No :${paybill} ;your phone number is the account number.Inquiries? call: ${customerSupportPhoneNumber}.Thank you for being a loyal customer.`;
-    // Call sendSms with an array
+   
 
+  const message = `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance KES ${customer.closingBalance}.Paybill:${paybill},acct:your phone number.inquiries?:${customerSupportPhoneNumber}`
 
 
     const smsResponses = await sendSMS(tenantId,
@@ -534,8 +534,8 @@ const sendBillPerDay = async (req, res) => {
     const messages = customers.map((customer) => ({
       mobile: sanitizePhoneNumber(customer.phoneNumber),
 
-     message : `Dear ${customer.firstName}, your current balance is KES ${customer.closingBalance}. Your current Month bill is ${customer.monthlyCharge}.Use paybill No :${paybill} ;your phone number is the account number.Inquiries? call: ${customerSupport}.Thank you for being a loyal customer.`
 
+     message : `Dear ${customer.firstName}, your bill is KES ${customer.monthlyCharge}, balance KES ${customer.closingBalance}. Paybill: ${paybill}, acct: your phone number. inquiries?: ${customerSupport}`
 
       ,
     }));
@@ -584,7 +584,7 @@ const billReminderPerDay = async (req, res) => {
     // Prepare SMS messages
     const messages = customers.map((customer) => ({
       mobile: sanitizePhoneNumber(customer.phoneNumber),
-      message: `Dear ${customer.firstName}, your garbage collection is scheduled today, Your balance is ksh ${customer.closingBalance}. Please pay immediately to avoid service disruption. Use Paybill ${paybill}, and your phone number as the account number. Inquiries? Call ${customerSupport}.`,
+      message : `Dear ${customer.firstName}, your bill is KES ${customer.monthlyCharge}, balance KES ${customer.closingBalance}.Paybill: ${paybill},acct:your phone number.inquiries?:${customerSupport}`
 
 
     }));
@@ -626,7 +626,7 @@ const billReminderForAll = async (req, res) => {
     // Prepare SMS messages
     const messages = customers.map((customer) => ({
       mobile: sanitizePhoneNumber(customer.phoneNumber),
-      message: `Dear ${customer.firstName},you have a pending balance of $${customer.closingBalance},Help us server you better by settling your bill.Pay via ${paybill}, your phone is the the account number `,
+      message: `Dear ${customer.firstName},you have a balance of KSH ${customer.closingBalance},settle your bill now to avoid service disruption.Use paybil ${paybill},account,your phone number `,
     }));
 
     // Send SMS using the sendSms service
@@ -645,6 +645,7 @@ const billReminderForAll = async (req, res) => {
 const harshBillReminder = async (req, res) => {
     const { tenantId } = req.user; 
     const paybill = await getShortCode(tenantId);
+    const { customerSupportPhoneNumber:customerSupport } = await getSMSConfigForTenant(tenantId);
   try {
     // Fetch active customers with a closingBalance greater than 2x their monthlyCharge
     const customers = await prisma.customer.findMany({
@@ -667,7 +668,7 @@ const harshBillReminder = async (req, res) => {
     // Prepare harsher SMS messages
     const messages = customers.map((customer) => ({
       mobile: sanitizePhoneNumber(customer.phoneNumber),
-      message: `Dear ${customer.firstName}, Please settle your pending bill of ${customer.closingBalance}. Immediate action is required to avoid service disruption. Pay via ${paybill}, your phone is the the account number`,
+      message: `Dear ${customer.firstName},Please settle your bill of ${customer.closingBalance}.Immediate action is required to avoid service disruption. Pay via ${paybill}, your phone number is the the account number. Inquiries? ${customerSupport}`,
     }));
 
     // Send SMS using the sendSms service
@@ -827,12 +828,10 @@ const sendSms = async (tenantId, messages) => {
       // Create bulk SMS messages
       const messages = unpaidCustomers.map((customer) => ({
         mobile: sanitizePhoneNumber(customer.phoneNumber),
-        message: `Dear ${customer.firstName}, you have an outstanding balance of ${customer.closingBalance.toFixed(
-          2
-        )}. Help us serve you better by always paying on time. Paybill No: ${paybill}, use your phone number as the account number. Customer support: ${customerSupportPhoneNumber}.`,
+        message : `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance KES ${customer.closingBalance}.Paybill: ${paybill}, acct: your phone number. inquiries?: ${customerSupportPhoneNumber}`,
       }));
   
-      console.log(`Prepared ${messages.length} messages for unpaid customers.`);
+
   
       // Check if there are messages to send
       if (messages.length === 0) {
@@ -889,7 +888,9 @@ const sendSms = async (tenantId, messages) => {
   
       const messages = customersAboveBalance.map((customer) => ({
         mobile: sanitizePhoneNumber(customer.phoneNumber),
-        message: `Dear ${customer.firstName}, your outstanding balance is KSH.${customer.closingBalance.toFixed(2)}, your monthly charge is KSH.${customer.monthlyCharge.toFixed(2)}. Use Paybill No: ${paybill}, use your phone number as the account number. For any concern, call us on: ${sanitizePhoneNumber(customerCarePhoneNumber)}.`,
+
+        message : `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance KES ${customer.closingBalance}.Paybill:${paybill},acct: your phone number.Inquiries?:${customerCarePhoneNumber}`
+
       }));
   
       console.log("📞 Prepared messages:", messages);
@@ -949,9 +950,8 @@ const sendSms = async (tenantId, messages) => {
       // Create SMS messages for low balance customers
       const messages = lowBalanceCustomers.map((customer) => ({
         mobile: sanitizePhoneNumber(customer.phoneNumber),
-        message: `Dear ${customer.firstName}, your balance is ${customer.closingBalance.toFixed(
-          2
-        )}. Help us serve you better by always paying on time. Paybill No:${paybill}, use your phone number as the account number. Customer support: ${customerSupportPhoneNumber}.`,
+
+        message : `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance KES ${customer.closingBalance}.Paybill:${paybill}, acct: your phone number. inquiries?: ${customerSupportPhoneNumber}`,
       }));
   
       console.log(`Prepared ${messages.length} messages for low balance customers.`);
@@ -1021,12 +1021,11 @@ const sendSms = async (tenantId, messages) => {
       // Prepare messages for high balance customers
       const messages = highBalanceCustomers.map((customer) => ({
         mobile: sanitizePhoneNumber(customer.phoneNumber),
-        message: `Dear ${customer.firstName}, your current balance is ${customer.closingBalance.toFixed(
-          2
-        )}, which is quite high. Help us serve you better by always paying on time. Paybill No: ${paybill}, use your phone number as the account number. Customer support: ${customerSupportPhoneNumber}.`,
+        message : `Dear ${customer.firstName},you have an outstanding balance of KES ${customer.closingBalance}.Paybill:${paybill},acct:your phone number.inquiries?:${customerSupportPhoneNumber}`,
+    
       }));
   
-      console.log(`Prepared ${messages.length} messages for high balance customers.`);
+    
   
       // Check if there are messages to send
       if (messages.length === 0) {
