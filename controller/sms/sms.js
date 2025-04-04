@@ -250,7 +250,13 @@ const sendBills = async (req, res) => {
 
     const messages = activeCustomers.map((customer) => ({
       mobile: sanitizePhoneNumber(customer.phoneNumber), 
-      message:`Dear ${customer.firstName}, your bill is KES ${customer.monthlyCharge},balance KES ${customer.closingBalance}.Paybill:${paybill},acct:your phone number.inquiries?:${customerSupport}`
+
+      message: `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance ${
+        customer.closingBalance < 0
+          ? "overpayment of KES" + Math.abs(customer.closingBalance)
+          : "KES " + customer.closingBalance
+      }.Paybill: ${paybill},acct:your phone number.Inquiries? ${customerSupport}`
+
     }));
 
     const smsResponses = await sendSms(tenantId,messages);
@@ -305,7 +311,13 @@ const sendBillsEstate = async (req, res) => {
 
     const messages = activeCustomers.map((customer) => ({
       mobile: sanitizePhoneNumber(customer.phoneNumber),
-      message:`Dear ${customer.firstName}, your bill is KES ${customer.monthlyCharge}, balance KES ${customer.closingBalance}. Paybill: ${paybill}, acct: your phone number. inquiries?: ${customerSupport}`
+   
+      message: `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance ${
+        customer.closingBalance < 0
+          ? "overpayment of KES" + Math.abs(customer.closingBalance)
+          : "KES " + customer.closingBalance
+      }.Paybill: ${paybill},acct:your phone number.Inquiries? ${customerSupport}`
+
 
     }));
 
@@ -495,8 +507,11 @@ const sendBill = async (req, res) => {
 
    
 
-  const message = `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance KES ${customer.closingBalance}.Paybill:${paybill},acct:your phone number.inquiries?:${customerSupportPhoneNumber}`
-
+    const message = `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance ${
+      customer.closingBalance < 0
+        ? "overpayment of KES" + Math.abs(customer.closingBalance)
+        : "KES " + customer.closingBalance
+    }.Paybill: ${paybill},acct:your phone number.Inquiries? ${customerSupportPhoneNumber}`
 
     const smsResponses = await sendSMS(tenantId,
        customer.phoneNumber, message
@@ -535,8 +550,11 @@ const sendBillPerDay = async (req, res) => {
       mobile: sanitizePhoneNumber(customer.phoneNumber),
 
 
-     message : `Dear ${customer.firstName}, your bill is KES ${customer.monthlyCharge}, balance KES ${customer.closingBalance}. Paybill: ${paybill}, acct: your phone number. inquiries?: ${customerSupport}`
-
+      message: `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance ${
+        customer.closingBalance < 0
+          ? "overpayment of KES" + Math.abs(customer.closingBalance)
+          : "KES " + customer.closingBalance
+      }.Paybill: ${paybill},acct:your phone number.Inquiries? ${customerSupport}`
       ,
     }));
 
@@ -584,8 +602,11 @@ const billReminderPerDay = async (req, res) => {
     // Prepare SMS messages
     const messages = customers.map((customer) => ({
       mobile: sanitizePhoneNumber(customer.phoneNumber),
-      message : `Dear ${customer.firstName}, your bill is KES ${customer.monthlyCharge}, balance KES ${customer.closingBalance}.Paybill: ${paybill},acct:your phone number.inquiries?:${customerSupport}`
-
+      message: `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance ${
+        customer.closingBalance < 0
+          ? "overpayment of KES" + Math.abs(customer.closingBalance)
+          : "KES " + customer.closingBalance
+      }.Paybill: ${paybill},acct:your phone number.Inquiries? ${customerSupport}`
 
     }));
 
@@ -602,21 +623,23 @@ const billReminderPerDay = async (req, res) => {
 
 
 const billReminderForAll = async (req, res) => {
-    const { tenantId } = req.user; 
-    const paybill = await getShortCode(tenantId);
+  const { tenantId } = req.user;
+  const paybill = await getShortCode(tenantId);
+
   try {
-    // Fetch all active customers with a closingBalance less than monthlyCharge
+    // Fetch all active customers with a positive closingBalance (exclude overpayments)
     const customers = await prisma.customer.findMany({
       where: {
-        status: 'ACTIVE', tenantId,// Ensure customer is active
-        closingBalance: { lt: prisma.customer.monthlyCharge }, // Check if closingBalance is less than monthlyCharge
+        status: 'ACTIVE',
+        tenantId, // Ensure customer is active and belongs to tenant
+        closingBalance: { gt: 0 }, // Only include customers with a positive balance (excludes overpayments)
       },
-      select: { phoneNumber: true, 
-
-        firstName:true,
-        closingBalance:true,
-        monthlyCharge:true,
-},
+      select: {
+        phoneNumber: true,
+        firstName: true,
+        closingBalance: true,
+        monthlyCharge: true,
+      },
     });
 
     if (customers.length === 0) {
@@ -626,11 +649,11 @@ const billReminderForAll = async (req, res) => {
     // Prepare SMS messages
     const messages = customers.map((customer) => ({
       mobile: sanitizePhoneNumber(customer.phoneNumber),
-      message: `Dear ${customer.firstName},you have a balance of KSH ${customer.closingBalance},settle your bill now to avoid service disruption.Use paybil ${paybill},account,your phone number `,
+      message: `Dear ${customer.firstName}, you have a balance of KSH ${customer.closingBalance}, settle your bill now to avoid service disruption. Use paybill ${paybill}, account, your phone number`,
     }));
 
     // Send SMS using the sendSms service
-    const smsResponses = await sendSms(tenantId,messages);
+    const smsResponses = await sendSms(tenantId, messages);
 
     // Respond with success message
     res.status(200).json({ message: 'Bill reminders sent to all customers successfully.', smsResponses });
@@ -795,73 +818,68 @@ const sendSms = async (tenantId, messages) => {
   
 
 
-  const sendUnpaidCustomers = async (req, res) => {
-    try {
-      const { tenantId } = req.user; // Extract tenant ID from the request
-      const paybill = await getShortCode(tenantId);
-      const { customerSupportPhoneNumber } = await getSMSConfigForTenant(tenantId);
-      if (!tenantId) {
-        throw new Error('Tenant ID is required');
-      }
-  
-      console.log(`Fetching unpaid customers for tenant ID: ${tenantId}`);
-  
-      // Fetch customers for the specific tenant with an active status
-      const activeCustomers = await prisma.customer.findMany({
-        where: {
-          status: 'ACTIVE',
-          tenantId: tenantId, // Ensure customers belong to the specified tenant
-        },
-        select: {
-          phoneNumber: true,
-          firstName: true,
-          closingBalance: true,
-          monthlyCharge: true,
-        },
-      });
-  
-      // Filter customers with unpaid balances
-      const unpaidCustomers = activeCustomers.filter(
-        (customer) => customer.closingBalance > 0
-      );
-  
-      // Create bulk SMS messages
-      const messages = unpaidCustomers.map((customer) => ({
-        mobile: sanitizePhoneNumber(customer.phoneNumber),
-        message : `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance KES ${customer.closingBalance}.Paybill: ${paybill}, acct: your phone number. inquiries?: ${customerSupportPhoneNumber}`,
-      }));
-  
+const sendUnpaidCustomers = async (req, res) => {
+  try {
+    const { tenantId } = req.user; // Extract tenant ID from the request
+    const paybill = await getShortCode(tenantId);
+    const { customerSupportPhoneNumber } = await getSMSConfigForTenant(tenantId);
 
-  
-      // Check if there are messages to send
-      if (messages.length === 0) {
-        return res.status(404).json({ success: false, message: 'No unpaid customers found.' });
-      }
-  
-      // Send bulk SMS
-      try {
-        await sendSms(tenantId, messages);
-        console.log('Bulk SMS sent successfully.');
-        res.status(200).json({
-          success: true,
-          message: 'SMS sent to unpaid customers successfully.',
-          count: messages.length,
-        });
-      } catch (smsError) {
-        console.error('Failed to send bulk SMS:', smsError.message);
-        res.status(500).json({
-          success: false,
-          message: 'Failed to send SMS to unpaid customers.',
-        });
-      }
-    } catch (error) {
-      console.error('Error in sendUnpaidCustomers:', error.message);
+    if (!tenantId) {
+      throw new Error('Tenant ID is required');
+    }
+
+    console.log(`Fetching unpaid customers for tenant ID: ${tenantId}`);
+
+    // Fetch only active customers with unpaid balances (closingBalance > 0)
+    const unpaidCustomers = await prisma.customer.findMany({
+      where: {
+        status: 'ACTIVE',
+        tenantId: tenantId, // Ensure customers belong to the specified tenant
+        closingBalance: { gt: 0 }, // Exclude paid customers (closingBalance <= 0)
+      },
+      select: {
+        phoneNumber: true,
+        firstName: true,
+        closingBalance: true,
+        monthlyCharge: true,
+      },
+    });
+
+    // Check if there are any unpaid customers
+    if (unpaidCustomers.length === 0) {
+      return res.status(404).json({ success: false, message: 'No unpaid customers found.' });
+    }
+
+    // Create bulk SMS messages
+    const messages = unpaidCustomers.map((customer) => ({
+      mobile: sanitizePhoneNumber(customer.phoneNumber),
+      message: `Dear ${customer.firstName}, your bill is KES ${customer.monthlyCharge}, balance KES ${customer.closingBalance}. Paybill: ${paybill}, acct: your phone number. Inquiries?: ${customerSupportPhoneNumber}`,
+    }));
+
+    // Send bulk SMS
+    try {
+      await sendSms(tenantId, messages);
+      console.log('Bulk SMS sent successfully.');
+      res.status(200).json({
+        success: true,
+        message: 'SMS sent to unpaid customers successfully.',
+        count: messages.length,
+      });
+    } catch (smsError) {
+      console.error('Failed to send bulk SMS:', smsError.message);
       res.status(500).json({
         success: false,
-        message: error.message,
+        message: 'Failed to send SMS to unpaid customers.',
       });
     }
-  };
+  } catch (error) {
+    console.error('Error in sendUnpaidCustomers:', error.message);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
   
   const sendCustomersAboveBalance = async (req, res) => {
     try {
@@ -920,19 +938,22 @@ const sendSms = async (tenantId, messages) => {
       const { tenantId } = req.user;
       const paybill = await getShortCode(tenantId);
       const { customerSupportPhoneNumber } = await getSMSConfigForTenant(tenantId);
-
-
+  
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required.' });
       }
   
       console.log(`Fetching low balance customers for tenant ID: ${tenantId}`);
   
-      // Fetch active customers for the tenant
-      const activeCustomers = await prisma.customer.findMany({
+      // Fetch active customers with low balance (0 <= closingBalance < monthlyCharge)
+      const lowBalanceCustomers = await prisma.customer.findMany({
         where: {
           status: 'ACTIVE',
           tenantId: tenantId, // Filter by tenant ID
+          closingBalance: {
+            gte: 0, // Exclude negative balances (overpayments)
+            lt: prisma.customer.fields.monthlyCharge, // Less than monthlyCharge (not directly supported, see note)
+          },
         },
         select: {
           phoneNumber: true,
@@ -942,16 +963,15 @@ const sendSms = async (tenantId, messages) => {
         },
       });
   
-      // Filter customers with low balance
-      const lowBalanceCustomers = activeCustomers.filter(
+      // Note: Prisma doesn't support field comparison directly in 'where', so filter in memory for now
+      const filteredLowBalanceCustomers = lowBalanceCustomers.filter(
         (customer) => customer.closingBalance < customer.monthlyCharge
       );
   
       // Create SMS messages for low balance customers
-      const messages = lowBalanceCustomers.map((customer) => ({
+      const messages = filteredLowBalanceCustomers.map((customer) => ({
         mobile: sanitizePhoneNumber(customer.phoneNumber),
-
-        message : `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance KES ${customer.closingBalance}.Paybill:${paybill}, acct: your phone number. inquiries?: ${customerSupportPhoneNumber}`,
+        message: `Dear ${customer.firstName}, your bill is KES ${customer.monthlyCharge}, balance KES ${customer.closingBalance}. Paybill: ${paybill}, acct: your phone number. Inquiries?: ${customerSupportPhoneNumber}`,
       }));
   
       console.log(`Prepared ${messages.length} messages for low balance customers.`);
