@@ -77,10 +77,12 @@ async function settleInvoice() {
                 continue;
             }
 
+            const sanitizedBillRefNumber = BillRefNumber.replace(/\s/g, '');
+
             // Fetch the customer within the same tenant
             const customer = await prisma.customer.findFirst({
                 where: {
-                    phoneNumber: BillRefNumber,
+                    phoneNumber: sanitizedBillRefNumber,
                     tenantId: tenantId, // Ensure the customer belongs to the same tenant
                 },
                 select: { id: true, closingBalance: true, phoneNumber: true, firstName: true },
