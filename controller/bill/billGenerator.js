@@ -40,11 +40,10 @@ async function getCurrentMonthBill(customerId) {
 
 
 
-
-// Process customer batch for invoices, invoice items, and update customer balances
 async function processCustomerBatchForAll(customers, currentMonth) {
   const invoices = [];
   const invoiceItems = [];
+  const customerUpdates = [];
   const year = new Date().getFullYear();
 
   for (const customer of customers) {
@@ -70,7 +69,6 @@ async function processCustomerBatchForAll(customers, currentMonth) {
       }
     }
 
-    // Invoice object (without ID yet, assigned after creation)
     const invoice = {
       tenantId: customer.tenantId,
       customerId: customer.id,
@@ -86,60 +84,59 @@ async function processCustomerBatchForAll(customers, currentMonth) {
 
     invoices.push(invoice);
 
-    // InvoiceItem object (invoiceId will be set after invoice creation)
     const invoiceItem = {
-      id: undefined, // Prisma generates UUID
-      invoiceId: null, // Placeholder, updated after invoice creation
       description: `Monthly charge for ${invoicePeriod.toLocaleString('default', { month: 'long', year: 'numeric' })}`,
       amount: invoiceAmount,
-      quantity: 1, // Default as specified
+      quantity: 1,
     };
 
     invoiceItems.push(invoiceItem);
+
+    customerUpdates.push({
+      where: { id: customer.id },
+      data: { closingBalance: newClosingBalance },
+    });
   }
 
-  // Use a transaction to create invoices, link invoice items, and update customer balances
   try {
     const result = await prisma.$transaction(async (tx) => {
-      // Step 1: Create invoices individually to get their IDs
-      const createdInvoices = await Promise.all(
-        invoices.map(invoice =>
-          tx.invoice.create({ data: invoice })
-        )
-      );
+      // Step 1: Bulk create invoices
+      const createdInvoices = await tx.invoice.createMany({
+        data: invoices,
+        skipDuplicates: true, // Optional: skip if invoiceNumber already exists
+      });
 
-      // Step 2: Link invoice items with created invoice IDs
+      // Fetch created invoices to get their IDs
+      const fetchedInvoices = await tx.invoice.findMany({
+        where: { invoiceNumber: { in: invoices.map(i => i.invoiceNumber) } },
+        select: { id: true, invoiceNumber: true },
+      });
+
+      // Map invoice items to their corresponding invoice IDs
       const updatedInvoiceItems = invoiceItems.map((item, index) => ({
         ...item,
-        invoiceId: createdInvoices[index].id,
+        invoiceId: fetchedInvoices.find(i => i.invoiceNumber === invoices[index].invoiceNumber).id,
       }));
 
+      // Step 2: Bulk create invoice items
       await tx.invoiceItem.createMany({
         data: updatedInvoiceItems,
       });
 
-      // Step 3: Update customer closing balances
-      await Promise.all(
-        createdInvoices.map(invoice =>
-          tx.customer.update({
-            where: { id: invoice.customerId },
-            data: { closingBalance: invoice.closingBalance },
-          })
-        )
-      );
+      // Step 3: Bulk update customer balances
+      await Promise.all(customerUpdates.map(update => tx.customer.update(update)));
 
-      // Return the invoices with their IDs for the response
-      return createdInvoices;
-    });
+      return fetchedInvoices;
+    }, { timeout: 20000 }); // 10 seconds timeout as a safety net
 
-    return result; // Return created invoices (with IDs)
+    return result;
   } catch (error) {
     console.error('Error in transaction (invoices, items, and customer updates):', error);
     throw error;
   }
 }
 
-// Endpoint handler
+// Endpoint handler (unchanged)
 async function generateInvoicesForAll(req, res) {
   const { tenantId } = req.user;
   const currentMonth = new Date().getMonth() + 1;
@@ -177,13 +174,8 @@ async function generateInvoicesForAll(req, res) {
       error: 'Failed to generate invoices and update balances'
     });
     throw error;
-  }
+    }
 }
-
-
-
-
-
 
 
 
