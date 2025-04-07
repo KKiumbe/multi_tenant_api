@@ -151,20 +151,15 @@ const getAllPayments = async (req, res) => {
 
 // Search payments by phone number
 const searchPaymentsByPhone = async (req, res) => {
-  const { phone, page = 1, limit = 10 } = req.query;
+  const { ref, page = 1, limit = 10 } = req.query;
   const tenantId = req.user?.tenantId;
   const skip = (parseInt(page) - 1) * parseInt(limit);
 
   if (!tenantId) {
     return res.status(401).json({ error: 'Unauthorized: Tenant ID not found' });
   }
-  if (!phone) {
-    return res.status(400).json({ error: 'Phone number is required' });
-  }
-
-  const sanitizedPhoneNumber = sanitizePhoneNumber(phone);
-  if (!sanitizedPhoneNumber) {
-    return res.status(400).json({ error: 'Invalid phone number format' });
+  if (!ref) {
+    return res.status(400).json({ error: 'Reference number parameter is required' });
   }
 
   try {
@@ -172,18 +167,7 @@ const searchPaymentsByPhone = async (req, res) => {
       prisma.payment.findMany({
         where: {
           tenantId,
-          OR: [
-            {
-              receipt: {
-                customer: {
-                  OR: [
-                    { phoneNumber: { contains: sanitizedPhoneNumber } },
-                    { secondaryPhoneNumber: { contains: sanitizedPhoneNumber } },
-                  ],
-                },
-              },
-            },
-          ],
+          ref: { contains: ref, mode: 'insensitive' }, // Search by ref
         },
         skip,
         take: parseInt(limit),
@@ -198,21 +182,15 @@ const searchPaymentsByPhone = async (req, res) => {
       prisma.payment.count({
         where: {
           tenantId,
-          OR: [
-            {
-              receipt: {
-                customer: {
-                  OR: [
-                    { phoneNumber: { contains: sanitizedPhoneNumber } },
-                    { secondaryPhoneNumber: { contains: sanitizedPhoneNumber } },
-                  ],
-                },
-              },
-            },
-          ],
+          ref: { contains: ref, mode: 'insensitive' }, // Count by ref
         },
       }),
     ]);
+
+    // Check if no payments were found
+    if (payments.length === 0) {
+      return res.status(404).json({ error: 'Reference number not available' });
+    }
 
     res.json({ payments, total });
   } catch (error) {
@@ -239,13 +217,7 @@ const searchPaymentsByName = async (req, res) => {
       prisma.payment.findMany({
         where: {
           tenantId,
-          OR: [
-            { firstName: { contains: name, mode: 'insensitive' } },
-            { receipt: { customer: { OR: [
-              { firstName: { contains: name, mode: 'insensitive' } },
-              { lastName: { contains: name, mode: 'insensitive' } }
-            ]}}},
-          ],
+          firstName: { contains: name, mode: 'insensitive' }, // Only search by firstName
         },
         skip,
         take: parseInt(limit),
@@ -260,16 +232,106 @@ const searchPaymentsByName = async (req, res) => {
       prisma.payment.count({
         where: {
           tenantId,
-          OR: [
-            { firstName: { contains: name, mode: 'insensitive' } },
-            { receipt: { customer: { OR: [
-              { firstName: { contains: name, mode: 'insensitive' } },
-              { lastName: { contains: name, mode: 'insensitive' } }
-            ]}}},
-          ],
+          firstName: { contains: name, mode: 'insensitive' }, // Only count by firstName
         },
       }),
     ]);
+
+    res.json({ payments, total });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+};
+
+
+const searchTransactionById = async (req, res) => {
+  const { transactionId } = req.query;
+  const tenantId = req.user?.tenantId;
+
+  if (!tenantId) {
+    return res.status(401).json({ error: 'Unauthorized: Tenant ID not found' });
+  }
+  if (!transactionId) {
+    return res.status(400).json({ error: 'Transaction ID parameter is required' });
+  }
+
+  try {
+    const transaction = await prisma.payment.findUnique({
+      where: {
+        transactionId, // Search by unique transactionId
+        tenantId,     // Ensure it belongs to the tenant
+      },
+      include: {
+        receipt: {
+          include: {
+            receiptInvoices: { include: { invoice: true } },
+          },
+        },
+      },
+    });
+
+    // Check if transaction exists
+    if (!transaction) {
+      return res.status(404).json({ error: 'Transaction ID not found' });
+    }
+
+    res.json({ transaction });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+};
+
+
+const filterPaymentsByMode = async (req, res) => {
+  const { mode, page = 1, limit = 10 } = req.query;
+  const tenantId = req.user?.tenantId;
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+
+  if (!tenantId) {
+    return res.status(401).json({ error: 'Unauthorized: Tenant ID not found' });
+  }
+  if (!mode) {
+    return res.status(400).json({ error: 'Mode of payment parameter is required' });
+  }
+
+  // Validate the mode against the enum values
+  const validModes = ['CASH', 'MPESA', 'BANK_TRANSFER'];
+  const modeUpper = mode.toUpperCase();
+  if (!validModes.includes(modeUpper)) {
+    return res.status(400).json({ error: 'Invalid mode of payment. Must be CASH, MPESA, or BANK_TRANSFER' });
+  }
+
+  try {
+    const [payments, total] = await Promise.all([
+      prisma.payment.findMany({
+        where: {
+          tenantId,
+          modeOfPayment: modeUpper, // Filter by the enum value
+        },
+        skip,
+        take: parseInt(limit),
+        include: {
+          receipt: {
+            include: {
+              receiptInvoices: { include: { invoice: true } },
+            },
+          },
+        },
+      }),
+      prisma.payment.count({
+        where: {
+          tenantId,
+          modeOfPayment: modeUpper,
+        },
+      }),
+    ]);
+
+    // Check if any payments were found
+    if (payments.length === 0) {
+      return res.status(404).json({ error: 'No payments found for this mode of payment' });
+    }
 
     res.json({ payments, total });
   } catch (error) {
@@ -332,5 +394,5 @@ module.exports = {
  
     fetchAllPayments, 
     fetchPaymentById, 
-    fetchPaymentsByTransactionId ,getAllPayments,searchPaymentsByPhone,searchPaymentsByName,getUnreceiptedPayments
+    fetchPaymentsByTransactionId ,getAllPayments,searchPaymentsByPhone,searchPaymentsByName,getUnreceiptedPayments ,searchTransactionById ,filterPaymentsByMode
 };
