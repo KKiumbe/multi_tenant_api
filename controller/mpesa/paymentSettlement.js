@@ -273,28 +273,26 @@ async function processInvoices(paymentAmount, customerId, paymentId, tenantId) {
     }
 
     // Update customer's closingBalance based on amount paid to invoices
-    const newClosingBalance = Math.max(currentBalance - totalPaidToInvoices, 0);
+    const newClosingBalance = currentBalance - totalPaidToInvoices;
 
     await prisma.customer.update({
         where: { id: customerId },
         data: { closingBalance: newClosingBalance },
     });
 
-    // Case 3: Apply remaining payment to closingBalance (if any)
-    if (remainingAmount > 0) {
-        const updatedBalance = Math.max(newClosingBalance - remainingAmount, 0);
 
+
+    if (remainingAmount > 0) {
+        const updatedBalance = newClosingBalance - remainingAmount;
         await prisma.customer.update({
             where: { id: customerId },
             data: { closingBalance: updatedBalance },
         });
-
         receipts.push({
             invoiceId: null,
             amount: remainingAmount,
         });
         remainingAmount = 0;
-
         return { receipts, remainingAmount, newClosingBalance: updatedBalance };
     }
 
