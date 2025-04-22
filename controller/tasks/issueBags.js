@@ -1,10 +1,11 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
+
 const markCustomerAsIssued = async (req, res) => {
   const { taskId } = req.params; // Task ID from the URL parameter
   const { customerId } = req.body; // Customer ID from the request body
-  const { user } = req; // Assume `user` comes from authentication middleware
+  const { user } = req; // Assume `user` comes from authentication middleware (includes user.id and tenantId)
 
   // Validate input
   if (!taskId || !customerId) {
@@ -26,6 +27,20 @@ const markCustomerAsIssued = async (req, res) => {
 
     if (task.remainingBags <= 0) {
       return res.status(400).json({ error: "No remaining bags available for this task." });
+    }
+
+    // Fetch the TaskAssignee to ensure the authenticated user is assigned to this task
+    const taskAssignee = await prisma.taskAssignee.findFirst({
+      where: {
+        taskId: parseInt(taskId),
+        assigneeId: user.id, // Ensure the authenticated user is the assignee
+      },
+    });
+
+    if (!taskAssignee) {
+      return res.status(403).json({
+        error: "You are not assigned to this task and cannot issue bags.",
+      });
     }
 
     // Fetch the customer to ensure they belong to the tenant
@@ -58,12 +73,13 @@ const markCustomerAsIssued = async (req, res) => {
 
     const standardBags = tenant.numberOfBags;
 
-    // Create a new issuance record
+    // Create a new issuance record, linking to the TaskAssignee
     const newIssuance = await prisma.trashBagIssuance.create({
       data: {
         taskId: parseInt(taskId),
         customerId,
         tenantId: user.tenantId,
+        issuedById: taskAssignee.id, // Link to the TaskAssignee record
         bagsIssued: standardBags,
         issuedDate: new Date(),
       },
@@ -111,12 +127,21 @@ const markCustomerAsIssued = async (req, res) => {
       newIssuance,
     });
   } catch (error) {
-    console.error("Error marking customer as issued:", error);
-    res.status(500).json({
-      error: "An unexpected error occurred while marking the customer as issued.",
-      details: error.message,
-    });
+    if (error instanceof PrismaClientKnownRequestError) {
+      console.error('Prisma known error:', error.code, error.message);
+      return res.status(400).json({ error: `Database error: ${error.message}` });
+    } else {
+      console.error("Error marking customer as issued:", error);
+      return res.status(500).json({
+        error: "An unexpected error occurred while marking the customer as issued.",
+        details: error.message,
+      });
+    }
+  } finally {
+    await prisma.$disconnect(); // Clean up Prisma connection
   }
 };
 
 module.exports = { markCustomerAsIssued };
+
+

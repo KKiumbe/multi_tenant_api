@@ -1,22 +1,26 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-/**
- * Fetch tasks for the authenticated user
- */
+
+
 const fetchMyTasks = async (req, res) => {
-  const { id: userId, tenantId } = req.user; // Extract user ID and tenant ID from the request
+  const { user, tenantId } = req.user; // Extract user ID and tenant ID from the request
+
+  // Validate user and tenant information
+  if (!user || !tenantId) {
+    return res.status(401).json({ error: "Unauthorized: User or tenant information missing." });
+  }
 
   try {
     // Fetch tasks assigned to the user
     const assignedTasks = await prisma.task.findMany({
       where: {
-        tenantId, // Ensure tasks belong to the same tenant
+        tenantId: 3,
         taskAssignees: {
           some: {
-            assigneeId: userId, // Check if the user is an assignee
-          },
-        },
+            assigneeId: 4
+          }
+        }
       },
       include: {
         taskAssignees: {
@@ -26,19 +30,65 @@ const fetchMyTasks = async (req, res) => {
                 id: true,
                 firstName: true,
                 lastName: true,
-                phoneNumber: true,
-              },
-            },
-          },
+                phoneNumber: true
+              }
+            }
+          }
         },
+        creator: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phoneNumber: true
+          }
+        },
+       
+       
+         
+      
+        trashBagIssuances: {
+          select: {
+            id: true,
+            bagsIssued: true,
+            issuedDate: true,
+            createdAt: true,
+            updatedAt: true,
+            customer: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                phoneNumber: true
+              }
+            },
+            issuedBy: {
+              select: {
+                id: true,
+                assignee: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    phoneNumber: true
+                  }
+                }
+              }
+            }
+          }
+        }
       },
-    });
+      orderBy: {
+        createdAt: "desc"
+      }
+    }
+    );
 
-    // Fetch tasks created by the user
+
     const createdTasks = await prisma.task.findMany({
       where: {
-        tenantId, // Ensure tasks belong to the same tenant
-        createdBy: userId,
+        tenantId: tenantId,
+        createdBy: user
       },
       include: {
         taskAssignees: {
@@ -48,27 +98,117 @@ const fetchMyTasks = async (req, res) => {
                 id: true,
                 firstName: true,
                 lastName: true,
-                phoneNumber: true,
-              },
-            },
-          },
+                phoneNumber: true
+              }
+            }
+          }
         },
+        creator: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            phoneNumber: true
+          }
+        },
+       
+        trashBagIssuances: {
+          select: {
+            id: true,
+            bagsIssued: true,
+            issuedDate: true,
+            createdAt: true,
+            updatedAt: true,
+            customer: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                phoneNumber: true
+              }
+            },
+            issuedBy: {
+              select: {
+                id: true,
+                assignee: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    phoneNumber: true
+                  }
+                }
+              }
+            }
+          }
+        }
       },
+      orderBy: {
+        createdAt: "desc"
+      }
     });
 
+    // Format the response to ensure consistency
     res.status(200).json({
-      assignedToMe: assignedTasks,
-      assignedByMe: createdTasks,
+      assignedToMe: assignedTasks.map((task) => ({
+        id: task.id,
+        type: task.type,
+        status: task.status,
+        declaredBags: task.declaredBags,
+        remainingBags: task.remainingBags,
+        assignedAt: task.assignedAt,
+        startedAt: task.startedAt,
+        completedAt: task.completedAt,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+      
+        creator: task.creator,
+        assignees: task.taskAssignees.map((ta) => ta.assignee),
+        garbageCollections: task.GarbageCollection,
+        trashBagIssuances: task.trashBagIssuances.map((issuance) => ({
+          id: issuance.id,
+          bagsIssued: issuance.bagsIssued,
+          issuedDate: issuance.issuedDate,
+          createdAt: issuance.createdAt,
+          updatedAt: issuance.updatedAt,
+          customer: issuance.customer,
+          issuedBy: issuance.issuedBy ? issuance.issuedBy.assignee : null,
+        })),
+      })),
+      assignedByMe: createdTasks.map((task) => ({
+        id: task.id,
+        type: task.type,
+        status: task.status,
+        declaredBags: task.declaredBags,
+        remainingBags: task.remainingBags,
+        assignedAt: task.assignedAt,
+        startedAt: task.startedAt,
+        completedAt: task.completedAt,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+      
+        creator: task.creator,
+        assignees: task.taskAssignees.map((ta) => ta.assignee),
+        garbageCollections: task.GarbageCollection,
+        trashBagIssuances: task.trashBagIssuances.map((issuance) => ({
+          id: issuance.id,
+          bagsIssued: issuance.bagsIssued,
+          issuedDate: issuance.issuedDate,
+          createdAt: issuance.createdAt,
+          updatedAt: issuance.updatedAt,
+          customer: issuance.customer,
+          issuedBy: issuance.issuedBy ? issuance.issuedBy.assignee : null,
+        })),
+      })),
     });
   } catch (error) {
     console.error("Error fetching tasks:", error);
-    res.status(500).json({ error: "Failed to fetch tasks." });
+    res.status(500).json({
+      error: "Failed to fetch tasks.",
+      details: error.message, // Include error details for debugging
+    });
   }
 };
-
-/**
- * Fetch detailed information for a specific task
- */
 
 
 

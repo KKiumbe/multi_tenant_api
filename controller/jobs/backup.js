@@ -4,30 +4,29 @@ const cron = require('node-cron');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const fs = require('fs').promises;
-
-//console.log('DB_PASSWORD right after dotenv:', process.env.DB_PASSWORD); // Log 1
+const path = require('path');
 
 const DB_USER = process.env.DB_USER;
 const DB_PASSWORD = process.env.DB_PASSWORD;
 const DB_HOST = process.env.DB_HOST || 'localhost';
 const DB_NAME = process.env.DB_NAME;
 const BACKUP_DIR = process.env.BACKUP_DIR || './backups';
-
-console.log('DB_PASSWORD assigned to const:', DB_PASSWORD); // Log 2
+const RETENTION_DAYS = 7; // Keep backups for 7 days
 
 const backupDatabase = async () => {
   try {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupFile = `${BACKUP_DIR}/backup-${timestamp}.sql`;
+    const backupFile = `${BACKUP_DIR}/backup-${timestamp}.dump`;
 
+    // Ensure backup directory exists
     if (!(await fs.stat(BACKUP_DIR).catch(() => false))) {
       await fs.mkdir(BACKUP_DIR, { recursive: true });
       console.log(`Created backup directory: ${BACKUP_DIR}`);
     }
 
-    const backupCommand = `PGPASSWORD="${DB_PASSWORD}" pg_dump -U ${DB_USER} -h ${DB_HOST} ${DB_NAME} > ${backupFile}`;
-    //console.log('DB_PASSWORD before command:', DB_PASSWORD); // Log 3
-    console.log(`Executing: ${backupCommand}`);
+    // Use pg_dump with -Fc for custom format (.dump)
+    const backupCommand = `PGPASSWORD="${DB_PASSWORD}" pg_dump -U ${DB_USER} -h ${DB_HOST} -Fc ${DB_NAME} -f ${backupFile}`;
+    console.log(`Executing: ${backupCommand.replace(DB_PASSWORD, '****')}`); // Mask password in logs
 
     await new Promise((resolve, reject) => {
       exec(backupCommand, (error, stdout, stderr) => {
@@ -46,21 +45,23 @@ const backupDatabase = async () => {
   }
 };
 
-const deleteOldRecords = async () => {
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
+const deleteOldBackups = async () => {
   try {
-    const deleted = await prisma.sMS.deleteMany({
-      where: {
-        createdAt: {
-          lt: sevenDaysAgo,
-        },
-      },
-    });
-    console.log(`Deleted ${deleted.count} records older than 7 days from sMS table`);
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - RETENTION_DAYS);
+
+    const files = await fs.readdir(BACKUP_DIR);
+    for (const file of files) {
+      const filePath = path.join(BACKUP_DIR, file);
+      const stats = await fs.stat(filePath);
+
+      if (stats.isFile() && stats.mtime < cutoffDate) {
+        await fs.unlink(filePath);
+        console.log(`Deleted old backup: ${filePath}`);
+      }
+    }
   } catch (error) {
-    console.error('Error deleting old records:', error.message);
+    console.error(`Error deleting old backups: ${error.message}`);
     throw error;
   }
 };
@@ -69,7 +70,7 @@ const runTask = async () => {
   try {
     console.log('Starting backup and cleanup task...');
     await backupDatabase();
-    await deleteOldRecords();
+    await deleteOldBackups();
     console.log('Task completed successfully.');
   } catch (error) {
     console.error('Task failed:', error.message);
@@ -80,7 +81,7 @@ const runTask = async () => {
 
 module.exports = () => {
   if (!DB_USER || !DB_PASSWORD || !DB_NAME) {
-    //console.error('Missing required environment variables (DB_USER, DB_PASSWORD, DB_NAME). Check your .env file.');
+    console.error('Missing required environment variables (DB_USER, DB_PASSWORD, DB_NAME). Check your .env file.');
     return;
   }
 

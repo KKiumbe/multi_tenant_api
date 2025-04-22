@@ -24,6 +24,46 @@ const getCustomerDetails = async (req, res) => {
             payment: true, // Include linked payment details
           },
         },
+
+        GarbageCollection:{
+          orderBy: { createdAt: 'desc' },
+
+          select: { // Optionally select specific fields
+            id: true,
+            collectionDate: true,
+            notes: true,
+            collector:{
+              select: {
+                firstName: true,
+                lastName: true,
+              }
+            },
+            createdAt: true,
+          },
+        
+        },
+
+        trashbagsHistory: {
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            issuedDate: true,
+            bagsIssued: true,
+            taskId: true,
+            issuedBy: {
+              select: {
+                assignee: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                  },
+                },
+              },
+            },
+            createdAt: true,
+          },
+        },
+ 
       },
     });
 

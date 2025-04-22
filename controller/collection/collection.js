@@ -27,12 +27,14 @@ const getCollections = async (req, res) => {
 /**
  * Mark a customer as collected
  */
+
+
+
 const markCustomerAsCollected = async (req, res) => {
   const { customerId } = req.params;
-  const { tenantId } = req.user;
-
+  const { tenantId, user } = req.user;
+ // Assuming user ID is available in the request
   try {
-    // Check if the customer exists and belongs to the tenant
     const customer = await prisma.customer.findFirst({
       where: { id: customerId, tenantId },
     });
@@ -41,23 +43,37 @@ const markCustomerAsCollected = async (req, res) => {
       return res.status(404).json({ error: 'Customer not found or does not belong to this tenant.' });
     }
 
-    // Mark the customer as collected
-    const updatedCustomer = await prisma.customer.update({
-      where: { id: customerId },
-      data: {
-        collected: true, // Set collected to true
-      },
-    });
+    const [updatedCustomer] = await prisma.$transaction([
+      prisma.customer.update({
+        where: { id: customerId },
+        data: { collected: true },
+      }),
+      prisma.garbageCollection.create({ // Use uppercase G and C
+        data: {
+          tenantId,
+          customerId,
+          collectedBy: user || null,
+          collectionDate: new Date(),
+          notes: 'Garbage collected via API',
+        },
+      }),
+    ]);
 
     res.json({
-      message: 'Customer marked as collected.',
+      message: 'Customer marked as collected and history updated.',
       customer: updatedCustomer,
     });
   } catch (error) {
     console.error('Error marking customer as collected:', error);
     res.status(500).json({ error: 'Error marking customer as collected.' });
+  } finally {
+    await prisma.$disconnect();
   }
 };
+
+
+
+
 
 /**
  * Filter customers by collection day
