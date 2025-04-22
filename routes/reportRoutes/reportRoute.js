@@ -36,11 +36,11 @@ router.get('/download-invoice/:invoiceId',verifyToken, checkAccess("invoices", "
 router.get('/reports/payments',verifyToken, checkAccess("payments", "read"), generatePaymentReportPDF); //done
 
 
-router.get('/reports/mpesa',verifyToken, checkAccess("payments", "read"), generateMpesaReport);
+router.get('/reports/mpesa',verifyToken, generateMpesaReport);
 
 router.get('/reports/receipts',verifyToken, checkAccess("payments", "read"), generateReceiptReport);
 
-router.get('/reports/income',verifyToken, checkAccess("payments", "read"), generateIncomeReport);
+router.get('/reports/income',verifyToken, generateIncomeReport);
 
 
 

@@ -249,8 +249,9 @@ const fetchTenant = async (tenantId) => {
         email: true,
         phoneNumber: true,
         alternativePhoneNumber: true,
-       
+        logoUrl: true,
         allowedUsers: true,
+       
        
       },
     });
