@@ -203,7 +203,7 @@ const uploadCustomers = async (req, res) => {
           houseNumber: data.houseNumber ? data.houseNumber.trim() : null,
           category: data.category ? data.category.trim() : null,
           collected: data.collected ? data.collected.trim().toLowerCase() === 'true' : false, // Explicitly set, default to false
-          garbageCollectionDay: data.garbageCollectionDay ? data.garbageCollectionDay.trim() : null,
+          garbageCollectionDay: data.garbageCollectionDay ? data.garbageCollectionDay.trim() : 'Monday', // Default to Monday
           status: 'ACTIVE', // Explicitly set default
           trashBagsIssued: false, // Explicitly set default
         };
