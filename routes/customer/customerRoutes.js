@@ -29,7 +29,7 @@ router.get('/search-customer-by-phone',verifyToken, SearchCustomersByPhoneNumber
 router.get('/search-customer-by-name',verifyToken, SearchCustomersByName
 );
 router.get('/customer-details/:id',verifyToken, getCustomerDetails);
-router.post('/delete-customers',clearCustomerData)  
+ 
 
 
 
