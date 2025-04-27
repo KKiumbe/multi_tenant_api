@@ -202,9 +202,10 @@ const uploadCustomers = async (req, res) => {
           location: data.location ? data.location.trim() : null,
           houseNumber: data.houseNumber ? data.houseNumber.trim() : null,
           category: data.category ? data.category.trim() : null,
-          collected: data.collected ? data.collected.trim() : null,
+          collected: data.collected ? data.collected.trim().toLowerCase() === 'true' : false, // Explicitly set, default to false
           garbageCollectionDay: data.garbageCollectionDay ? data.garbageCollectionDay.trim() : null,
-          status: 'ACTIVE', // Default status
+          status: 'ACTIVE', // Explicitly set default
+          trashBagsIssued: false, // Explicitly set default
         };
 
         // Validate numerical fields
@@ -272,6 +273,7 @@ const uploadCustomers = async (req, res) => {
     res.status(500).json({ message: 'Error validating tenant or checking existing customers.' });
   }
 };
+
 
 
 
