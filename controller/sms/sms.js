@@ -255,7 +255,7 @@ const sendBills = async (req, res) => {
         customer.closingBalance < 0
           ? "overpayment of KES" + Math.abs(customer.closingBalance)
           : "KES " + customer.closingBalance
-      }.Paybill: ${paybill},acct:your phone number.Inquiries? ${customerSupport}`
+      }.Paybill: ${paybill},acct:your phone number;${customer.phoneNumber}.Inquiries? ${customerSupport}`
 
     }));
 
@@ -316,7 +316,7 @@ const sendBillsEstate = async (req, res) => {
         customer.closingBalance < 0
           ? "overpayment of KES" + Math.abs(customer.closingBalance)
           : "KES " + customer.closingBalance
-      }.Paybill: ${paybill},acct:your phone number.Inquiries? ${customerSupport}`
+      }.Paybill: ${paybill},acct:your phone number;${customer.phoneNumber}.Inquiries? ${customerSupport}`
 
 
     }));
@@ -511,7 +511,7 @@ const sendBill = async (req, res) => {
       customer.closingBalance < 0
         ? "overpayment of KES" + Math.abs(customer.closingBalance)
         : "KES " + customer.closingBalance
-    }.Paybill: ${paybill},acct:your phone number.Inquiries? ${customerSupportPhoneNumber}`
+    }.Paybill: ${paybill},acct:your phone number;${customer.phoneNumber}.Inquiries? ${customerSupportPhoneNumber}`
 
     const smsResponses = await sendSMS(tenantId,
        customer.phoneNumber, message
@@ -554,7 +554,7 @@ const sendBillPerDay = async (req, res) => {
         customer.closingBalance < 0
           ? "overpayment of KES" + Math.abs(customer.closingBalance)
           : "KES " + customer.closingBalance
-      }.Paybill: ${paybill},acct:your phone number.Inquiries? ${customerSupport}`
+      }.Paybill: ${paybill},acct:your phone number;${customer.phoneNumber}.Inquiries? ${customerSupport}`
       ,
     }));
 
@@ -606,7 +606,7 @@ const billReminderPerDay = async (req, res) => {
         customer.closingBalance < 0
           ? "overpayment of KES" + Math.abs(customer.closingBalance)
           : "KES " + customer.closingBalance
-      }.Paybill: ${paybill},acct:your phone number.Inquiries? ${customerSupport}`
+      }.Paybill: ${paybill},acct:your phone number;${customer.phoneNumber}.Inquiries? ${customerSupport}`
 
     }));
 
@@ -691,7 +691,7 @@ const harshBillReminder = async (req, res) => {
     // Prepare harsher SMS messages
     const messages = customers.map((customer) => ({
       mobile: sanitizePhoneNumber(customer.phoneNumber),
-      message: `Dear ${customer.firstName},Please settle your bill of ${customer.closingBalance}.Immediate action is required to avoid service disruption. Pay via ${paybill}, your phone number is the the account number. Inquiries? ${customerSupport}`,
+      message: `Dear ${customer.firstName},Please settle your bill of ${customer.closingBalance}.Immediate action is required to avoid service disruption. Pay via ${paybill}, acc, your phone number;${customer.phoneNumber} . Inquiries? ${customerSupport}`,
     }));
 
     // Send SMS using the sendSms service
@@ -853,7 +853,7 @@ const sendUnpaidCustomers = async (req, res) => {
     // Create bulk SMS messages
     const messages = unpaidCustomers.map((customer) => ({
       mobile: sanitizePhoneNumber(customer.phoneNumber),
-      message: `Dear ${customer.firstName}, your bill is KES ${customer.monthlyCharge}, balance KES ${customer.closingBalance}. Paybill: ${paybill}, acct: your phone number. Inquiries?: ${customerSupportPhoneNumber}`,
+      message: `Dear ${customer.firstName}, your bill is KES ${customer.monthlyCharge}, balance KES ${customer.closingBalance}. Paybill: ${paybill}, acct: your phone number; ${customer.phoneNumber}. Inquiries?: ${customerSupportPhoneNumber}`,
     }));
 
     // Send bulk SMS
@@ -907,7 +907,7 @@ const sendUnpaidCustomers = async (req, res) => {
       const messages = customersAboveBalance.map((customer) => ({
         mobile: sanitizePhoneNumber(customer.phoneNumber),
 
-        message : `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance KES ${customer.closingBalance}.Paybill:${paybill},acct: your phone number.Inquiries?:${customerCarePhoneNumber}`
+        message : `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance KES ${customer.closingBalance}.Paybill:${paybill},acct: your phone number(${customer.phoneNumber}).Inquiries?:${customerCarePhoneNumber}`
 
       }));
   
@@ -971,7 +971,7 @@ const sendUnpaidCustomers = async (req, res) => {
       // Create SMS messages for low balance customers
       const messages = filteredLowBalanceCustomers.map((customer) => ({
         mobile: sanitizePhoneNumber(customer.phoneNumber),
-        message: `Dear ${customer.firstName}, your bill is KES ${customer.monthlyCharge}, balance KES ${customer.closingBalance}. Paybill: ${paybill}, acct: your phone number. Inquiries?: ${customerSupportPhoneNumber}`,
+        message: `Dear ${customer.firstName}, your bill is KES ${customer.monthlyCharge}, balance KES ${customer.closingBalance}. Paybill: ${paybill}, acct: your phone number; ${customer.phoneNumber}. Inquiries?: ${customerSupportPhoneNumber}`,
       }));
   
       console.log(`Prepared ${messages.length} messages for low balance customers.`);
@@ -1041,7 +1041,7 @@ const sendUnpaidCustomers = async (req, res) => {
       // Prepare messages for high balance customers
       const messages = highBalanceCustomers.map((customer) => ({
         mobile: sanitizePhoneNumber(customer.phoneNumber),
-        message : `Dear ${customer.firstName},you have an outstanding balance of KES ${customer.closingBalance}.Paybill:${paybill},acct:your phone number.inquiries?:${customerSupportPhoneNumber}`,
+        message : `Dear ${customer.firstName},you have an outstanding balance of KES ${customer.closingBalance}.Paybill:${paybill},acct:your phone number;${customer.phoneNumber}.inquiries?:${customerSupportPhoneNumber}`,
     
       }));
   
@@ -1084,6 +1084,8 @@ const sendUnpaidCustomers = async (req, res) => {
   
 
 module.exports = {
+  getShortCode,
+  getSMSConfigForTenant,
   sendBills,
   sendToAll,
   sendBill,

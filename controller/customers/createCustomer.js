@@ -27,6 +27,8 @@ const createCustomer = async (req, res) => {
 
   } = req.body;
 
+  const {user: userId} = req.user || {}; // Extract user ID from the authenticated user (req.user)
+
   // Validate required fields
   if (!tenantId || !firstName || !lastName || !phoneNumber || !monthlyCharge || !garbageCollectionDay) {
     return res.status(400).json({ message: 'Required fields are missing.' });
@@ -96,6 +98,22 @@ const createCustomer = async (req, res) => {
         closingBalance:parseFloat(closingBalance) ?? 0, // Default to 0
       },
     });
+
+   // Log user activity
+   await prisma.userActivity.create({
+    data: {
+      userId,
+      tenantId,
+      customerId: customer.id,
+      action: 'ADDED_CUSTOMER',
+      details: {
+        message: `Customer ${firstName} ${lastName} created`,
+        customerId: customer.id,
+        tenantId,
+      },
+    },
+  });
+
 
     res.status(201).json({ message: 'Customer created successfully', customer });
   } catch (error) {
