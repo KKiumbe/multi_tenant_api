@@ -45,6 +45,8 @@ model Tenant {
   tenantPayments         TenantPayment[]
   TrashBagIssuance       TrashBagIssuance[]
   users                  User[]
+
+  UserActivity UserActivity[]
 }
 
 model TenantInvoice {
@@ -109,12 +111,24 @@ model User {
   User_B             User[]              @relation("CreatedUsers")
 }
 
+
 model UserActivity {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  action    String
-  timestamp DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id])
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  tenantId    Int
+  customerId  String?   // Optional: Links to the customer affected by the action
+  action      String    // e.g., 'LOGIN', 'LOGOUT', 'VIEW', 'ADDED_CUSTOMER', 'UPDATED_CUSTOMER'
+  timestamp   DateTime  @default(now())
+   details     Json?     // Stores changed fields and their old/new values
+
+  // Relationships
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customer    Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([customerId])
 }
 
 model AuditLog {
@@ -189,6 +203,7 @@ model Customer {
   @@index([phoneNumber])
   @@index([email])
   @@index([status])
+  UserActivity UserActivity[]
 }
 
 model Invoice {
