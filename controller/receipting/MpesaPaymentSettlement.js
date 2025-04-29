@@ -184,7 +184,7 @@ const MpesaPaymentSettlement = async (req, res) => {
             transactionCode: generateTransactionId(),
             createdAt: new Date(),
             tenantId,
-            closingBalance: finalClosingBalance,
+           
             receiptInvoices: {
               create: receiptEntries.map((entry) => ({
                 invoice: { connect: { id: entry.invoiceId } },
