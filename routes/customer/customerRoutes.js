@@ -8,6 +8,7 @@ const checkAccess = require('../../middleware/roleVerify.js');
 const verifyToken = require('../../middleware/verifyToken.js');
 const { getCustomerDetails, deleteCustomer } = require('../../controller/customers/customerDetails.js');
 const { clearCustomerData } = require('../../controller/customers/delete/delete.js');
+const { getCustomerActivity } = require('../../controller/customers/activities.js');
 
 
 
@@ -29,6 +30,8 @@ router.get('/search-customer-by-phone',verifyToken, SearchCustomersByPhoneNumber
 router.get('/search-customer-by-name',verifyToken, SearchCustomersByName
 );
 router.get('/customer-details/:id',verifyToken, getCustomerDetails);
+
+router.get('/customer-activity/:id',verifyToken, getCustomerActivity);
  
 
 
