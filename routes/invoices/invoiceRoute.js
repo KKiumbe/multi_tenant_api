@@ -5,42 +5,43 @@ const { SearchInvoices, searchInvoicesByPhone, searchInvoicesByName } = require(
 const { addSmsJob } = require('../../controller/bulkSMS/sendSMSJob.js');
 const { cancelSystemGenInvoices } = require('../../controller/bill/cancelJob.js');
 const verifyToken = require('../../middleware/verifyToken.js');
+const checkAccess = require('../../middleware/roleVerify.js');
 
 const router = express.Router();
 
 
 
 
-router.get('/invoices/all',verifyToken, getAllInvoices );
-router.patch('/invoice/cancel/:id/', verifyToken, cancelCustomerInvoice );
+router.get('/invoices/all',verifyToken,checkAccess('invoices', 'read'), getAllInvoices );
+router.patch('/invoice/cancel/:id/', verifyToken,checkAccess('invoices', 'update'), cancelCustomerInvoice );
 
-router.get('/invoices/search-by-phone',verifyToken, searchInvoicesByPhone);
+router.get('/invoices/search-by-phone',verifyToken,checkAccess('invoices', 'read'), searchInvoicesByPhone);
 
-router.get('/invoices/search-by-name',verifyToken, searchInvoicesByName);
-router.get('/invoices/:id/',verifyToken, getInvoiceDetails);
-router.put('/invoices/cancel/:invoiceId/', verifyToken, cancelInvoiceById);
+router.get('/invoices/search-by-name',verifyToken, checkAccess('invoices', 'read'),searchInvoicesByName);
+router.get('/invoices/:id/',verifyToken,checkAccess('invoices', 'read'), getInvoiceDetails);
+router.put('/invoices/cancel/:invoiceId/', verifyToken,checkAccess('invoices', 'update'), cancelInvoiceById);
 
 // Route to create a manual invoice
-router.post('/invoices', verifyToken,createInvoice);
+router.post('/invoices', verifyToken,checkAccess('invoices', 'create'),createInvoice);
 
 router.post('/send-bulk-sms', addSmsJob);
 
 
 // Route to generate invoices for all active customers for a specified month
-router.post('/invoices/generate', verifyToken,generateInvoices);
+router.post('/invoices/generate', verifyToken,checkAccess('invoices', 'create'),generateInvoices);
 
-router.post('/invoices-generate-day',generateInvoicesByDay)
+router.post('/invoices-generate-day',checkAccess('invoices', 'create'),generateInvoicesByDay)
 
 
 router.post('/invoices-generate-tenant',generateInvoicesPerTenant)
 
 
-router.post('/generate-invoices-for-all',verifyToken, generateInvoicesForAll)
+router.post('/generate-invoices-for-all',verifyToken, checkAccess('invoices', 'create'),generateInvoicesForAll)
 
 
 
 // Route to cancel system-generated invoices for a specific customer and month
-router.patch('/invoices/cancel',verifyToken, cancelSystemGenInvoices);
+router.patch('/invoices/cancel',verifyToken, checkAccess('invoices', 'update'),cancelSystemGenInvoices);
 
 
 module.exports = router;

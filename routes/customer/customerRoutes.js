@@ -25,13 +25,13 @@ router.put('/customers/:id',verifyToken,checkAccess('customer','update'), editCu
 router.get('/search-customers',verifyToken, SearchCustomers);
 router.delete('/customers/:id',verifyToken,checkAccess('customer','delete'), deleteCustomer);
 
-router.get('/search-customer-by-phone',verifyToken, SearchCustomersByPhoneNumber);
+router.get('/search-customer-by-phone',verifyToken,  checkAccess('customer','read'), SearchCustomersByPhoneNumber);
 
-router.get('/search-customer-by-name',verifyToken, SearchCustomersByName
+router.get('/search-customer-by-name',verifyToken, checkAccess('customer','read'), SearchCustomersByName
 );
-router.get('/customer-details/:id',verifyToken, getCustomerDetails);
+router.get('/customer-details/:id',verifyToken,  checkAccess('customer','read'), getCustomerDetails);
 
-router.get('/customer-activity/:id',verifyToken, getCustomerActivity);
+router.get('/customer-activity/:id',verifyToken, checkAccess('customer','read'), getCustomerActivity);
  
 
 

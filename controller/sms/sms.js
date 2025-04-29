@@ -74,28 +74,31 @@ const sanitizePhoneNumber = (phone) => {
 
 
 
-const getSmsBalance = async (req,res) => {
+const getSmsBalance = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const smsConfig = await getSMSConfigForTenant(tenantId);
 
-    const { tenantId } = req.user; 
-    const { apikey,partnerID } = await getSMSConfigForTenant(tenantId);
-
-    console.log(`this is the api key ${apikey}`);
-
-  
-    try {
-      const response = await axios.post(SMS_BALANCE_URL, {
-        apikey: apikey,
-        partnerID: partnerID,
-      });
-      console.log('SMS balance:', response.data.credit);
-
-      res.status(200).json({ credit: response.data.credit });
-   
-    } catch (error) {
-      console.error('Error checking SMS balance:', error.response?.data || error.message);
-      throw new Error('Failed to retrieve SMS balance');
+    if (!smsConfig || !smsConfig.apikey || !smsConfig.partnerID) {
+      return res.status(400).json({ error: 'SMS configuration not found or incomplete for tenant.' });
     }
-  };
+
+    const { apikey, partnerID } = smsConfig;
+
+    const response = await axios.post(SMS_BALANCE_URL, {
+      apikey,
+      partnerID,
+    });
+
+    console.log('SMS balance:', response.data.credit);
+    res.status(200).json({ credit: response.data.credit });
+
+  } catch (error) {
+    console.error('Error checking SMS balance:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to retrieve SMS balance. Please try again later.' });
+  }
+};
+
   
 
 

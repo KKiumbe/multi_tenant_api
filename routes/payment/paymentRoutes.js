@@ -11,8 +11,8 @@ router.get('/payments/unreceipted',verifyToken,checkAccess('payments','read'), g
 router.get('/payments/search-by-name',verifyToken,checkAccess('payments','read'), searchPaymentsByName);
 router.get('/payments/search-by-phone',verifyToken,checkAccess('payments','read'), searchPaymentsByPhone);
 
-router.get('/searchTransactionById', verifyToken, searchTransactionById);
-router.get('/filterPaymentsByMode',verifyToken, filterPaymentsByMode);
+router.get('/searchTransactionById', verifyToken,checkAccess('payments','read'), searchTransactionById);
+router.get('/filterPaymentsByMode',verifyToken,checkAccess('payments','read'), filterPaymentsByMode);
 router.get('/payments/:paymentId', verifyToken,checkAccess('payments','read'), fetchPaymentById);
 router.get('/payments-search', verifyToken, checkAccess('payments','read'), fetchPaymentsByTransactionId);
 

@@ -13,31 +13,31 @@ const { updateSmsDeliveryStatus, getSmsMessages } = require('../../controller/bu
 const router = express.Router();
 
 // SMS Routes
-router.post('/send-bills', verifyToken, checkAccess('customer', 'read'), sendBills);//done
+router.post('/send-bills', verifyToken, checkAccess('sms', 'create'), sendBills);//done
 
-router.post('/send-bills-per-estate', verifyToken, checkAccess('customer', 'read'), sendBillsEstate);//done
-router.post('/send-to-all', verifyToken, checkAccess('customer', 'read'), sendToAll);//done
-router.post('/send-to-estate', verifyToken, checkAccess('customer', 'read'), sendToEstate);//done
+router.post('/send-bills-per-estate', verifyToken, checkAccess('sms', 'create'), sendBillsEstate);//done
+router.post('/send-to-all', verifyToken, checkAccess('sms', 'create'), sendToAll);//done
+router.post('/send-to-estate', verifyToken, checkAccess('sms', 'create'), sendToEstate);//done
 
-router.post('/send-bill', verifyToken, checkAccess('customer', 'read'), sendBill);//done
-router.post('/send-bill-perday', verifyToken, checkAccess('customer', 'read'), sendBillPerDay); //done
-router.post('/send-to-group', verifyToken, checkAccess('customer', 'read'), sendToGroup); //done
-router.post('/send-sms', verifyToken, checkAccess('customer', 'read'), sendToOne ); //done
+router.post('/send-bill', verifyToken, checkAccess('sms', 'create'), sendBill);//done
+router.post('/send-bill-perday', verifyToken, checkAccess('sms', 'create'), sendBillPerDay); //done
+router.post('/send-to-group', verifyToken, checkAccess('sms', 'create'),sendToGroup); //done
+router.post('/send-sms', verifyToken, checkAccess('sms', 'create'), sendToOne ); //done
 
-router.put('/sms-config-update',verifyToken, updateSMSConfig);  //done
-router.post('/sms-config',verifyToken, createSMSConfig);  //done
+router.put('/sms-config-update',verifyToken,checkAccess('sms', 'update'), updateSMSConfig);  //done
+router.post('/sms-config',verifyToken, checkAccess('sms', 'create'), createSMSConfig);  //done
 
-router.post('/send-sms-unpaid' ,verifyToken , sendUnpaidCustomers); //done
+router.post('/send-sms-unpaid' ,verifyToken ,checkAccess('sms', 'create'), sendUnpaidCustomers); //done
 
-router.post('/send-sms-low-balance',verifyToken, sendLowBalanceCustomers); //done
+router.post('/send-sms-low-balance',verifyToken,checkAccess('sms', 'create'), sendLowBalanceCustomers); //done
 
-router.post('/send-sms-high-balance',verifyToken, sendHighBalanceCustomers); //done
+router.post('/send-sms-high-balance',verifyToken, checkAccess('sms', 'create'),sendHighBalanceCustomers); //done
 
 
-router.post('/send-sms-custom-balance',verifyToken, sendCustomersAboveBalance);
+router.post('/send-sms-custom-balance',verifyToken, checkAccess('sms', 'create'),sendCustomersAboveBalance);
 
-router.get('/sms-delivery-report' ,updateSmsDeliveryStatus);
-router.get('/sms-history',verifyToken, getSmsMessages);
+router.get('/sms-delivery-report' ,verifyToken,checkAccess('sms', 'read'), updateSmsDeliveryStatus);
+router.get('/sms-history',verifyToken,checkAccess('sms', 'read'), getSmsMessages);
 //router.post('/auto-sms' , sendSMS)
 
 module.exports = router;

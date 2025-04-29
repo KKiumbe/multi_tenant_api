@@ -8,9 +8,10 @@ const ROLE_PERMISSIONS = {
     sms: ["create", "read", "update", "delete"],
     mpesaTransactions: ["read"],
     trashBagIssuance: ["create", "read", "update"], 
+    config: ["create", "read", "update", "delete"],
   },
   customer_manager: {
-    customers: ["create", "read", "update"],
+    customer: ["create", "read", "update"],
     invoices: ["read"],
     trashBagIssuance: ["create", "read", "update"],
     user: ["create", "read"],
@@ -25,7 +26,7 @@ const ROLE_PERMISSIONS = {
     payments: ["create", "read"],
   },
   collector: {
-    customers: ["read", "update_collected"],
+    customer: ["read", "update_collected"],
     trashBagIssuance: ["create", "read", "update"],
   },
   DEFAULT_ROLE: {},
@@ -48,7 +49,7 @@ const ROLE_PERMISSIONS = {
     reports: ["read"],
   },
   collection_supervisor: {
-    customers: ["read", "update_collected"],
+    customer: ["read", "update_collected"],
     collector: ["read", "update"], // Manage collectors
     trashBagIssuance: ["create", "read", "update"],
     sms: ["create", "read"],
