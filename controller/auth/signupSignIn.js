@@ -6,7 +6,9 @@ const ROLE_PERMISSIONS = require('../../DatabaseConfig/role.js');
 const { configureTenantSettings } = require('../smsConfig/config.js');
 const prisma = new PrismaClient();
 dotenv.config();
-
+const ACTION_TYPES = {
+  LOGIN: 'LOGIN',
+};
 
 const register = async (req, res) => {
   const {
@@ -105,16 +107,33 @@ const register = async (req, res) => {
         data: { createdBy: newUser.id.toString() }, // String since schema expects String
       });
 
-      // Log the creation in AuditLog
-      await prisma.auditLog.create({
+      await tx.userActivity.create({
         data: {
-          tenantId: newTenant.id,
-          userId: newUser.id,
-          action: 'CREATE',
-          resource: 'USER_TENANT',
-          details: { message: `User ${newUser.email} created tenant ${tenantName}` },
+          user: { connect: { id: newUser.id } },
+          tenant: { connect: { id: newTenant.id } },
+          action: ACTION_TYPES.CREATED_USER,
+          details: {
+            message: `User ${newUser.email} created`,
+            userId: newUser.id,
+            tenantId: newTenant.id,
+          },
         },
       });
+
+      // Log tenant creation in UserActivity
+      await tx.userActivity.create({
+        data: {
+          user: { connect: { id: newUser.id } },
+          tenant: { connect: { id: newTenant.id } },
+          action: ACTION_TYPES.CREATED_TENANT,
+          details: {
+            message: `Tenant ${tenantName} created by user ${newUser.email}`,
+            tenantId: newTenant.id,
+            
+          },
+        },
+      });
+
 
       return { user: newUser, tenant: newTenant };
     });
@@ -162,80 +181,106 @@ const register = async (req, res) => {
 
 
 
+
+
+
+// POST: Sign in a user
 const signin = async (req, res) => {
   const { phoneNumber, password } = req.body;
 
+  // Validate input
+  if (!phoneNumber || !password) {
+    return res.status(400).json({ message: 'Phone number and password are required' });
+  }
+
   try {
-    // Find the user by phone number
-    const user = await prisma.user.findUnique({
-      where: { phoneNumber },
-      include: {
-        tenant: true, // Include tenant details to confirm association, remove if unnecessary
-      },
+    // Use a transaction for atomic updates
+    const [userInfo] = await prisma.$transaction(async (tx) => {
+      // Find the user by phone number
+      const user = await tx.user.findUnique({
+        where: { phoneNumber },
+        include: {
+          tenant: true, // Include tenant details to confirm association
+        },
+      });
+
+      // Check if user exists
+      if (!user) {
+        throw new Error('Invalid phone number or password');
+      }
+
+      // Compare the provided password with the hashed password
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        throw new Error('Invalid phone number or password');
+      }
+
+      // Update last login and login count
+      await tx.user.update({
+        where: { id: user.id },
+        data: {
+          lastLogin: new Date(),
+          loginCount: { increment: 1 },
+        },
+      });
+
+      // Log the login action in userActivity
+      await tx.userActivity.create({
+        data: {
+          user: { connect: { id: user.id } },
+          tenant: { connect: { id: user.tenantId } },
+          action: ACTION_TYPES.LOGIN,
+          details: { message: 'User logged in successfully' }, // Optional: Add context
+        },
+      });
+
+      // Exclude password from the user object
+      const { password: userPassword, ...userInfo } = user;
+      return [userInfo];
     });
 
-    // Check if user exists
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid phone number or password' });
-    }
-
-    // Compare the provided password with the hashed password in the database
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: 'Invalid phone number or password' });
-    }
-
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        lastLogin: new Date(),
-        loginCount: { increment: 1 }, // Increase login count
-      },
-    });
-
-    // Log the login action
-    await prisma.userActivity.create({
-      data: {
-        userId: user.id,
-        action: "LOGIN",
-      },
-    });
-
-
-
-
-    // Generate a JWT token with the necessary claims
+    // Generate a JWT token
     const token = jwt.sign(
-      { 
-        id: user.id, 
-        phoneNumber: user.phoneNumber, 
-        role: user.role, 
-        tenantId: user.tenantId 
+      {
+        id: userInfo.id,
+        phoneNumber: userInfo.phoneNumber,
+        role: userInfo.role,
+        tenantId: userInfo.tenantId,
       },
       process.env.JWT_SECRET,
-      { expiresIn: '1d' } // Token expires in 1 day
+      { expiresIn: '1d' }
     );
 
-    // Set the token in an HTTP-only cookie for security
+    // Set the token in an HTTP-only cookie
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-      maxAge: 24 * 60 * 60 * 1000, // Cookie expires in 1 day
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
     });
 
-    // Exclude the password from the response and send user info
-    const { password: userPassword, ...userInfo } = user;
-
-    // Optionally, send back user-related info, depending on the application needs
+    // Send response
     res.status(200).json({ message: 'Login successful', user: userInfo });
-
   } catch (error) {
     console.error('Error logging in:', error);
+
+    // Handle specific errors
+    if (error.message === 'Invalid phone number or password') {
+      return res.status(401).json({ message: error.message });
+    }
+    if (error.code === 'P2002') {
+      // Handle unexpected unique constraint violations (unlikely here)
+      return res.status(409).json({ message: 'Conflict with existing data' });
+    }
+
+    // Generic error
     res.status(500).json({ message: 'Internal server error' });
+  } finally {
+    await prisma.$disconnect();
   }
 };
+
+
+
 
 
 
