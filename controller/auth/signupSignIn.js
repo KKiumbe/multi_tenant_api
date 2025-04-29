@@ -109,28 +109,30 @@ const register = async (req, res) => {
 
       await tx.userActivity.create({
         data: {
-          user: { connect: { id: newUser.id } },
-          tenant: { connect: { id: newTenant.id } },
+          userId: user.id,
+          tenantId: user.tenantId,
           action: ACTION_TYPES.CREATED_USER,
           details: {
             message: `User ${newUser.email} created`,
             userId: newUser.id,
             tenantId: newTenant.id,
           },
+          timestamp: new Date(),
         },
       });
 
       // Log tenant creation in UserActivity
       await tx.userActivity.create({
         data: {
-          user: { connect: { id: newUser.id } },
-          tenant: { connect: { id: newTenant.id } },
+          userId: user.id,
+          tenantId: user.tenantId,
           action: ACTION_TYPES.CREATED_TENANT,
           details: {
             message: `Tenant ${tenantName} created by user ${newUser.email}`,
             tenantId: newTenant.id,
             
           },
+          timestamp: new Date(),
         },
       });
 
