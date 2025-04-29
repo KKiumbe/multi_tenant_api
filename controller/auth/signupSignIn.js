@@ -229,8 +229,9 @@ const signin = async (req, res) => {
       // Log the login action in userActivity
       await tx.userActivity.create({
         data: {
-          userId: user.id,
-          tenantId: user.tenantId,
+          user: { connect: { id: user.id } },
+          tenant: { connect: { id: user.tenantId } },
+          //tenantId: user.tenantId,
           action: ACTION_TYPES.LOGIN,
           details: { message: 'User logged in successfully' }, // Optional: Add context
         },
