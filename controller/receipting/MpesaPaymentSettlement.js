@@ -3,7 +3,8 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const axios = require('axios');
 
-const { sendSMS } = require('../sms/sms');
+const { sendSMS, getShortCode } = require('../sms/sms');
+const { fetchTenant } = require('../tenants/tenantupdate');
 
 
 
@@ -35,6 +36,9 @@ async function generateReceiptNumber()  {
 const MpesaPaymentSettlement = async (req, res) => {
     const { customerId, modeOfPayment, paidBy, paymentId } = req.body;
     const { tenantId } = req.user;
+
+   
+    
   
     if (!customerId || !modeOfPayment || !paidBy || !paymentId) {
       return res.status(400).json({ message: 'Missing required fields.' });
@@ -156,13 +160,16 @@ const MpesaPaymentSettlement = async (req, res) => {
         updatedInvoices,
         newClosingBalance: finalClosingBalance,
       });
+
+      const paybill = await getShortCode(tenantId);
+      const {phoneNumber} = await fetchTenant(tenantId);
   
       // Send confirmation SMS
       const balanceMessage =
         finalClosingBalance < 0
           ? `Your closing balance is an overpayment of KES ${Math.abs(finalClosingBalance)}`
           : `Your closing balance is KES ${finalClosingBalance}`;
-      const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} for garbage collection services received successfully. ${balanceMessage}. Always use your phone number as the account number, Thank you!`;
+      const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} for garbage collection services received successfully. ${balanceMessage}. Always use paybill no: ${paybill},acc no:your phone number;${customer.phoneNumber},inquieries? ${phoneNumber} Thank you!`;
   
       await sendSMS(tenantId, customer.phoneNumber, message);
     } catch (error) {

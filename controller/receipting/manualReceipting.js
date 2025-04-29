@@ -300,7 +300,7 @@ const manualCashPayment = async (req, res) => {
       ? `an overpayment of KES ${Math.abs(result.newClosingBalance)}`
       : `KES ${result.newClosingBalance}`;
     const text = `Dear ${result.customer.firstName}, payment of KES ${paymentAmount} received successfully. ` +
-      `Your balance is ${balanceMessage}. To serve you better, use our paybill number ${paybill} acc number, your phone number. Inquiries? ${customerCarePhoneNumber}`;
+      `Your balance is ${balanceMessage}. To serve you better, use our paybill number ${paybill} acc number, your phone number;${result?.customer?.phoneNumber}. Inquiries? ${customerCarePhoneNumber}`;
 
     console.time('sendSMS');
     const sanitizedPhone = sanitizePhoneNumber(result.customer.phoneNumber);
