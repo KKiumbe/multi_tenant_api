@@ -155,18 +155,18 @@ const uploadCustomers = async (req, res) => {
           });
         }
 
-        const extraFields = headers.filter(
-          (header) =>
-            !requiredFields.includes(header) &&
-            !['email', 'secondaryPhoneNumber', 'gender', 'county', 'town', 'location', 'houseNumber', 'category', 'collected', 'garbageCollectionDay'].includes(header)
-        );
-        if (extraFields.length > 0) {
-          stream.destroy();
-          fs.unlinkSync(filePath);
-          return res.status(400).json({
-            message: `CSV file contains invalid fields: ${extraFields.join(', ')}. Only allowed fields are: ${requiredFields.join(', ')} plus optional fields (email, secondaryPhoneNumber, gender, county, town, location, houseNumber, category, collected, garbageCollectionDay)`,
-          });
-        }
+        // const extraFields = headers.filter(
+        //   (header) =>
+        //     !requiredFields.includes(header) &&
+        //     !['email', 'secondaryPhoneNumber', 'gender', 'county', 'town', 'location', 'houseNumber', 'category', 'collected', 'garbageCollectionDay'].includes(header)
+        // );
+        // if (extraFields.length > 0) {
+        //   stream.destroy();
+        //   fs.unlinkSync(filePath);
+        //   return res.status(400).json({
+        //     message: `CSV file contains invalid fields: ${extraFields.join(', ')}. Only allowed fields are: ${requiredFields.join(', ')} plus optional fields (email, secondaryPhoneNumber, gender, county, town, location, houseNumber, category, collected, garbageCollectionDay)`,
+        //   });
+        // }
 
         headersValidated = true;
       })
