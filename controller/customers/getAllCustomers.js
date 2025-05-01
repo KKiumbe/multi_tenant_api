@@ -40,6 +40,28 @@ const getAllCustomers = async (req, res) => {
     }
 };
 
+const deleteAllCustomers = async (req, res) => {
+    try {
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) {
+            return res.status(400).json({ message: "Tenant ID is required" });
+        }
+
+        // Delete all customers for the tenant
+        const deleteResult = await prisma.customer.deleteMany({
+            where: { tenantId },
+        });
+
+        res.status(200).json({
+            message: "All customers deleted successfully",
+            deletedCount: deleteResult.count,
+        });
+    } catch (error) {
+        console.error("Error deleting customers:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+};
+
 
 // Export the function
-module.exports = { getAllCustomers };
+module.exports = { getAllCustomers,deleteAllCustomers };

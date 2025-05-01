@@ -1,7 +1,7 @@
 // routes/customerRoutes.js
 const express = require('express');
 const { createCustomer } = require('../../controller/customers/createCustomer.js');
-const { getAllCustomers } = require('../../controller/customers/getAllCustomers.js');
+const { getAllCustomers, deleteAllCustomers } = require('../../controller/customers/getAllCustomers.js');
 const { editCustomer } = require('../../controller/customers/editCustomer.js');
 const { SearchCustomers, SearchCustomersByPhoneNumber, SearchCustomersByName } = require('../../controller/customers/searchCustomers.js');
 const checkAccess = require('../../middleware/roleVerify.js');
@@ -34,7 +34,9 @@ router.get('/customer-details/:id',verifyToken,  checkAccess('customer','read'),
 router.get('/customer-activity/:id',verifyToken, checkAccess('customer','read'), getCustomerActivity);
  
 
+//DELETE ALL CUSTOMERS
 
+router.delete('/customers',verifyToken, checkAccess('customer','delete'), deleteAllCustomers);
 
 module.exports = router;
 
