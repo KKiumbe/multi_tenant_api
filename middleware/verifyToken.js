@@ -12,7 +12,7 @@ const verifyToken = async (req, res, next) => {
         // Decode the token to get user data
         const decoded = jwt.verify(token, process.env.JWT_SECRET); // Replace with your secret key
 
-        console.log(`this is decoded item ${decoded.role}`);
+        //console.log(`this is decoded item ${decoded.role}`);
         
         // Attach the user information to the request object
         req.user = {

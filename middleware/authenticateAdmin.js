@@ -15,7 +15,7 @@ const authenticateAdmin = async (req, res, next) => {
   try {
     // Decode and verify the token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("Token decoded:", decoded);  // Log decoded token for debugging
+    //console.log("Token decoded:", decoded);  // Log decoded token for debugging
 
     // Fetch the user from the database
     const user = await prisma.user.findUnique({ where: { id: decoded.id } });

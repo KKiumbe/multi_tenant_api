@@ -24,7 +24,7 @@ router.post('/callback', async (req, res) => {
   };
 
   // Log the payment info
-  console.log('Payment Notification Received:', paymentInfo);
+  //console.log('Payment Notification Received:', paymentInfo);
 
   try {
     // Check if the transaction already exists
@@ -33,7 +33,7 @@ router.post('/callback', async (req, res) => {
     });
 
     if (existingTransaction) {
-      console.log(`Transaction with ID ${paymentInfo.TransID} already exists. Skipping save.`);
+      //console.log(`Transaction with ID ${paymentInfo.TransID} already exists. Skipping save.`);
       return res
         .status(409)
         .json({ message: 'Transaction already processed.', transactionId: paymentInfo.TransID });
@@ -68,7 +68,7 @@ router.post('/callback', async (req, res) => {
       },
     });
 
-    console.log('Payment info saved to the database:', transaction);
+    //console.log('Payment info saved to the database:', transaction);
 
   
 

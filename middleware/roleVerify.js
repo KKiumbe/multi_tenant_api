@@ -15,7 +15,7 @@ const checkAccess = (module, action) => (req, res, next) => {
     const role = Array.isArray(user.role) && user.role.length > 0 ? user.role[0] : null;
     const { tenantId } = user;
 
-    console.log("User details:", { role, tenantId });
+    //console.log("User details:", { role, tenantId });
 
     // Validate the role
     if (!role || !ROLE_PERMISSIONS[role]) {
@@ -26,13 +26,13 @@ const checkAccess = (module, action) => (req, res, next) => {
       });
     }
 
-    console.log(`Checking permissions for role: "${role}" on module: "${module}" and action: "${action}"`);
+    //console.log(`Checking permissions for role: "${role}" on module: "${module}" and action: "${action}"`);
 
     // Check if the role has the required permission for the module and action
     const hasPermission = ROLE_PERMISSIONS[role]?.[module]?.includes(action);
 
     if (hasPermission) {
-      console.log(`Access granted for role "${role}" on ${module}:${action}`);
+      //console.log(`Access granted for role "${role}" on ${module}:${action}`);
       return next();
     }
 

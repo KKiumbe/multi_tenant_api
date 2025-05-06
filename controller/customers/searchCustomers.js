@@ -23,8 +23,8 @@ const sanitizePhoneNumber = (phone) => {
 const SearchCustomers = async (req, res) => {
     const { phone, name } = req.query;
     const tenantId = req.user?.tenantId; // Extract tenantId from authenticated user
-    console.log("Tenant ID:", tenantId);
-    console.log("Raw phone number:", phone);
+    //console.log("Tenant ID:", tenantId);
+   // console.log("Raw phone number:", phone);
 
     if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required' });
@@ -34,7 +34,7 @@ const SearchCustomers = async (req, res) => {
         // If phone is provided, sanitize and search for an exact match
         if (phone) {
             const sanitizedPhone = sanitizePhoneNumber(phone);
-            console.log("Sanitized phone number:", sanitizedPhone);
+            //console.log("Sanitized phone number:", sanitizedPhone);
 
             const uniqueCustomer = await prisma.customer.findMany({
                 where: {
@@ -94,8 +94,8 @@ const SearchCustomersByName = async (req, res) => {
     const tenantId = req.user?.tenantId; // Extract tenantId from authenticated user
   
     // Log incoming data for debugging
-    console.log("Tenant ID:", tenantId);
-    console.log("Search name:", name);
+    //console.log("Tenant ID:", tenantId);
+    //console.log("Search name:", name);
   
     // Validate required parameters
     if (!tenantId) {
@@ -135,8 +135,8 @@ const SearchCustomersByName = async (req, res) => {
     const { phone } = req.query;
     const tenantId = req.user?.tenantId;
   
-    console.log("Tenant ID:", tenantId);
-    console.log("Raw phone number:", phone);
+    //console.log("Tenant ID:", tenantId);
+    //console.log("Raw phone number:", phone);
   
     if (!tenantId) {
       return res.status(400).json({ message: "Tenant ID is required" });
@@ -148,7 +148,7 @@ const SearchCustomersByName = async (req, res) => {
   
     try {
       const sanitizedPhone = sanitizePhoneNumber(phone);
-      console.log("Sanitized phone number:", sanitizedPhone);
+     // console.log("Sanitized phone number:", sanitizedPhone);
   
       const customer = await prisma.customer.findUnique({
         where: {
@@ -159,7 +159,7 @@ const SearchCustomersByName = async (req, res) => {
   
       if (customer) {
         res.json(customer);
-        console.log(`this is the customer ${JSON.stringify(customer)}`);
+       // console.log(`this is the customer ${JSON.stringify(customer)}`);
       } else {
         res.status(404).json({ message: "No customer found with this phone number" });
       }

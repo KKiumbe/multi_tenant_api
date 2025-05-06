@@ -45,14 +45,14 @@ const checkSmsBalance = async (apiKey, partnerId) => {
       throw new Error('API key or partner ID is missing');
     }
   
-    console.log(`Checking SMS balance with apiKey: ${apiKey} and partnerId: ${partnerId}`);
+    //console.log(`Checking SMS balance with apiKey: ${apiKey} and partnerId: ${partnerId}`);
   
     try {
       const response = await axios.post(SMS_BALANCE_URL, {
         apikey: apiKey,
         partnerID: partnerId,
       });
-      console.log('SMS balance:', response.data.balance);
+      //console.log('SMS balance:', response.data.balance);
       return response.data.balance;
     } catch (error) {
       console.error('Error checking SMS balance:', error.response?.data || error.message);
@@ -90,7 +90,7 @@ const getSmsBalance = async (req, res) => {
       partnerID,
     });
 
-    console.log('SMS balance:', response.data.credit);
+    //console.log('SMS balance:', response.data.credit);
     res.status(200).json({ credit: response.data.credit });
 
   } catch (error) {
@@ -107,7 +107,7 @@ const getSmsBalance = async (req, res) => {
 const sendToOne = async (req, res) => {
 
     const { tenantId } = req.user; 
-    console.log(`this is the tenant id ${tenantId}`);
+    //console.log(`this is the tenant id ${tenantId}`);
 
   const { mobile, message } = req.body;
   try {
@@ -123,7 +123,7 @@ const sendToOne = async (req, res) => {
 
 
 const sendSMS = async (tenantId, mobile, message) => {
-    console.log(`Sending SMS to ${mobile}`);
+    //console.log(`Sending SMS to ${mobile}`);
     let clientsmsid;
   
     try {
@@ -141,7 +141,7 @@ const sendSMS = async (tenantId, mobile, message) => {
       // Generate unique clientsmsid
       clientsmsid = uuidv4();
   
-      console.log(`Creating SMS record with clientsmsid: ${clientsmsid} for customerId:`);
+      //console.log(`Creating SMS record with clientsmsid: ${clientsmsid} for customerId:`);
   
       // Create SMS record in the database
       const smsRecord = await prisma.sMS.create({
@@ -155,7 +155,7 @@ const sendSMS = async (tenantId, mobile, message) => {
       });
       
   
-      console.log(`SMS record created: ${JSON.stringify(smsRecord)}`);
+      //console.log(`SMS record created: ${JSON.stringify(smsRecord)}`);
   
       // Prepare SMS payload
       const payload = {
@@ -167,13 +167,13 @@ const sendSMS = async (tenantId, mobile, message) => {
         mobile
       };
   
-      console.log(`Sending SMS with payload: ${JSON.stringify(payload)}`);
+      //console.log(`Sending SMS with payload: ${JSON.stringify(payload)}`);
   
       // Send SMS
      
       try {
         const response = await axios.post(SMS_ENDPOINT, payload);
-        console.log(`SMS sent successfully to ${mobile}:`, response.data);
+       // console.log(`SMS sent successfully to ${mobile}:`, response.data);
         return response.data;
       } catch (error) {
         console.error('Error sending SMS:', {
@@ -187,7 +187,7 @@ const sendSMS = async (tenantId, mobile, message) => {
       
 
   
-      console.log('SMS sent successfully. Updating status to "sent".');
+      //console.log('SMS sent successfully. Updating status to "sent".');
   
       // Update SMS record to "sent"
       await prisma.sMS.update({
@@ -374,7 +374,7 @@ const sendToAll = async (req, res) => {
       message: message, // Use the message from req.body directly
     }));
 
-    console.log("📞 Prepared messages:", messages);
+    //console.log("📞 Prepared messages:", messages);
 
     // Batch size limit (set to 1000 based on API constraint)
     const batchSize = 500;
@@ -487,7 +487,7 @@ const sendBill = async (req, res) => {
   const { tenantId } = req.user; 
   const { customerSupportPhoneNumber } = await getSMSConfigForTenant(tenantId);
   const paybill = await getShortCode(tenantId);
-  console.log(`this is the customer support number ${customerSupportPhoneNumber}`);
+  //console.log(`this is the customer support number ${customerSupportPhoneNumber}`);
 
   if (!customerId) {
     return res.status(400).json({ error: 'Customer ID is required.' });
@@ -783,12 +783,12 @@ const sendSms = async (tenantId, messages) => {
         smslist: batch, // Use smslist as the key
       };
 
-      console.log("📞 Sending SMS payload:", payload);
+      //console.log("📞 Sending SMS payload:", payload);
 
       let response;
       try {
         response = await axios.post(process.env.BULK_SMS_ENDPOINT, payload);
-        console.log(`Batch of ${batch.length} SMS sent successfully:`, response.data);
+        //console.log(`Batch of ${batch.length} SMS sent successfully:`, response.data);
       } catch (error) {
         console.error('Bulk SMS API error:', error.response?.data || error.message);
         response = { data: { status: 'FAILED' } }; // Simulate failure response
@@ -831,7 +831,7 @@ const sendUnpaidCustomers = async (req, res) => {
       throw new Error('Tenant ID is required');
     }
 
-    console.log(`Fetching unpaid customers for tenant ID: ${tenantId}`);
+    //console.log(`Fetching unpaid customers for tenant ID: ${tenantId}`);
 
     // Fetch only active customers with unpaid balances (closingBalance > 0)
     const unpaidCustomers = await prisma.customer.findMany({
@@ -862,7 +862,7 @@ const sendUnpaidCustomers = async (req, res) => {
     // Send bulk SMS
     try {
       await sendSms(tenantId, messages);
-      console.log('Bulk SMS sent successfully.');
+      //console.log('Bulk SMS sent successfully.');
       res.status(200).json({
         success: true,
         message: 'SMS sent to unpaid customers successfully.',
@@ -896,7 +896,7 @@ const sendUnpaidCustomers = async (req, res) => {
         throw new Error('A valid balance amount is required');
       }
   
-      console.log(`Fetching customers above balance ${balance} for tenant ID: ${tenantId}`);
+      //console.log(`Fetching customers above balance ${balance} for tenant ID: ${tenantId}`);
   
       const activeCustomers = await prisma.customer.findMany({
         where: { status: 'ACTIVE', tenantId },
@@ -914,14 +914,14 @@ const sendUnpaidCustomers = async (req, res) => {
 
       }));
   
-      console.log("📞 Prepared messages:", messages);
+     // console.log("📞 Prepared messages:", messages);
   
       if (messages.length === 0) {
         return res.status(404).json({ success: false, message: `No customers found with balance above ${balance}.` });
       }
   
       await sendSms(tenantId, messages);
-      console.log('SMS sent successfully.');
+     // console.log('SMS sent successfully.');
       res.status(200).json({
         success: true,
         message: `SMS sent to customers with balance above ${balance} successfully.`,
@@ -946,7 +946,7 @@ const sendUnpaidCustomers = async (req, res) => {
         return res.status(400).json({ message: 'Tenant ID is required.' });
       }
   
-      console.log(`Fetching low balance customers for tenant ID: ${tenantId}`);
+      //console.log(`Fetching low balance customers for tenant ID: ${tenantId}`);
   
       // Fetch active customers with low balance (0 <= closingBalance < monthlyCharge)
       const lowBalanceCustomers = await prisma.customer.findMany({
@@ -977,7 +977,7 @@ const sendUnpaidCustomers = async (req, res) => {
         message: `Dear ${customer.firstName}, your bill is KES ${customer.monthlyCharge}, balance KES ${customer.closingBalance}. Paybill: ${paybill}, acct: your phone number; ${customer.phoneNumber}. Inquiries?: ${customerSupportPhoneNumber}`,
       }));
   
-      console.log(`Prepared ${messages.length} messages for low balance customers.`);
+     // console.log(`Prepared ${messages.length} messages for low balance customers.`);
   
       // Check if there are messages to send
       if (messages.length === 0) {
@@ -987,7 +987,7 @@ const sendUnpaidCustomers = async (req, res) => {
       // Send bulk SMS
       try {
         await sendSms(tenantId, messages); // Send all messages in one API call
-        console.log('Bulk SMS sent successfully.');
+        //console.log('Bulk SMS sent successfully.');
         res.status(200).json({
           success: true,
           message: 'SMS sent to low balance customers successfully.',
@@ -1020,7 +1020,7 @@ const sendUnpaidCustomers = async (req, res) => {
         return res.status(400).json({ message: 'Tenant ID is required.' });
       }
   
-      console.log(`Fetching high balance customers for tenant ID: ${tenantId}`);
+      //console.log(`Fetching high balance customers for tenant ID: ${tenantId}`);
   
       // Fetch active customers for the specific tenant
       const activeCustomers = await prisma.customer.findMany({
@@ -1058,7 +1058,7 @@ const sendUnpaidCustomers = async (req, res) => {
       // Send bulk SMS
       try {
         await sendSms(tenantId, messages); // Send all messages in one API call
-        console.log('Bulk SMS sent successfully.');
+       // console.log('Bulk SMS sent successfully.');
         res.status(200).json({
           success: true,
           message: 'SMS sent to high balance customers successfully.',
