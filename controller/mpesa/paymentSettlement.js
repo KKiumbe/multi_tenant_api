@@ -60,11 +60,11 @@ async function settleInvoice() {
                 mpesaConfig: { tenantId }, // Extract tenantId from the related config
             } = transaction;
 
-            console.log(`Processing transaction: ${id} for tenant: ${tenantId}, amount: ${TransAmount}`);
+            //console.log(`Processing transaction: ${id} for tenant: ${tenantId}, amount: ${TransAmount}`);
             const paymentAmount = parseFloat(TransAmount);
 
             if (isNaN(paymentAmount) || paymentAmount <= 0) {
-                console.log(`Invalid payment amount for transaction ${id}. Skipping.`);
+                //console.log(`Invalid payment amount for transaction ${id}. Skipping.`);
                 continue;
             }
 
@@ -73,7 +73,7 @@ async function settleInvoice() {
             });
 
             if (existingPayment) {
-                console.log(`Mpesa transaction ${MpesaCode} already exists in payment table. Skipping.`);
+                //console.log(`Mpesa transaction ${MpesaCode} already exists in payment table. Skipping.`);
                 continue;
             }
 
@@ -150,7 +150,7 @@ async function settleInvoice() {
                     tenantId,
                   },
                 });
-                console.log(`Receipt created successfully for transaction ${MpesaCode}`);
+                //console.log(`Receipt created successfully for transaction ${MpesaCode}`);
               } catch (error) {
                 console.error(`Failed to create receipt for transaction ${MpesaCode}:`, error.message);
               }
@@ -178,7 +178,7 @@ async function settleInvoice() {
             const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. ${formattedBalanceMessage}.`;
 
             await sendSMS(tenantId, customer.phoneNumber,message);
-            console.log(`Processed payment and created receipt for transaction ${MpesaCode}.`);
+            //console.log(`Processed payment and created receipt for transaction ${MpesaCode}.`);
         }
     } catch (error) {
         console.error('Error processing Mpesa transactions in settleInvoice:', error);
