@@ -6,8 +6,11 @@ const ROLE_PERMISSIONS = require('../../DatabaseConfig/role.js');
 const { configureTenantSettings } = require('../smsConfig/config.js');
 const prisma = new PrismaClient();
 dotenv.config();
+
 const ACTION_TYPES = {
   LOGIN: 'LOGIN',
+  CREATED_USER: 'CREATED_USER',
+  CREATED_TENANT: 'CREATED_TENANT',
 };
 
 const register = async (req, res) => {
@@ -65,15 +68,12 @@ const register = async (req, res) => {
     }
 
     // Transaction to create tenant and user
-    const { user, tenant } = await prisma.$transaction(async (prisma) => {
-
-      const tenantCount = await prisma.tenant.count();
-     
+    const { user, tenant } = await prisma.$transaction(async (tx) => {
+      const tenantCount = await tx.tenant.count();
 
       // Create tenant first
-      const newTenant = await prisma.tenant.create({
+      const newTenant = await tx.tenant.create({
         data: {
-        
           name: tenantName,
           subscriptionPlan: 'Default Plan',
           monthlyCharge: 0.0,
@@ -83,7 +83,7 @@ const register = async (req, res) => {
       });
 
       // Create user with tenantId
-      const newUser = await prisma.user.create({
+      const newUser = await tx.user.create({
         data: {
           firstName,
           lastName,
@@ -102,15 +102,16 @@ const register = async (req, res) => {
       });
 
       // Update tenant with createdBy
-      await prisma.tenant.update({
+      await tx.tenant.update({
         where: { id: newTenant.id },
         data: { createdBy: newUser.id.toString() }, // String since schema expects String
       });
 
+      // Log user creation in UserActivity
       await tx.userActivity.create({
         data: {
-          userId: user.id,
-          tenantId: user.tenantId,
+          userId: newUser.id,
+          tenantId: newTenant.id,
           action: ACTION_TYPES.CREATED_USER,
           details: {
             message: `User ${newUser.email} created`,
@@ -124,18 +125,16 @@ const register = async (req, res) => {
       // Log tenant creation in UserActivity
       await tx.userActivity.create({
         data: {
-          userId: user.id,
-          tenantId: user.tenantId,
+          userId: newUser.id,
+          tenantId: newTenant.id,
           action: ACTION_TYPES.CREATED_TENANT,
           details: {
             message: `Tenant ${tenantName} created by user ${newUser.email}`,
             tenantId: newTenant.id,
-            
           },
           timestamp: new Date(),
         },
       });
-
 
       return { user: newUser, tenant: newTenant };
     });
@@ -161,7 +160,6 @@ const register = async (req, res) => {
       },
       tenant: {
         id: tenant.id,
-       
         name: tenant.name,
       },
     });
@@ -176,17 +174,6 @@ const register = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
-
-
-
-
-// POST: Sign in a user
 const signin = async (req, res) => {
   const { phoneNumber, password } = req.body;
 
@@ -229,13 +216,10 @@ const signin = async (req, res) => {
       // Log the login action in userActivity
       await tx.userActivity.create({
         data: {
-          //user: { connect: { id: user.id } },
           userId: user.id,
           tenantId: user.tenantId,
-          //tenant: { connect: { id: user.tenantId } },
-          //tenantId: user.tenantId,
           action: ACTION_TYPES.LOGIN,
-          details: { message: 'User logged in successfully' }, // Optional: Add context
+          details: { message: 'User logged in successfully' },
         },
       });
 
@@ -273,7 +257,6 @@ const signin = async (req, res) => {
       return res.status(401).json({ message: error.message });
     }
     if (error.code === 'P2002') {
-      // Handle unexpected unique constraint violations (unlikely here)
       return res.status(409).json({ message: 'Conflict with existing data' });
     }
 
@@ -284,10 +267,4 @@ const signin = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
-module.exports = { register,signin}; // Ensure to export the functions
+module.exports = { register, signin };
