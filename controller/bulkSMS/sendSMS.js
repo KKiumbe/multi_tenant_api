@@ -103,10 +103,10 @@ async function generateBulkBillSmsMessage() {
           data: { status: 'sent' }
         });
 
-        console.log(`Updated status to 'sent' for ${sentIds.length} SMS records.`);
+       // console.log(`Updated status to 'sent' for ${sentIds.length} SMS records.`);
       }
 
-      console.log(`Sent ${filteredSmsList.length} bulk SMS messages.`);
+     // console.log(`Sent ${filteredSmsList.length} bulk SMS messages.`);
       return response.data;
 
     } else {

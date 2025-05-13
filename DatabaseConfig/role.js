@@ -11,13 +11,13 @@ const ROLE_PERMISSIONS = {
     config: ["create", "read", "update", "delete"],
   },
   customer_manager: {
-    customer: ["create", "read", "update"],
-    invoices: ["read"],
+    customer: ["create", "read"],
+    invoices: ["read", "create"],
     trashBagIssuance: ["create", "read", "update"],
     user: ["create", "read"],
     invoices: ["create", "read"], // Note: Duplicate 'invoices' key; last one overrides
-    receipts: ["read"],
-    payments: ["read"],
+    receipts: ["read", "create"],
+    payments: ["read","create"],
     sms: ["create", "read"],
     mpesaTransactions: ["read"],
   },
