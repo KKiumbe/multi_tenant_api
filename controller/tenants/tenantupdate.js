@@ -269,20 +269,27 @@ const fetchTenant = async (tenantId) => {
 
 
 async function updateTenantStatus(req, res) {
-
-  const { status,tenantId } = req.body;
-
+  const { tenantId, status } = req.body;
+  const idNum = Number(tenantId);
+  if (isNaN(idNum)) {
+    return res.status(400).json({ error: 'Invalid tenantId parameter' });
+  }
   if (!Object.values(TenantStatus).includes(status)) {
     return res.status(400).json({ error: `Invalid status: ${status}` });
   }
 
   try {
+    const existing = await prisma.tenant.findUnique({ where: { id: idNum } });
+    if (!existing) {
+      return res.status(404).json({ error: 'Tenant not found' });
+    }
+
     const updated = await prisma.tenant.update({
-      where: { id: Number(tenantId) },
-      data: {status}, // Use the enum value directly
+      where: { id: idNum },
+      data: { status },
     });
     return res.json({
-      message: `Tenant ${tenantId} status set to ${status}`,
+      message: `Tenant ${idNum} status set to ${status}`,
       tenant: updated,
     });
   } catch (err) {
@@ -290,7 +297,6 @@ async function updateTenantStatus(req, res) {
     return res.status(500).json({ error: 'Could not update tenant status' });
   }
 }
-
 
 async function getAllTenants(req, res) {
   try {
