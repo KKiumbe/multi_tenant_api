@@ -266,12 +266,15 @@ const fetchTenant = async (tenantId) => {
 };
 
 
+
 async function updateTenantStatus(req, res) {
-  const { tenantId, status } = req.body;
-  const idNum = Number(tenantId);
-  if (isNaN(idNum)) {
+  const idParam = req.params.tenantId;
+  const idNum = parseInt(idParam, 10);
+  if (!idParam || isNaN(idNum)) {
     return res.status(400).json({ error: 'Invalid tenantId parameter' });
   }
+
+  const { status } = req.body;
   if (!Object.values(TenantStatus).includes(status)) {
     return res.status(400).json({ error: `Invalid status: ${status}` });
   }
@@ -286,15 +289,14 @@ async function updateTenantStatus(req, res) {
       where: { id: idNum },
       data: { status },
     });
-    return res.json({
-      message: `Tenant ${idNum} status set to ${status}`,
-      tenant: updated,
-    });
+
+    return res.json({ message: `Tenant ${idNum} status set to ${status}`, tenant: updated });
   } catch (err) {
     console.error('Error updating tenant status:', err);
     return res.status(500).json({ error: 'Could not update tenant status' });
   }
 }
+
 
 async function getAllTenants(req, res) {
   try {
