@@ -292,11 +292,20 @@ async function updateTenantStatus(req, res) {
 }
 
 
+async function getAllTenants(req, res) {
+  try {
+    const tenants = await prisma.tenant.findMany();
+    return res.json({ tenants });
+  } catch (err) {
+    console.error('Error fetching tenants:', err);
+    return res.status(500).json({ error: 'Could not fetch tenants' });
+  }
+}
 
 
 
 
 
 module.exports = {
-  updateTenantDetails,getTenantDetails,uploadLogo,fetchTenant,updateTenantStatus,fetchTenantDetails
+  updateTenantDetails,getTenantDetails,uploadLogo,fetchTenant,updateTenantStatus,fetchTenantDetails,getAllTenants
 };
