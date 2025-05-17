@@ -22,9 +22,9 @@ router.get(
 );
 
 router.put(
-  '/tenants/status',
+  '/tenants/status',verifyToken,
 
-  updateTenantStatus
+ updateTenantStatus
 );
 
 
