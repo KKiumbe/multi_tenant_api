@@ -266,8 +266,6 @@ const fetchTenant = async (tenantId) => {
 };
 
 
-
-
 async function updateTenantStatus(req, res) {
   const { tenantId, status } = req.body;
   const idNum = Number(tenantId);
