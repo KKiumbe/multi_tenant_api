@@ -9,6 +9,8 @@ const verifyToken = require('../../middleware/verifyToken.js');
 const { getCustomerDetails, deleteCustomer } = require('../../controller/customers/customerDetails.js');
 const { clearCustomerData } = require('../../controller/customers/delete/delete.js');
 const { getCustomerActivity } = require('../../controller/customers/activities.js');
+const { checkTenantStatus, requireTenantStatus } = require('../../middleware/requireTenantStatus.js');
+const {TenantStatus} = require('@prisma/client');
 
 
 
@@ -16,12 +18,14 @@ const router = express.Router();
 
 // Route to create a new customer
 router.post(
-    '/customers',verifyToken, checkAccess('customer','create'),
+    '/customers',verifyToken,  checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
+  requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('customer','create'),
  
     createCustomer // Step 3: Proceed to the controller if authorized
 );
 router.get('/customers', verifyToken, checkAccess('customer','read') ,getAllCustomers);
-router.put('/customers/:id',verifyToken,checkAccess('customer','update'), editCustomer);
+router.put('/customers/:id',verifyToken,  checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
+  requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('customer','update'), editCustomer);
 router.get('/search-customers',verifyToken, SearchCustomers);
 router.delete('/customers/:id',verifyToken,checkAccess('customer','delete'), deleteCustomer);
 

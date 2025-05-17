@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient,TenantStatus } = require('@prisma/client');
 const prisma = new PrismaClient();
 const multer = require('multer');
 const path = require('path');
@@ -268,7 +268,35 @@ const fetchTenant = async (tenantId) => {
 
 
 
+async function updateTenantStatus(req, res) {
+
+  const { status,tenantId } = req.body;
+
+  if (!Object.values(TenantStatus).includes(status)) {
+    return res.status(400).json({ error: `Invalid status: ${status}` });
+  }
+
+  try {
+    const updated = await prisma.tenant.update({
+      where: { id: Number(tenantId) },
+      data: {status}, // Use the enum value directly
+    });
+    return res.json({
+      message: `Tenant ${tenantId} status set to ${status}`,
+      tenant: updated,
+    });
+  } catch (err) {
+    console.error('Error updating tenant status:', err);
+    return res.status(500).json({ error: 'Could not update tenant status' });
+  }
+}
+
+
+
+
+
+
 
 module.exports = {
-  updateTenantDetails,getTenantDetails,uploadLogo,fetchTenant
+  updateTenantDetails,getTenantDetails,uploadLogo,fetchTenant,updateTenantStatus,fetchTenantDetails
 };

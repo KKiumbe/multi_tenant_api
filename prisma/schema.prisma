@@ -387,6 +387,7 @@ model TrashBagIssuance {
 enum TenantStatus {
   ACTIVE
   DISABLED
+  EXPIRED
 }
 
 enum UserStatus {
