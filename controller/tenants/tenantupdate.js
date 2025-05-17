@@ -273,7 +273,7 @@ async function updateTenantStatus(req, res) {
   if (!idParam || isNaN(idNum)) {
     return res.status(400).json({ error: 'Invalid tenantId parameter' });
   }
-
+console.log(Object.values(TenantStatus));
   const { status } = req.body;
   if (!Object.values(TenantStatus).includes(status)) {
     return res.status(400).json({ error: `Invalid status: ${status}` });
