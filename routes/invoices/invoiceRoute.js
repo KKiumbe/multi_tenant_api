@@ -6,6 +6,8 @@ const { addSmsJob } = require('../../controller/bulkSMS/sendSMSJob.js');
 const { cancelSystemGenInvoices } = require('../../controller/bill/cancelJob.js');
 const verifyToken = require('../../middleware/verifyToken.js');
 const checkAccess = require('../../middleware/roleVerify.js');
+const { checkTenantStatus, requireTenantStatus } = require('../../middleware/requireTenantStatus.js');
+const { TenantStatus } = require('@prisma/client');
 
 const router = express.Router();
 
@@ -13,22 +15,26 @@ const router = express.Router();
 
 
 router.get('/invoices/all',verifyToken,checkAccess('invoices', 'read'), getAllInvoices );
-router.patch('/invoice/cancel/:id/', verifyToken,checkAccess('invoices', 'update'), cancelCustomerInvoice );
+router.patch('/invoice/cancel/:id/', verifyToken,checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
+  requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('invoices', 'update'), cancelCustomerInvoice );
 
 router.get('/invoices/search-by-phone',verifyToken,checkAccess('invoices', 'read'), searchInvoicesByPhone);
 
 router.get('/invoices/search-by-name',verifyToken, checkAccess('invoices', 'read'),searchInvoicesByName);
 router.get('/invoices/:id/',verifyToken,checkAccess('invoices', 'read'), getInvoiceDetails);
-router.put('/invoices/cancel/:invoiceId/', verifyToken,checkAccess('invoices', 'update'), cancelInvoiceById);
+router.put('/invoices/cancel/:invoiceId/', verifyToken, checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
+  requireTenantStatus([TenantStatus.ACTIVE]),checkAccess('invoices', 'update'), cancelInvoiceById);
 
 // Route to create a manual invoice
-router.post('/invoices', verifyToken,checkAccess('invoices', 'create'),createInvoice);
+router.post('/invoices', verifyToken, checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
+  requireTenantStatus([TenantStatus.ACTIVE]),checkAccess('invoices', 'create'),createInvoice);
 
 router.post('/send-bulk-sms', addSmsJob);
 
 
 // Route to generate invoices for all active customers for a specified month
-router.post('/invoices/generate', verifyToken,checkAccess('invoices', 'create'),generateInvoices);
+router.post('/invoices/generate', verifyToken,checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
+  requireTenantStatus([TenantStatus.ACTIVE]),checkAccess('invoices', 'create'),generateInvoices);
 
 router.post('/invoices-generate-day',checkAccess('invoices', 'create'),generateInvoicesByDay)
 
@@ -36,7 +42,8 @@ router.post('/invoices-generate-day',checkAccess('invoices', 'create'),generateI
 router.post('/invoices-generate-tenant',generateInvoicesPerTenant)
 
 
-router.post('/generate-invoices-for-all',verifyToken, checkAccess('invoices', 'create'),generateInvoicesForAll)
+router.post('/generate-invoices-for-all',verifyToken, checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
+  requireTenantStatus([TenantStatus.ACTIVE]),checkAccess('invoices', 'create'),generateInvoicesForAll)
 
 
 
