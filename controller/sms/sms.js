@@ -232,44 +232,49 @@ const sendSMS = async (tenantId, mobile, message) => {
 
 
 // Send bills to all active customers
-const sendBills = async (req, res) => {
-    const { tenantId } = req.user; 
 
-    const { customerSupportPhoneNumber:customerSupport } = await getSMSConfigForTenant(tenantId);
-    const paybill = await getShortCode(tenantId);
+const sendBills = async (req, res) => {
+  const { tenantId } = req.user; 
+  const { customerSupportPhoneNumber: customerSupport } = await getSMSConfigForTenant(tenantId);
+  const paybill = await getShortCode(tenantId);
+
+  // Get the current month name, e.g. "May"
+  const nameOfMonth = new Date().toLocaleString('en-US', { month: 'long' });
+
   try {
     const activeCustomers = await prisma.customer.findMany({
       where: { status: 'ACTIVE', tenantId },
-      select: { phoneNumber: true, 
-
-                firstName:true,
-                closingBalance:true,
-                monthlyCharge:true,
+      select: {
+        phoneNumber: true,
+        firstName: true,
+        closingBalance: true,
+        monthlyCharge: true,
       },
     });
 
-   
+    const messages = activeCustomers.map((customer) => {
+      // Format the closing balance portion
+      const balanceText = customer.closingBalance < 0
+        ? `overpayment of KES ${Math.abs(customer.closingBalance)}`
+        : `KES ${customer.closingBalance}`;
 
+      return {
+        mobile: sanitizePhoneNumber(customer.phoneNumber),
+        message: 
+          `Dear ${customer.firstName}, your ${nameOfMonth} bill is KES ${customer.monthlyCharge}, ` +
+          `balance ${balanceText}. Paybill: ${paybill}, acct: ${customer.phoneNumber}. ` +
+          `Inquiries? ${customerSupport}`
+      };
+    });
 
-    const messages = activeCustomers.map((customer) => ({
-      mobile: sanitizePhoneNumber(customer.phoneNumber), 
-
-      message: `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance ${
-        customer.closingBalance < 0
-          ? "overpayment of KES" + Math.abs(customer.closingBalance)
-          : "KES " + customer.closingBalance
-      }.Paybill: ${paybill},acct:your phone number;${customer.phoneNumber}.Inquiries? ${customerSupport}`
-
-    }));
-
-    const smsResponses = await sendSms(tenantId,messages);
-
+    const smsResponses = await sendSms(tenantId, messages);
     res.status(200).json({ message: 'Bills sent successfully', smsResponses });
   } catch (error) {
     console.error('Error sending bills:', error);
     res.status(500).json({ error: 'Failed to send bills.' });
   }
 };
+
 
 
 const sendBillsEstate = async (req, res) => {
@@ -487,6 +492,7 @@ const sendBill = async (req, res) => {
   const { tenantId } = req.user; 
   const { customerSupportPhoneNumber } = await getSMSConfigForTenant(tenantId);
   const paybill = await getShortCode(tenantId);
+    const nameOfMonth = new Date().toLocaleString('en-US', { month: 'long' });
   //console.log(`this is the customer support number ${customerSupportPhoneNumber}`);
 
   if (!customerId) {
@@ -510,7 +516,7 @@ const sendBill = async (req, res) => {
 
    
 
-    const message = `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance ${
+    const message = `Dear ${customer.firstName},your ${nameOfMonth} bill is KES ${customer.monthlyCharge},balance ${
       customer.closingBalance < 0
         ? "overpayment of KES" + Math.abs(customer.closingBalance)
         : "KES " + customer.closingBalance
@@ -534,6 +540,7 @@ const sendBillPerDay = async (req, res) => {
   const { tenantId } = req.user; 
   const { customerSupportPhoneNumber:customerSupport } = await getSMSConfigForTenant(tenantId);
   const paybill = await getShortCode(tenantId);
+    const nameOfMonth = new Date().toLocaleString('en-US', { month: 'long' });
   if (!day) {
     return res.status(400).json({ error: 'Day is required.' });
   }
@@ -553,7 +560,7 @@ const sendBillPerDay = async (req, res) => {
       mobile: sanitizePhoneNumber(customer.phoneNumber),
 
 
-      message: `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance ${
+      message: `Dear ${customer.firstName},your ${nameOfMonth} bill is KES ${customer.monthlyCharge},balance ${
         customer.closingBalance < 0
           ? "overpayment of KES" + Math.abs(customer.closingBalance)
           : "KES " + customer.closingBalance
@@ -826,7 +833,7 @@ const sendUnpaidCustomers = async (req, res) => {
     const { tenantId } = req.user; // Extract tenant ID from the request
     const paybill = await getShortCode(tenantId);
     const { customerSupportPhoneNumber } = await getSMSConfigForTenant(tenantId);
-
+    const nameOfMonth = new Date().toLocaleString('en-US', { month: 'long' });
     if (!tenantId) {
       throw new Error('Tenant ID is required');
     }
@@ -856,7 +863,7 @@ const sendUnpaidCustomers = async (req, res) => {
     // Create bulk SMS messages
     const messages = unpaidCustomers.map((customer) => ({
       mobile: sanitizePhoneNumber(customer.phoneNumber),
-      message: `Dear ${customer.firstName}, your bill is KES ${customer.monthlyCharge}, balance KES ${customer.closingBalance}. Paybill: ${paybill}, acct: your phone number; ${customer.phoneNumber}. Inquiries?: ${customerSupportPhoneNumber}`,
+      message: `Dear ${customer.firstName}, your ${nameOfMonth} bill is KES ${customer.monthlyCharge}, balance KES ${customer.closingBalance}. Paybill: ${paybill}, acct: your phone number; ${customer.phoneNumber}. Inquiries?: ${customerSupportPhoneNumber}`,
     }));
 
     // Send bulk SMS
@@ -890,7 +897,7 @@ const sendUnpaidCustomers = async (req, res) => {
       const { balance } = req.body;
       const paybill = await getShortCode(tenantId);
       const { phoneNumber: customerCarePhoneNumber } = await fetchTenant(tenantId);
-  
+       const nameOfMonth = new Date().toLocaleString('en-US', { month: 'long' });
       if (!tenantId) throw new Error('Tenant ID is required');
       if (balance === undefined || isNaN(balance) || balance < 0) {
         throw new Error('A valid balance amount is required');
@@ -910,7 +917,7 @@ const sendUnpaidCustomers = async (req, res) => {
       const messages = customersAboveBalance.map((customer) => ({
         mobile: sanitizePhoneNumber(customer.phoneNumber),
 
-        message : `Dear ${customer.firstName},your bill is KES ${customer.monthlyCharge},balance KES ${customer.closingBalance}.Paybill:${paybill},acct: your phone number(${customer.phoneNumber}).Inquiries?:${customerCarePhoneNumber}`
+        message : `Dear ${customer.firstName},your ${nameOfMonth} bill is KES ${customer.monthlyCharge},balance KES ${customer.closingBalance}.Paybill:${paybill},acct: your phone number(${customer.phoneNumber}).Inquiries?:${customerCarePhoneNumber}`
 
       }));
   
