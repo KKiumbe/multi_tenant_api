@@ -1206,6 +1206,8 @@ module.exports = {
   sendBillsEstate,
   sendToEstate,
 
-  sendHighBalanceCustomers,sendCustomersAboveBalance,sendDetailedBill
+  sendHighBalanceCustomers,
+  sendCustomersAboveBalance,
+  sendDetailedBill,
   sendCustomersAboveBalanceDetailed
 };
