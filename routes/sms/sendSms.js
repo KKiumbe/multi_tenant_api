@@ -1,6 +1,6 @@
 const express = require('express');
 const verifyToken = require('../../middleware/verifyToken.js');
-const { sendBills, sendToAll, sendBill, sendBillPerDay, sendToGroup, sendToOne, sendUnpaidCustomers, sendLowBalanceCustomers, sendHighBalanceCustomers, sendCustomersAboveBalance, sendBillsEstate, sendToEstate } = require('../../controller/sms/sms.js');
+const { sendBills, sendToAll, sendBill, sendBillPerDay, sendToGroup, sendToOne, sendUnpaidCustomers, sendLowBalanceCustomers, sendHighBalanceCustomers, sendCustomersAboveBalance, sendBillsEstate, sendToEstate, sendCustomersAboveBalanceDetailed } = require('../../controller/sms/sms.js');
 const checkAccess = require('../../middleware/roleVerify.js');
 const { updateSMSConfig, createSMSConfig } = require('../../controller/smsConfig/smsConfig.js');
 const { updateSmsDeliveryStatus, getSmsMessages } = require('../../controller/bulkSMS/deliveryStatus.js');
@@ -49,6 +49,13 @@ router.post('/send-sms-high-balance',verifyToken,checkTenantStatus,             
 router.post('/send-sms-custom-balance',verifyToken,checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
   requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('sms', 'create'),sendCustomersAboveBalance);
 
+
+  router.post(
+  '/send-sms-custom-balance-detailed',
+  verifyToken,  checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
+  requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('sms', 'create'),
+  sendCustomersAboveBalanceDetailed
+);
 router.get('/sms-delivery-report' ,verifyToken,checkAccess('sms', 'read'), updateSmsDeliveryStatus);
 router.get('/sms-history',verifyToken,checkAccess('sms', 'read'), getSmsMessages);
 //router.post('/auto-sms' , sendSMS)
