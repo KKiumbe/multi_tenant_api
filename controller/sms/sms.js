@@ -275,6 +275,49 @@ const sendBills = async (req, res) => {
   }
 };
 
+const sendDetailedBill = async (req, res) => {
+  const { tenantId } = req.user; 
+  const { customerSupportPhoneNumber: customerSupport } = await getSMSConfigForTenant(tenantId);
+  const paybill = await getShortCode(tenantId);
+
+  // Get the current month name, e.g. "May"
+  const nameOfMonth = new Date().toLocaleString('en-US', { month: 'long' });
+
+  try {
+    const activeCustomers = await prisma.customer.findMany({
+      where: { status: 'ACTIVE', tenantId },
+      select: {
+        phoneNumber: true,
+        firstName: true,
+        closingBalance: true,
+        monthlyCharge: true,
+      },
+    });
+
+    const messages = activeCustomers.map((customer) => {
+      // Format the closing balance portion
+      const balanceText = customer.closingBalance < 0
+        ? `overpayment of KES ${Math.abs(customer.closingBalance)}`
+        : `KES ${customer.closingBalance}`;
+
+      return {
+        mobile: sanitizePhoneNumber(customer.phoneNumber),
+        message: 
+          `Dear ${customer.firstName}, your ${nameOfMonth} bill is KES ${customer.monthlyCharge}, ` +
+          `balance ${balanceText}. Paybill: ${paybill}, acct: ${customer.phoneNumber}. ` +
+          `Inquiries? ${customerSupport}`
+      };
+    });
+
+    const smsResponses = await sendSms(tenantId, messages);
+    res.status(200).json({ message: 'Bills sent successfully', smsResponses });
+  } catch (error) {
+    console.error('Error sending bills:', error);
+    res.status(500).json({ error: 'Failed to send bills.' });
+  }
+};
+
+
 
 
 const sendBillsEstate = async (req, res) => {
@@ -940,6 +983,54 @@ const sendUnpaidCustomers = async (req, res) => {
     }
   };
   
+    const sendCustomersAboveBalanceDetailed = async (req, res) => {
+    try {
+      const { tenantId } = req.user;
+      const { balance } = req.body;
+      const paybill = await getShortCode(tenantId);
+      const { phoneNumber: customerCarePhoneNumber } = await fetchTenant(tenantId);
+       const nameOfMonth = new Date().toLocaleString('en-US', { month: 'long' });
+      if (!tenantId) throw new Error('Tenant ID is required');
+      if (balance === undefined || isNaN(balance) || balance < 0) {
+        throw new Error('A valid balance amount is required');
+      }
+  
+      //console.log(`Fetching customers above balance ${balance} for tenant ID: ${tenantId}`);
+  
+      const activeCustomers = await prisma.customer.findMany({
+        where: { status: 'ACTIVE', tenantId },
+        select: { phoneNumber: true, firstName: true, closingBalance: true, monthlyCharge: true },
+      });
+  
+      const customersAboveBalance = activeCustomers.filter(
+        (customer) => customer.closingBalance > balance
+      );
+  
+      const messages = customersAboveBalance.map((customer) => ({
+        mobile: sanitizePhoneNumber(customer.phoneNumber),
+
+        message : `Dear ${customer.firstName},your ${nameOfMonth} bill is KES ${customer.monthlyCharge},balance KES ${customer.closingBalance}.Paybill:${paybill},acct: your phone number(${customer.phoneNumber}).Inquiries?:${customerCarePhoneNumber}`
+
+      }));
+  
+     // console.log("📞 Prepared messages:", messages);
+  
+      if (messages.length === 0) {
+        return res.status(404).json({ success: false, message: `No customers found with balance above ${balance}.` });
+      }
+  
+      await sendSms(tenantId, messages);
+     // console.log('SMS sent successfully.');
+      res.status(200).json({
+        success: true,
+        message: `SMS sent to customers with balance above ${balance} successfully.`,
+        count: messages.length,
+      });
+    } catch (error) {
+      console.error('Error in sendCustomersAboveBalance:', error.message);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  };
   
 
 
@@ -1115,5 +1206,6 @@ module.exports = {
   sendBillsEstate,
   sendToEstate,
 
-  sendHighBalanceCustomers,sendCustomersAboveBalance
+  sendHighBalanceCustomers,sendCustomersAboveBalance,sendDetailedBill
+  sendCustomersAboveBalanceDetailed
 };

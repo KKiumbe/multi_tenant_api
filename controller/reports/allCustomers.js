@@ -26,10 +26,10 @@ const { generatePDFHeader } = require('./header.js');
          firstName: true,
          lastName: true,
          phoneNumber: true,
-         email: true,
+      
          monthlyCharge: true,
          closingBalance: true,
-         garbageCollectionDay: true,
+       
        }
      });
  
@@ -83,14 +83,14 @@ const { generatePDFHeader } = require('./header.js');
      }
  
      // Drawing table rows with reduced font size for data
-     drawTableRow(doc.y, ['First Name', 'Last Name', 'Phone', 'Email', 'Monthly Charge', 'Closing Balance'], true);
+     drawTableRow(doc.y, ['First Name', 'Last Name', 'Phone', 'Monthly Charge', 'Closing Balance'], true);
      let rowY = doc.y + 30;
  
      customers.forEach(customer => {
        if (rowY > 700) { // Avoid page overflow
          doc.addPage();
          rowY = 50;
-         drawTableRow(rowY, ['First Name', 'Last Name', 'Phone', 'Email', 'Monthly Charge', 'Closing Balance'], true);
+         drawTableRow(rowY, ['First Name', 'Last Name', 'Phone', 'Monthly Charge', 'Closing Balance'], true);
          rowY += 30;
        }
  
@@ -98,7 +98,7 @@ const { generatePDFHeader } = require('./header.js');
          customer.firstName,
          customer.lastName,
          customer.phoneNumber || 'N/A',
-         customer.email || 'N/A',
+       
          `$${customer.monthlyCharge.toFixed(2)}`,
          `$${customer.closingBalance.toFixed(2)}`,
        ]);
