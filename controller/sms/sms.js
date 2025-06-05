@@ -984,6 +984,80 @@ const sendUnpaidCustomers = async (req, res) => {
   };
 
 
+
+const sendCustomersAboveBalanceCoreWaste = async (req, res) => {
+  try {
+    const { tenantId } = req.user;
+    const { balance } = req.body;
+
+    if (!tenantId) {
+      throw new Error('Tenant ID is required');
+    }
+    if (balance === undefined || isNaN(balance) || balance < 0) {
+      throw new Error('A valid balance amount is required');
+    }
+
+    const paybill = await getShortCode(tenantId);
+    const { phoneNumber: customerCarePhoneNumber } = await fetchTenant(tenantId);
+  
+
+    const customersAboveBalance = await prisma.customer.findMany({
+      where: {
+        status: 'ACTIVE',
+        tenantId,
+        closingBalance: { gt: balance },
+      },
+      select: {
+        phoneNumber: true,
+        firstName: true,
+        closingBalance: true,
+        monthlyCharge: true,
+      },
+    });
+
+    if (customersAboveBalance.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: `No customers found with balance above ${balance}.` });
+    }
+
+    const messages = customersAboveBalance.map((customer) => {
+      const outstandingBalance = customer.closingBalance - customer.monthlyCharge;
+      let balanceText;
+
+      if (outstandingBalance < 0) {
+        // Overpayment case
+        balanceText = `you have an overpayment of KES ${Math.abs(outstandingBalance)}`;
+      } else if (outstandingBalance === 0) {
+        // Exactly zero arrears
+        balanceText = `you have Ksh 0 previous arrears`;
+      } else {
+        // Positive arrears
+        balanceText = `your previous arrears is KES ${outstandingBalance}`;
+      }
+
+      return {
+        mobile: sanitizePhoneNumber(customer.phoneNumber),
+        message: `Dear ${customer.firstName}, your monthly bill is KES ${customer.monthlyCharge}, ${balanceText}. Paybill: ${paybill}, account: ${customer.phoneNumber}. Inquiries? ${customerCarePhoneNumber}`,
+      };
+    });
+
+    await sendSms(tenantId, messages);
+
+    return res.status(200).json({
+      success: true,
+      message: `SMS sent to ${messages.length} customers with balance above ${balance}.`,
+      count: messages.length,
+    });
+  } catch (error) {
+    console.error('Error in sendCustomersAboveBalance:', error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+
+
   
 const sendCustomersAboveBalanceDetailed = async (req, res) => {
   try {
@@ -1212,5 +1286,6 @@ module.exports = {
   sendHighBalanceCustomers,
   sendCustomersAboveBalance,
   sendDetailedBill,
-  sendCustomersAboveBalanceDetailed
+  sendCustomersAboveBalanceDetailed,
+  sendCustomersAboveBalanceCoreWaste 
 };
