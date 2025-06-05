@@ -993,7 +993,8 @@ const sendCustomersAboveBalanceCoreWaste = async (req, res) => {
     if (!tenantId) {
       throw new Error('Tenant ID is required');
     }
-    if (balance === undefined || isNaN(balance) || balance < 0) {
+     const threshold = parseFloat(balance);
+    if (threshold === undefined || isNaN(threshold) || threshold < 0) {
       throw new Error('A valid balance amount is required');
     }
 
@@ -1005,7 +1006,7 @@ const sendCustomersAboveBalanceCoreWaste = async (req, res) => {
       where: {
         status: 'ACTIVE',
         tenantId,
-        closingBalance: { gt: balance },
+        closingBalance: { gt: threshold },
       },
       select: {
         phoneNumber: true,
