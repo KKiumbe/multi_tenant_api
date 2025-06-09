@@ -76,6 +76,7 @@ const MpesaPaymentSettlement = async (req, res) => {
     if (!payment) {
       return res.status(404).json({ message: 'Payment not found.' });
     }
+    const incomingRef = payment.ref?.trim();
     console.log(`this is the payment ref ${JSON.stringify(payment)}`);
     console.time('checkCustomer');
     const customer = await prisma.customer.findUnique({
@@ -114,6 +115,32 @@ const MpesaPaymentSettlement = async (req, res) => {
 
     const result = await prisma.$transaction(
       async (tx) => {
+
+        if (incomingRef) {
+  console.time('saveRef');
+
+  // 1) Read the current array
+  const existing = await tx.customer.findUnique({
+    where: { id: customerId },
+    select: { possibleRefs: true },
+  });
+  const refs = existing?.possibleRefs ?? [];
+
+  // 2) Only push if it’s not already in there
+  if (!refs.includes(incomingRef)) {
+    await tx.customer.update({
+      where: { id: customerId },
+      data: {
+        possibleRefs: { push: incomingRef },
+      },
+    });
+  }
+
+  console.timeEnd('saveRef');
+}
+
+
+
         // Mark payment as receipted
         console.time('updatePayment');
         await tx.payment.update({
