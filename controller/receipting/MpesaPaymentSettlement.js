@@ -76,7 +76,7 @@ const MpesaPaymentSettlement = async (req, res) => {
     if (!payment) {
       return res.status(404).json({ message: 'Payment not found.' });
     }
-    console.log(`this is the payment ref ${json.stringify(payment)}`);
+    console.log(`this is the payment ref ${JSON.stringify(payment)}`);
     console.time('checkCustomer');
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
