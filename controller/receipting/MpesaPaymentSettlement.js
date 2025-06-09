@@ -116,28 +116,37 @@ const MpesaPaymentSettlement = async (req, res) => {
     const result = await prisma.$transaction(
       async (tx) => {
 
+       
+
         if (incomingRef) {
-  console.time('saveRef');
 
-  // 1) Read the current array
-  const existing = await tx.customer.findUnique({
-    where: { id: customerId },
-    select: { possibleRefs: true },
-  });
-  const refs = existing?.possibleRefs ?? [];
+  const normalized = incomingRef.replace(/^\+?254/, '0');
 
-  // 2) Only push if it’s not already in there
-  if (!refs.includes(incomingRef)) {
-    await tx.customer.update({
+  const mobileRegex = /^0(?:7|1)\d{8}$/;
+  if (mobileRegex.test(normalized)) {
+    console.time('saveRef');
+
+    const existing = await tx.customer.findUnique({
       where: { id: customerId },
-      data: {
-        possibleRefs: { push: incomingRef },
-      },
+      select: { possibleRefs: true },
     });
-  }
+    const refs = existing?.possibleRefs ?? [];
 
-  console.timeEnd('saveRef');
+    if (!refs.includes(normalized)) {
+      await tx.customer.update({
+        where: { id: customerId },
+        data: { possibleRefs: { push: normalized } },
+      });
+    }
+
+    console.timeEnd('saveRef');
+  } else {
+    console.log(
+      `Ref "${incomingRef}" is not a valid mobile number (must be 10 digits starting with 07 or 01, or 2547…/2541…), skipping save.`
+    );
+  }
 }
+
 
 
 
