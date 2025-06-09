@@ -55,8 +55,28 @@ const MpesaPaymentSettlement = async (req, res) => {
     });
   }
 
+
+  
+
   try {
     // Retrieve customer data
+
+
+    const payment = await prisma.payment.findUnique({
+      where: { id: paymentId },
+      select: {
+        amount: true,
+        receipted: true,
+        tenantId: true,
+        transactionId: true,
+        ref: true,
+      },
+    });
+
+    if (!payment) {
+      return res.status(404).json({ message: 'Payment not found.' });
+    }
+    console.log(`this is the payment ref ${payment.ref}`);
     console.time('checkCustomer');
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
@@ -68,15 +88,8 @@ const MpesaPaymentSettlement = async (req, res) => {
       return res.status(404).json({ message: 'Customer not found or does not belong to this tenant.' });
     }
 
-    // Retrieve and validate payment
-    console.time('checkPayment');
-    const payment = await prisma.payment.findUnique({
-      where: { id: paymentId },
-      select: { amount: true, receipted: true, tenantId: true, transactionId: true },
-    });
-    console.timeEnd('checkPayment');
-
-    if (!payment || payment.tenantId !== tenantId) {
+    // Validate payment belongs to tenant and is not already receipted
+    if (payment.tenantId !== tenantId) {
       return res.status(404).json({ message: 'Payment not found or does not belong to this tenant.' });
     }
 

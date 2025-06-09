@@ -198,6 +198,7 @@ model Customer {
   invoices             Invoice[]
   receipts             Receipt[]
   trashbagsHistory     TrashBagIssuance[]
+  possibleRefs         String[]      @default([])
 
   @@index([tenantId])
   @@index([phoneNumber])
