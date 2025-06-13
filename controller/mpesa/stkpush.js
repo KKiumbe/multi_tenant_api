@@ -31,36 +31,95 @@ async function generatePaymentLink(customerId, tenantId) {
 
 
 
-// Render pay page
 async function renderPayPage(req, res, next) {
   try {
+    const { token } = req.params;
+
+    if (!token) {
+      return res.status(400).send('Payment token is required');
+    }
+
+    // Fetch payment link with customer
     const link = await prisma.paymentLink.findUnique({
-      where: { token: req.params.token }, include: { customer: true }
+      where: { token },
+      include: { customer: true },
     });
-    if (!link || link.expiresAt < new Date()) return res.status(404).send('Link expired');
-    const amount = link.customer.closingBalance.toFixed(2);
+
+    if (!link || link.expiresAt < new Date()) {
+      return res.status(404).send('Payment link expired or invalid');
+    }
+
+    // Validate customer data
+    if (!link.customer?.phoneNumber) {
+      return res.status(400).send('Invalid customer data');
+    }
+
+    // Format amount
+    const amount = Number(link.customer.closingBalance).toFixed(2);
+    if (isNaN(amount) || amount <= 0) {
+      return res.status(400).send('Invalid payment amount');
+    }
+
+    // Render payment page
+    res.set('Content-Type', 'text/html');
     res.send(`
       <!DOCTYPE html>
-      <html><head><title>Pay KES ${amount}</title></head><body>
-      <h1>Your balance: KES ${amount}</h1>
-      <button id="pay">Pay Now</button>
-      <script>
-        document.getElementById('pay').onclick = () => {
-          fetch('/api/mpesa/stkpush', {
-            method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({
-              amount: ${amount},
-              phoneNumber: '${link.customer.phoneNumber}',
-              accountReference: '${link.token}',
-              transactionDesc: 'Balance payment'
-            })
-          })
-          .then(r=>r.json()).then(()=>alert('Prompt sent')).catch(()=>alert('Error'));
-        };
-      </script></body></html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Pay KES ${amount}</title>
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+            h1 { color: #333; }
+            button { background: #28a745; color: white; padding: 10px 20px; border: none; cursor: pointer; }
+            button:hover { background: #218838; }
+            .error { color: red; }
+          </style>
+        </head>
+        <body>
+          <h1>Your Balance: KES ${amount}</h1>
+          <button id="pay">Pay Now</button>
+          <p id="status"></p>
+          <script>
+            document.getElementById('pay').onclick = async () => {
+              const status = document.getElementById('status');
+              const payButton = document.getElementById('pay');
+              payButton.disabled = true;
+              status.textContent = 'Processing...';
+              try {
+                const response = await fetch('/api/mpesa/stkpush', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    amount: ${amount},
+                    phoneNumber: '${link.customer.phoneNumber}',
+                    accountReference: '${link.token}',
+                    transactionDesc: 'Balance payment'
+                  })
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Request failed');
+                status.textContent = 'Prompt sent to your phone!';
+                alert('Prompt sent to your phone. Please check and approve.');
+              } catch (error) {
+                status.textContent = 'Error: ' + error.message;
+                status.className = 'error';
+                alert('Payment request failed: ' + error.message);
+                payButton.disabled = false;
+              }
+            };
+          </script>
+        </body>
+      </html>
     `);
-  } catch (err) { next(err); }
+  } catch (err) {
+    console.error(`Error rendering pay page for token ${req.params.token}:`, err.message);
+    next(err);
+  }
 }
+
+
 
 
 
