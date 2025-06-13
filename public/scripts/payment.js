@@ -1,4 +1,9 @@
 // public/scripts/payment.js
+
+// Import Axios for making HTTP requests
+import axios from 'axios';
+// Ensure the DOM is fully loaded before running the script
+
 window.addEventListener('DOMContentLoaded', () => {
   const payButton = document.getElementById('pay');
   const amountInput = document.getElementById('amount');
@@ -25,29 +30,22 @@ window.addEventListener('DOMContentLoaded', () => {
     console.log('Sending STK Push:', { amount: amount.toFixed(2), phoneNumber, accountReference });
 
     try {
-      const response = await fetch(`${apiBaseUrl}/api/stkpush`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: amount.toFixed(2),
-          phoneNumber,
-          accountReference,
-          transactionDesc: 'Balance payment'
-        })
+      const response = await axios.post(`${apiBaseUrl}/api/stkpush`, {
+        amount: amount.toFixed(2),
+        phoneNumber,
+        accountReference,
+        transactionDesc: 'Balance payment'
       });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to initiate payment');
-      }
+      const data = response.data;
       loader.style.display = 'none';
       status.textContent = 'Payment prompt sent to your phone!';
       alert('Payment prompt sent to your phone. Please check and approve.');
     } catch (error) {
       loader.style.display = 'none';
-      status.textContent = 'Error: ' + error.message;
+      status.textContent = `Error: ${error.response?.data?.error || error.message}`;
       status.className = 'error';
-      errorDiv.textContent = 'Payment request failed: ' + error.message;
-      console.error('Fetch error:', error);
+      errorDiv.textContent = `Payment request failed: ${error.response?.data?.error || error.message}`;
+      console.error('Axios error:', error);
       payButton.disabled = false;
     }
   };
