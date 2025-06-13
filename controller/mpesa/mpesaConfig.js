@@ -3,11 +3,11 @@
 const { PrismaClient } = require('@prisma/client');
 
 const prisma = new PrismaClient(); 
-const createMPESAConfig = async (req, res) => {
+const createMPESAConfig = async (req, res) => {  
     try {
-      const { tenantId, shortCode, name, apiKey, passKey } = req.body;
+      const { tenantId, shortCode, name, apiKey, passKey,secretKey } = req.body;
   
-      if (!tenantId || !shortCode || !name || !apiKey || !passKey) {
+      if (!tenantId || !shortCode || !name || !apiKey || !passKey, !secretKey) {
         return res.status(400).json({ message: 'All fields are required.' });
       }
   
@@ -43,7 +43,7 @@ const createMPESAConfig = async (req, res) => {
   };
   const updateMPESAConfig = async (req, res) => {
     try {
-      const { tenantId, shortCode, name, apiKey, passKey } = req.body;
+      const { tenantId, shortCode, name, apiKey, passKey, secretKey } = req.body;
   
       if (!tenantId) {
         return res.status(400).json({ message: 'Tenant ID is required.' });
@@ -66,6 +66,7 @@ const createMPESAConfig = async (req, res) => {
           ...(name && { name }),
           ...(apiKey && { apiKey }),
           ...(passKey && { passKey }),
+          ...(secretKey && { secretKey }),
         },
       });
   
@@ -110,6 +111,7 @@ const createMPESAConfig = async (req, res) => {
             name: mpesaConfig.name,
             apiKey: mpesaConfig.apiKey,
             passKey: mpesaConfig.passKey,
+            secretKey: mpesaConfig.secretKey,
           },
         },
       });

@@ -3,6 +3,7 @@ const { json } = require('express');
 //const { GarbageCollectionDay } = require('./enum.js'); // Adjust the path if needed
 
 const schedule = require('node-schedule'); // For scheduling jobs
+const { generatePaymentLink } = require('../mpesa/stkpush');
 
 const prisma = new PrismaClient();
 
@@ -636,10 +637,12 @@ async function createInvoice(req, res) {
         data: { closingBalance: newClosingBalance },
       });
 
+        const linkUrl = await generatePaymentLink(customerId, tenantId);
+
       return createdInvoice;
     });
 
-    res.status(200).json({ newInvoice });
+    res.status(200).json({ newInvoice,linkUrl, message: 'Invoice created successfully' });
   } catch (error) {
     console.error('Error creating invoice:', error);
     res.status(500).json({ error: 'Internal server error' });

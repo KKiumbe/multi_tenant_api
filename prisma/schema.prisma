@@ -47,6 +47,8 @@ model Tenant {
   users                  User[]
 
   UserActivity UserActivity[]
+
+  PaymentLink PaymentLink[]
 }
 
 model TenantInvoice {
@@ -163,6 +165,8 @@ model MPESAConfig {
   name             String
   apiKey           String
   passKey          String
+  secretKey String @default("")
+
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
   tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -205,6 +209,7 @@ model Customer {
   @@index([email])
   @@index([status])
   UserActivity UserActivity[]
+  PaymentLink PaymentLink[]
 }
 
 model Invoice {
@@ -273,6 +278,26 @@ model Payment {
   createdAt     DateTime      @default(now())
   tenant        Tenant        @relation(fields: [tenantId], references: [id])
   receipt       Receipt?
+}
+
+
+
+model PaymentLink {
+  id                 Int       @id @default(autoincrement())
+  token              String    @unique
+  tenantId           Int
+  customerId         String
+  expiresAt          DateTime
+  createdAt          DateTime  @default(now())
+
+  // These will be filled in when you call the STK-Push API:
+  merchantRequestId  String?   @unique
+  checkoutRequestId  String?   @unique
+
+  tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer           Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
 }
 
 model Notification {

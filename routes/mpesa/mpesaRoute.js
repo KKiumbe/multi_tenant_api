@@ -4,6 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 const { lipaNaMpesa } = require('../../controller/mpesa/payment.js');
 const prisma = new PrismaClient();
 const { settleInvoice } = require('../../controller/mpesa/paymentSettlement.js');
+const { renderPayPage, stkPush, stkCallback } = require('../../controller/mpesa/stkpush.js');
 
 // Route to handle M-Pesa callback notifications
 router.post('/callback', async (req, res) => {
@@ -94,6 +95,19 @@ function parseTransTime(transTime) {
 
   return new Date(year, month, day, hours, minutes, seconds);
 }
+
+
+
+// src/routes/mpesaRoutes.js
+
+
+
+router.get('/pay/:token', renderPayPage);
+router.post('/stkpush', stkPush);
+
+// Public callback endpoint
+router.post('/stkcallback', stkCallback);
+
 
 // Route to handle Lipa Na M-Pesa requests
 router.post('/lipa', lipaNaMpesa); // Use the controller function
