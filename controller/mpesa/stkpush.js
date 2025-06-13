@@ -7,7 +7,7 @@ const { getAccessToken } = require('./token');
 const { settleInvoice } = require('./paymentSettlement');
 const axios = require('axios');
 const { getTenantSettings } = require('./mpesaConfig');
-
+const sanitizeHtml = require('sanitize-html');
 
 
 async function generatePaymentLink(customerId, tenantId) {
@@ -23,8 +23,10 @@ async function generatePaymentLink(customerId, tenantId) {
     data: { token, tenantId, customerId, expiresAt },
   });
 
-  return `${process.env.APP_URL}/pay/${token}`;
+  return `${process.env.APP_URL}/api/pay/${token}`;
 }
+
+
 
 
 
@@ -68,8 +70,12 @@ async function renderPayPage(req, res, next) {
       return res.status(400).send('Invalid balance');
     }
 
-    // Base API URL
-    const apiBaseUrl = process.env.APP_URL;
+    // Base API URL with fallback
+    const apiBaseUrl = process.env.APP_URL || 'http://localhost:5000';
+
+    // Sanitize user inputs to prevent XSS
+    const sanitizedPhone = sanitizeHtml(link.customer.phoneNumber);
+    const sanitizedToken = sanitizeHtml(link.token);
 
     // Render mobile-optimized payment page
     res.set('Content-Type', 'text/html');
@@ -148,22 +154,24 @@ async function renderPayPage(req, res, next) {
             <div class="balance">Balance: KES ${amount}</div>
             <div class="input-group">
               <label for="amount">Enter Amount (KES)</label>
-              <input type="number" id="amount" value="${amount}" min="1" step="0.01" required>
+              <input type="number" id="amount" value="${amount}" min="1" max="150000" step="0.01" required aria-describedby="amount-error">
+              <div id="amount-error" class="error"></div>
             </div>
             <button id="pay">Pay Now</button>
             <div id="loader" class="loader"></div>
-            <p id="status"></p>
+            <p id="status" class="status"></p>
           </div>
           <script>
             const payButton = document.getElementById('pay');
             const amountInput = document.getElementById('amount');
             const status = document.getElementById('status');
             const loader = document.getElementById('loader');
+            const errorDiv = document.getElementById('amount-error');
 
             payButton.onclick = async () => {
               const amount = parseFloat(amountInput.value);
-              if (!amount || amount < 1) {
-                status.textContent = 'Please enter a valid amount (minimum KES 1)';
+              if (!amount || amount < 1 || amount > 150000) {
+                errorDiv.textContent = 'Please enter an amount between KES 1 and KES 150,000';
                 status.className = 'error';
                 return;
               }
@@ -171,16 +179,16 @@ async function renderPayPage(req, res, next) {
               payButton.disabled = true;
               loader.style.display = 'block';
               status.textContent = 'Sending payment request...';
-              console.log('Sending STK Push:', { amount: amount.toFixed(2), phoneNumber: '${link.customer.phoneNumber}', accountReference: '${link.token}' });
+              console.log('Sending STK Push:', { amount: amount.toFixed(2), phoneNumber: '${sanitizedPhone}', accountReference: '${sanitizedToken}' });
 
               try {
-                const response = await fetch('${apiBaseUrl}/stkpush', {
+                const response = await fetch('${apiBaseUrl}/api/stkpush', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     amount: amount.toFixed(2),
-                    phoneNumber: '${link.customer.phoneNumber}',
-                    accountReference: '${link.token}',
+                    phoneNumber: '${sanitizedPhone}',
+                    accountReference: '${sanitizedToken}',
                     transactionDesc: 'Balance payment'
                   })
                 });
@@ -195,8 +203,8 @@ async function renderPayPage(req, res, next) {
                 loader.style.display = 'none';
                 status.textContent = 'Error: ' + error.message;
                 status.className = 'error';
-                alert('Payment request failed: ' + error.message);
-                console.error('STK Push error:', error.message);
+                errorDiv.textContent = 'Payment request failed: ' + error.message;
+                console.error('Fetch error:', error);
                 payButton.disabled = false;
               }
             };
@@ -206,16 +214,9 @@ async function renderPayPage(req, res, next) {
     `);
   } catch (err) {
     console.error(`Error rendering pay page for token ${req.params.token}:`, err.message);
-    next(err);
+    res.status(500).send('An error occurred while loading the payment page');
   }
 }
-
-
-
-
-
-
-
 
 
 
