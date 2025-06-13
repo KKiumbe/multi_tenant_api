@@ -30,7 +30,6 @@ async function generatePaymentLink(customerId, tenantId) {
 
 
 
-
 async function renderPayPage(req, res, next) {
   try {
     const { token } = req.params;
@@ -39,10 +38,17 @@ async function renderPayPage(req, res, next) {
       return res.status(400).send('Payment token is required');
     }
 
-    // Fetch payment link with customer
+    // Fetch payment link with customer and latest unpaid invoice
     const link = await prisma.paymentLink.findUnique({
       where: { token },
-      include: { customer: true },
+      include: {
+        customer: true,
+        invoice: {
+          where: { status: { in: ['UNPAID', 'PARTIALLY_PAID'] } },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
     });
 
     if (!link || link.expiresAt < new Date()) {
@@ -54,14 +60,15 @@ async function renderPayPage(req, res, next) {
       return res.status(400).send('Invalid customer data');
     }
 
-    // Format amount
-    const amount = Number(link.customer.closingBalance).toFixed(2);
-    if (isNaN(amount) || amount <= 0) {
-      return res.status(400).send('Invalid payment amount');
+    // Determine default amount (prefer invoice amount, fallback to closingBalance)
+    const defaultAmount = link.invoice?.[0]?.invoiceAmount || link.customer.closingBalance || 0;
+    const amount = Number(defaultAmount).toFixed(2);
+    if (isNaN(amount) || amount < 0) {
+      return res.status(400).send('Invalid default amount');
     }
 
-    // Base API URL from environment (ensure it matches APP_URL)
-    const apiBaseUrl = process.env.APP_URL || 'http://localhost:5000';
+    // Base API URL
+    const apiBaseUrl = process.env.APP_URL;
 
     // Render mobile-optimized payment page
     res.set('Content-Type', 'text/html');
@@ -71,7 +78,7 @@ async function renderPayPage(req, res, next) {
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Pay KES ${amount}</title>
+          <title>Pay Your Bill</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
@@ -95,7 +102,21 @@ async function renderPayPage(req, res, next) {
               text-align: center;
             }
             h1 { font-size: 1.5rem; margin-bottom: 10px; }
-            .amount { font-size: 2.5rem; color: #28a745; font-weight: bold; margin-bottom: 20px; }
+            .balance { font-size: 1rem; color: #666; margin-bottom: 15px; }
+            .input-group {
+              margin-bottom: 20px;
+              text-align: left;
+            }
+            label { font-size: 1rem; color: #333; display: block; margin-bottom: 5px; }
+            input {
+              width: 100%;
+              padding: 10px;
+              font-size: 1.1rem;
+              border: 1px solid #ccc;
+              border-radius: 8px;
+              outline: none;
+            }
+            input:focus { border-color: #28a745; }
             .phone { font-size: 1rem; color: #666; margin-bottom: 20px; }
             button {
               background: #28a745;
@@ -117,14 +138,18 @@ async function renderPayPage(req, res, next) {
             @media (max-width: 600px) {
               .container { padding: 15px; }
               h1 { font-size: 1.3rem; }
-              .amount { font-size: 2rem; }
+              input, button { font-size: 1rem; }
             }
           </style>
         </head>
         <body>
           <div class="container">
             <h1>Payment Request</h1>
-            <div class="amount">KES ${amount}</div>
+            <div class="balance">Balance: KES ${Number(link.customer.closingBalance).toFixed(2)}</div>
+            <div class="input-group">
+              <label for="amount">Enter Amount (KES)</label>
+              <input type="number" id="amount" value="${amount}" min="1" step="0.01" required>
+            </div>
             <div class="phone">To: ${link.customer.phoneNumber}</div>
             <button id="pay">Pay Now</button>
             <div id="loader" class="loader"></div>
@@ -132,19 +157,28 @@ async function renderPayPage(req, res, next) {
           </div>
           <script>
             const payButton = document.getElementById('pay');
+            const amountInput = document.getElementById('amount');
             const status = document.getElementById('status');
             const loader = document.getElementById('loader');
 
             payButton.onclick = async () => {
+              const amount = parseFloat(amountInput.value);
+              if (!amount || amount < 1) {
+                status.textContent = 'Please enter a valid amount (minimum KES 1)';
+                status.className = 'error';
+                return;
+              }
+
               payButton.disabled = true;
               loader.style.display = 'block';
               status.textContent = 'Sending payment request...';
+
               try {
-                const response = await fetch('${apiBaseUrl}/api/stkpush', {
+                const response = await fetch('${apiBaseUrl}/stkpush', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
-                    amount: ${amount},
+                    amount: amount.toFixed(2),
                     phoneNumber: '${link.customer.phoneNumber}',
                     accountReference: '${link.token}',
                     transactionDesc: 'Balance payment'
@@ -174,6 +208,7 @@ async function renderPayPage(req, res, next) {
     next(err);
   }
 }
+
 
 
 
