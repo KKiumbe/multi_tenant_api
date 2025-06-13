@@ -40,6 +40,7 @@ const PORT = process.env.PORT || 5000;
 
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.use(cookieParser());
 
@@ -50,32 +51,32 @@ app.use(helmet());
 
 
 
-app.use(cors({
-  origin: true, // Allow all origins
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 200,
-}));
-
 // app.use(cors({
-//   origin: (origin, callback) => {
-//     const allowedOrigins = ['http://localhost:5173',
-//       'http://173.249.50.194', // Frontend IP without trailing slash
-//       'https://taqa.co.ke','http://taqa.co.ke', // Domain
-//        // For local development (optional)
-//     ];
-//     if (!origin || allowedOrigins.includes(origin)) {
-//       callback(null, true);
-//     } else {
-//       callback(new Error('Not allowed by CORS'));
-//     }
-//   },
+//   origin: true, // Allow all origins
 //   credentials: true,
-//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Include OPTIONS for preflight
-//   allowedHeaders: ['Content-Type', 'Authorization'], // Common headers
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//   allowedHeaders: ['Content-Type', 'Authorization'],
 //   optionsSuccessStatus: 200,
 // }));
+
+app.use(cors({
+  origin: (origin, callback) => {
+    const allowedOrigins = ['http://localhost:5173',
+      'http://173.249.50.194', // Frontend IP without trailing slash
+      'https://taqa.co.ke','http://taqa.co.ke', // Domain
+       // For local development (optional)
+    ];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Include OPTIONS for preflight
+  allowedHeaders: ['Content-Type', 'Authorization'], // Common headers
+  optionsSuccessStatus: 200,
+}));
 
 // Handle preflight requests explicitly
 app.options('*', cors());

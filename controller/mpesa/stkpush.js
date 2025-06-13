@@ -32,6 +32,7 @@ async function generatePaymentLink(customerId, tenantId) {
 
 
 
+
 async function renderPayPage(req, res, next) {
   try {
     const { token } = req.params;
@@ -73,7 +74,7 @@ async function renderPayPage(req, res, next) {
     // Base API URL with fallback
     const apiBaseUrl = process.env.APP_URL || 'http://localhost:5000';
 
-    // Sanitize user inputs to prevent XSS
+    // Sanitize user inputs
     const sanitizedPhone = sanitizeHtml(link.customer.phoneNumber);
     const sanitizedToken = sanitizeHtml(link.token);
 
@@ -152,7 +153,7 @@ async function renderPayPage(req, res, next) {
           <div class="container">
             <h1>Payment Request</h1>
             <div class="balance">Balance: KES ${amount}</div>
-            <div class="input-group">
+            <div id="payment-form" data-phone="${sanitizedPhone}" data-token="${sanitizedToken}" data-api-url="${apiBaseUrl}" class="input-group">
               <label for="amount">Enter Amount (KES)</label>
               <input type="number" id="amount" value="${amount}" min="1" max="150000" step="0.01" required aria-describedby="amount-error">
               <div id="amount-error" class="error"></div>
@@ -161,54 +162,7 @@ async function renderPayPage(req, res, next) {
             <div id="loader" class="loader"></div>
             <p id="status" class="status"></p>
           </div>
-          <script>
-            const payButton = document.getElementById('pay');
-            const amountInput = document.getElementById('amount');
-            const status = document.getElementById('status');
-            const loader = document.getElementById('loader');
-            const errorDiv = document.getElementById('amount-error');
-
-            payButton.onclick = async () => {
-              const amount = parseFloat(amountInput.value);
-              if (!amount || amount < 1 || amount > 150000) {
-                errorDiv.textContent = 'Please enter an amount between KES 1 and KES 150,000';
-                status.className = 'error';
-                return;
-              }
-
-              payButton.disabled = true;
-              loader.style.display = 'block';
-              status.textContent = 'Sending payment request...';
-              console.log('Sending STK Push:', { amount: amount.toFixed(2), phoneNumber: '${sanitizedPhone}', accountReference: '${sanitizedToken}' });
-
-              try {
-                const response = await fetch('${apiBaseUrl}/api/stkpush', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    amount: amount.toFixed(2),
-                    phoneNumber: '${sanitizedPhone}',
-                    accountReference: '${sanitizedToken}',
-                    transactionDesc: 'Balance payment'
-                  })
-                });
-                const data = await response.json();
-                if (!response.ok) {
-                  throw new Error(data.error || 'Failed to initiate payment');
-                }
-                loader.style.display = 'none';
-                status.textContent = 'Payment prompt sent to your phone!';
-                alert('Payment prompt sent to your phone. Please check and approve.');
-              } catch (error) {
-                loader.style.display = 'none';
-                status.textContent = 'Error: ' + error.message;
-                status.className = 'error';
-                errorDiv.textContent = 'Payment request failed: ' + error.message;
-                console.error('Fetch error:', error);
-                payButton.disabled = false;
-              }
-            };
-          </script>
+          <script src="/scripts/payment.js"></script>
         </body>
       </html>
     `);
