@@ -604,16 +604,16 @@ async function createInvoice(req, res) {
     } else if (newClosingBalance === 0) {
       invoiceStatus = 'PAID';
     } else if (newClosingBalance > 0 && newClosingBalance < invoiceAmount) {
-      invoiceStatus = 'PPAID';
+      invoiceStatus = 'PARTIALLY_PAID'; // Updated from 'PPAID' for consistency
     } else {
       invoiceStatus = 'UNPAID';
     }
 
-    const newInvoice = await prisma.$transaction(async (prisma) => {
+    const { createdInvoice, linkUrl } = await prisma.$transaction(async (prisma) => {
       const createdInvoice = await prisma.invoice.create({
         data: {
           customerId,
-          tenantId  ,
+          tenantId,
           invoiceNumber,
           invoicePeriod,
           closingBalance: newClosingBalance,
@@ -637,18 +637,21 @@ async function createInvoice(req, res) {
         data: { closingBalance: newClosingBalance },
       });
 
-        const linkUrl = await generatePaymentLink(customerId, tenantId);
+      const linkUrl = await generatePaymentLink(customerId, tenantId);
 
-      return createdInvoice;
+      return { createdInvoice, linkUrl };
     });
 
-    res.status(200).json({ newInvoice,linkUrl, message: 'Invoice created successfully' });
+    res.status(200).json({
+      newInvoice: createdInvoice,
+      linkUrl,
+      message: 'Invoice created successfully',
+    });
   } catch (error) {
-    console.error('Error creating invoice:', error);
+    console.error('Error creating invoice:', error.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 }
-
 
 
 
