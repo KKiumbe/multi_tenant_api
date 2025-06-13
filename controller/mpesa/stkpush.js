@@ -60,7 +60,10 @@ async function renderPayPage(req, res, next) {
       return res.status(400).send('Invalid payment amount');
     }
 
-    // Render payment page
+    // Base API URL from environment (ensure it matches APP_URL)
+    const apiBaseUrl = process.env.APP_URL || 'http://localhost:5000';
+
+    // Render mobile-optimized payment page
     res.set('Content-Type', 'text/html');
     res.send(`
       <!DOCTYPE html>
@@ -70,25 +73,74 @@ async function renderPayPage(req, res, next) {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Pay KES ${amount}</title>
           <style>
-            body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-            h1 { color: #333; }
-            button { background: #28a745; color: white; padding: 10px 20px; border: none; cursor: pointer; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              background: #f5f5f5;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              padding: 20px;
+              color: #333;
+            }
+            .container {
+              background: white;
+              border-radius: 12px;
+              box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+              padding: 20px;
+              width: 100%;
+              max-width: 400px;
+              text-align: center;
+            }
+            h1 { font-size: 1.5rem; margin-bottom: 10px; }
+            .amount { font-size: 2.5rem; color: #28a745; font-weight: bold; margin-bottom: 20px; }
+            .phone { font-size: 1rem; color: #666; margin-bottom: 20px; }
+            button {
+              background: #28a745;
+              color: white;
+              border: none;
+              border-radius: 8px;
+              padding: 14px;
+              font-size: 1.1rem;
+              cursor: pointer;
+              width: 100%;
+              transition: background 0.2s;
+            }
             button:hover { background: #218838; }
-            .error { color: red; }
+            button:disabled { background: #ccc; cursor: not-allowed; }
+            .status { margin-top: 15px; font-size: 1rem; }
+            .error { color: #dc3545; }
+            .loader { display: none; margin: 10px auto; border: 4px solid #f3f3f3; border-top: 4px solid #28a745; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            @media (max-width: 600px) {
+              .container { padding: 15px; }
+              h1 { font-size: 1.3rem; }
+              .amount { font-size: 2rem; }
+            }
           </style>
         </head>
         <body>
-          <h1>Your Balance: KES ${amount}</h1>
-          <button id="pay">Pay Now</button>
-          <p id="status"></p>
+          <div class="container">
+            <h1>Payment Request</h1>
+            <div class="amount">KES ${amount}</div>
+            <div class="phone">To: ${link.customer.phoneNumber}</div>
+            <button id="pay">Pay Now</button>
+            <div id="loader" class="loader"></div>
+            <p id="status"></p>
+          </div>
           <script>
-            document.getElementById('pay').onclick = async () => {
-              const status = document.getElementById('status');
-              const payButton = document.getElementById('pay');
+            const payButton = document.getElementById('pay');
+            const status = document.getElementById('status');
+            const loader = document.getElementById('loader');
+
+            payButton.onclick = async () => {
               payButton.disabled = true;
-              status.textContent = 'Processing...';
+              loader.style.display = 'block';
+              status.textContent = 'Sending payment request...';
               try {
-                const response = await fetch('/api/mpesa/stkpush', {
+                const response = await fetch('${apiBaseUrl}/api/stkpush', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
@@ -99,10 +151,14 @@ async function renderPayPage(req, res, next) {
                   })
                 });
                 const data = await response.json();
-                if (!response.ok) throw new Error(data.error || 'Request failed');
-                status.textContent = 'Prompt sent to your phone!';
-                alert('Prompt sent to your phone. Please check and approve.');
+                if (!response.ok) {
+                  throw new Error(data.error || 'Failed to initiate payment');
+                }
+                loader.style.display = 'none';
+                status.textContent = 'Payment prompt sent to your phone!';
+                alert('Payment prompt sent to your phone. Please check and approve.');
               } catch (error) {
+                loader.style.display = 'none';
                 status.textContent = 'Error: ' + error.message;
                 status.className = 'error';
                 alert('Payment request failed: ' + error.message);
@@ -118,6 +174,8 @@ async function renderPayPage(req, res, next) {
     next(err);
   }
 }
+
+
 
 
 
