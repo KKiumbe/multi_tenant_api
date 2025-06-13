@@ -530,13 +530,15 @@ const sendToEstate = async (req, res) => {
 };
 
 // Send bill SMS for a specific customer
+
+
+
 const sendBill = async (req, res) => {
   const { customerId } = req.body;
-  const { tenantId } = req.user; 
+  const { tenantId } = req.user;
   const { customerSupportPhoneNumber } = await getSMSConfigForTenant(tenantId);
   const paybill = await getShortCode(tenantId);
-    const nameOfMonth = new Date().toLocaleString('en-US', { month: 'long' });
-  //console.log(`this is the customer support number ${customerSupportPhoneNumber}`);
+  const nameOfMonth = new Date().toLocaleString('en-US', { month: 'long' });
 
   if (!customerId) {
     return res.status(400).json({ error: 'Customer ID is required.' });
@@ -545,36 +547,55 @@ const sendBill = async (req, res) => {
   try {
     // Fetch the customer
     const customer = await prisma.customer.findUnique({
-      where: { id: customerId,tenantId },
-      select: { phoneNumber: true,
-        firstName:true,
-        closingBalance:true,
-        monthlyCharge:true,
-       },
+      where: { id: customerId, tenantId },
+      select: {
+        phoneNumber: true,
+        firstName: true,
+        closingBalance: true,
+        monthlyCharge: true,
+      },
     });
 
     if (!customer) {
       return res.status(404).json({ error: 'Customer not found.' });
     }
 
-   
+    // Fetch the latest valid payment link
+    const paymentLink = await prisma.paymentLink.findFirst({
+      where: {
+        customerId,
+        tenantId,
+        expiresAt: { gt: new Date() }, // Only non-expired links
+      },
+      orderBy: { createdAt: 'desc' }, // Most recent first
+      select: { token: true },
+    });
 
-    const message = `Dear ${customer.firstName},your ${nameOfMonth} bill is KES ${customer.monthlyCharge},balance ${
+    // Format balance message
+    const balanceMessage =
       customer.closingBalance < 0
-        ? "overpayment of KES" + Math.abs(customer.closingBalance)
-        : "KES " + customer.closingBalance
-    }.Paybill: ${paybill},acct:your phone number;${customer.phoneNumber}.Inquiries? ${customerSupportPhoneNumber}`
+        ? `overpayment of KES ${Math.abs(customer.closingBalance)}`
+        : `KES ${customer.closingBalance}`;
 
-    const smsResponses = await sendSMS(tenantId,
-       customer.phoneNumber, message
-    );
+    // Construct SMS message, conditionally including payment link
+    let message = `Dear ${customer.firstName}, your ${nameOfMonth} bill is KES ${customer.monthlyCharge}, balance ${balanceMessage}. Paybill: ${paybill}, acct: your phone number ${customer.phoneNumber}.`;
+    if (paymentLink) {  
+      const linkUrl = `${process.env.APP_URL}/pay/${paymentLink.token}`;
+      message += ` Pay here: ${linkUrl}.`;
+    }
+    message += ` Inquiries? ${customerSupportPhoneNumber}`;
+
+    // Send SMS
+    const smsResponses = await sendSMS(tenantId, customer.phoneNumber, message);
 
     res.status(200).json({ message: 'Bill sent successfully.', smsResponses });
   } catch (error) {
-    console.error('Error sending bill:', error);
+    console.error('Error sending bill:', error.message);
     res.status(500).json({ error: 'Failed to send bill.', details: error.message });
   }
 };
+
+
 
 
 // Send bill SMS for customers grouped by collection day
