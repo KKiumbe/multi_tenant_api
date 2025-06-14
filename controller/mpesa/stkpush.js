@@ -353,20 +353,21 @@ async function stkCallback(req, res) {
     // Store transaction in mPESATransactions
     await prisma.mPESATransactions.create({
       data: {
-        BillRefNumber: localPhone, // Use phone number from paymentLink (e.g., 0722230603)
+        BillRefNumber: localPhone,
         TransAmount: amount,
         FirstName: link.customer.firstName || 'Unknown',
-        MSISDN: callbackPhone, // Store callback phone number (e.g., 254722230603)
+        MSISDN: String(callbackPhone), // Convert to string
         TransID: receipt,
-        TransTime: transTime,
+        TransTime: new Date(transTime), // Ensure TransTime is a Date object
         processed: false,
-        tenantId: link.tenantId, // Use tenantId from paymentLink
-        ShortCode: shortCode, // Use shortCode from MPESAConfig
+        tenantId: link.tenantId,
+        ShortCode: shortCode,
       },
     });
 
     // Call settleInvoice with the link object
-    await settleInvoice(link);
+    await settleInvoice();
+    
 
     console.log(`STK Callback processed for CheckoutRequestID ${checkoutRequestId}`);
   } catch (err) {
