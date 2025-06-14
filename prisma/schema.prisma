@@ -171,6 +171,8 @@ model MPESAConfig {
   updatedAt        DateTime            @updatedAt
   tenant           Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+
+  MPESATransactions MPESATransactions[]
 }
 
 model Customer {
@@ -336,7 +338,7 @@ model MPESATransactions {
   processed     Boolean     @default(false)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
- 
+  mpesaConfig   MPESAConfig @relation(fields: [ShortCode], references: [shortCode], onDelete: Cascade)
   tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
