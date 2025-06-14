@@ -32,8 +32,6 @@ async function generatePaymentLink(customerId, tenantId) {
 
 
 
-
-
 async function renderPayPage(req, res, next) {
   try {
     const { token } = req.params;
@@ -98,93 +96,221 @@ async function renderPayPage(req, res, next) {
       <html lang="en">
         <head>
           <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Pay Your ${sanitizedTenantName} Bill</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+          <meta name="description" content="Pay your ${sanitizedTenantName} bill for garbage collection securely.">
+          <meta name="theme-color" content="#28a745">
+          <title>Pay ${sanitizedTenantName} Bill</title>
+          <link rel="icon" href="/favicon.ico" type="image/x-icon">
           <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
+            :root {
+              --primary: #28a745;
+              --primary-dark: #218838;
+              --danger: #dc3545;
+              --danger-dark: #c82333;
+              --text: #333;
+              --text-light: #666;
+              --bg: #f5f5f5;
+              --card-bg: #fff;
+              --border: #ccc;
+            }
+            @media (prefers-color-scheme: dark) {
+              :root {
+                --text: #ddd;
+                --text-light: #aaa;
+                --bg: #1a1a1a;
+                --card-bg: #2a2a2a;
+                --border: #444;
+              }
+            }
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
             body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              background: #f5f5f5;
+              font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+              background: var(--bg);
+              color: var(--text);
               display: flex;
               flex-direction: column;
-              align-items: center;
-              justify-content: center;
               min-height: 100vh;
-              padding: 20px;
-              color: #333;
+              padding: 16px;
+              line-height: 1.5;
+              -webkit-font-smoothing: antialiased;
             }
             .container {
-              background: white;
-              border-radius: 12px;
-              box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-              padding: 20px;
+              background: var(--card-bg);
+              border-radius: 16px;
+              box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+              padding: 24px;
               width: 100%;
-              max-width: 400px;
+              max-width: 360px;
+              margin: auto;
               text-align: center;
+              animation: fadeIn 0.3s ease-out;
             }
-            h1 { font-size: 1.5rem; margin-bottom: 10px; }
-            .message { font-size: 1rem; color: #28a745; margin-bottom: 15px; font-style: italic; }
-            .balance { font-size: 1rem; color: #666; margin-bottom: 15px; }
+            @keyframes fadeIn {
+              from { opacity: 0; transform: translateY(10px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            .logo {
+              width: 48px;
+              height: 48px;
+              margin-bottom: 16px;
+            }
+            h1 {
+              font-size: 1.25rem;
+              font-weight: 600;
+              margin-bottom: 12px;
+            }
+            .message {
+              font-size: 0.875rem;
+              color: var(--primary);
+              margin-bottom: 16px;
+              font-style: italic;
+            }
+            .balance {
+              font-size: 0.875rem;
+              color: var(--text-light);
+              margin-bottom: 16px;
+            }
             .input-group {
-              margin-bottom: 20px;
+              margin-bottom: 24px;
               text-align: left;
             }
-            label { font-size: 1rem; color: #333; display: block; margin-bottom: 5px; }
+            label {
+              font-size: 0.875rem;
+              font-weight: 500;
+              display: block;
+              margin-bottom: 8px;
+            }
             input {
               width: 100%;
-              padding: 10px;
-              font-size: 1.1rem;
-              border: 1px solid #ccc;
+              padding: 12px;
+              font-size: 1rem;
+              border: 1px solid var(--border);
               border-radius: 8px;
+              background: var(--card-bg);
+              color: var(--text);
               outline: none;
+              transition: border-color 0.2s, box-shadow 0.2s;
             }
-            input:focus { border-color: #28a745; }
-            .button-group { display: flex; gap: 10px; }
+            input:focus {
+              border-color: var(--primary);
+              box-shadow: 0 0 0 3px rgba(40,167,69,0.1);
+            }
+            input:invalid:focus {
+              border-color: var(--danger);
+            }
+            .error {
+              font-size: 0.75rem;
+              color: var(--danger);
+              margin-top: 8px;
+              display: none;
+            }
+            .error.show {
+              display: block;
+            }
+            .button-group {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 12px;
+            }
             button {
-              background: #28a745;
-              color: white;
+              background: var(--primary);
+              color: #fff;
               border: none;
               border-radius: 8px;
               padding: 14px;
-              font-size: 1.1rem;
+              font-size: 1rem;
+              font-weight: 500;
               cursor: pointer;
-              flex: 1;
-              transition: background 0.2s;
+              transition: background 0.2s, transform 0.1s;
+              touch-action: manipulation;
             }
-            button:hover { background: #218838; }
-            button:disabled { background: #ccc; cursor: not-allowed; }
-            .cancel-btn { background: #dc3545; }
-            .cancel-btn:hover { background: #c82333; }
-            .status { margin-top: 15px; font-size: 1rem; }
-            .success { color: #28a745; }
-            .error { color: #dc3545; }
-            .loader { display: none; margin: 10px auto; border: 4px solid #f3f3f3; border-top: 4px solid #28a745; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
-            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            @media (max-width: 600px) {
-              .container { padding: 15px; }
-              h1 { font-size: 1.3rem; }
-              input, button { font-size: 1rem; }
+            button:hover {
+              background: var(--primary-dark);
+            }
+            button:active {
+              transform: scale(0.98);
+            }
+            button:disabled {
+              background: #ccc;
+              cursor: not-allowed;
+            }
+            .cancel-btn {
+              background: var(--danger);
+            }
+            .cancel-btn:hover {
+              background: var(--danger-dark);
+            }
+            .status {
+              margin-top: 16px;
+              font-size: 0.875rem;
+              min-height: 1.25rem;
+            }
+            .success {
+              color: var(--primary);
+            }
+            .error {
+              color: var(--danger);
+            }
+            .loader {
+              display: none;
+              margin: 16px auto;
+              border: 3px solid #e0e0e0;
+              border-top: 3px solid var(--primary);
+              border-radius: 50%;
+              width: 24px;
+              height: 24px;
+              animation: spin 1s linear infinite;
+            }
+            .loader.show {
+              display: block;
+            }
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+            @media (max-width: 360px) {
+              .container {
+                padding: 16px;
+                max-width: 100%;
+              }
+              h1 {
+                font-size: 1.125rem;
+              }
+              button {
+                padding: 12px;
+                font-size: 0.875rem;
+              }
+            }
+            @media (min-width: 361px) {
+              .container {
+                max-width: 360px;
+              }
             }
           </style>
         </head>
         <body>
           <div class="container">
-            <h1>Pay Your ${sanitizedTenantName} Bill</h1>
+            <img src="/logo.png" alt="${sanitizedTenantName} Logo" class="logo" onerror="this.style.display='none'">
+            <h1>You are about to pay ${sanitizedTenantName}</h1>
             <div class="message">Paying for garbage collection helps make our world cleaner and greener!</div>
             <div class="balance">Balance: KES ${amount}</div>
-            <div id="payment-form" data-phone="${sanitizedPhone}" data-token="${sanitizedToken}" data-api-url="${apiBaseUrl}" data-first-name="${sanitizedFirstName}" class="input-group">
+            <form id="payment-form" data-phone="${sanitizedPhone}" data-token="${sanitizedToken}" data-api-url="${apiBaseUrl}" data-first-name="${sanitizedFirstName}" class="input-group" novalidate>
               <label for="amount">Enter Amount (KES)</label>
-              <input type="number" id="amount" value="${amount}" min="1" max="150000" step="0.01" required aria-describedby="amount-error">
-              <div id="amount-error" class="error"></div>
-            </div>
+              <input type="number" id="amount" value="${amount}" min="1" max="150000" step="0.01" required aria-describedby="amount-error" inputmode="decimal">
+              <div id="amount-error" class="error" role="alert"></div>
+            </form>
             <div class="button-group">
-              <button id="pay">Pay Now</button>
-              <button id="cancel" class="cancel-btn">Cancel</button>
+              <button id="pay" type="submit" form="payment-form">Pay Now</button>
+              <button id="cancel" class="cancel-btn" type="button">Cancel</button>
             </div>
             <div id="loader" class="loader"></div>
-            <p id="status" class="status"></p>
+            <p id="status" class="status" role="status"></p>
           </div>
-          <script src="/scripts/payment.js"></script>
+          <script defer src="/scripts/payment.js"></script>
         </body>
       </html>
     `);
@@ -193,6 +319,8 @@ async function renderPayPage(req, res, next) {
     res.status(500).send('An error occurred while loading the payment page');
   }
 }
+
+
 
 
 
