@@ -134,13 +134,13 @@ async function renderPayPage(req, res, next) {
               overflow: hidden;
             }
             .card {
-              width: 95vw;
-              max-width: 500px;
-              max-height: 90vh;
+              width: 96vw;
+              max-width: 550px;
+              max-height: 92vh;
               background: var(--card-bg);
-              border-radius: 20px;
-              box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-              padding: 24px;
+              border-radius: 24px;
+              box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+              padding: 28px;
               display: flex;
               flex-direction: column;
               justify-content: space-between;
@@ -151,9 +151,9 @@ async function renderPayPage(req, res, next) {
               margin-bottom: 16px;
             }
             h1 {
-              font-size: 1.75rem;
+              font-size: 2rem;
               font-weight: 700;
-              margin-bottom: 6px;
+              margin-bottom: 10px;
             }
             .message {
               font-size: 1rem;
@@ -164,8 +164,15 @@ async function renderPayPage(req, res, next) {
             .balance {
               font-size: 1rem;
               color: var(--text-light);
-              margin-bottom: 16px;
+              margin-bottom: 10px;
               text-align: center;
+            }
+            .hint {
+              font-size: 0.95rem;
+              color: var(--text-light);
+              margin-top: 4px;
+              text-align: center;
+              display: block;
             }
             .input-group {
               margin-bottom: 16px;
@@ -262,7 +269,7 @@ async function renderPayPage(req, res, next) {
                 font-size: 16px;
               }
               .card {
-                padding: 16px;
+                padding: 20px;
               }
             }
           </style>
@@ -274,7 +281,10 @@ async function renderPayPage(req, res, next) {
               <div class="message">Paying for garbage collection helps make our world cleaner and greener!</div>
             </div>
             <div class="content">
-              <div class="balance">Balance: KES ${amount}</div>
+              <div class="balance">
+                Balance: KES ${amount}
+                <span class="hint">Don’t have the full amount? You can edit the amount to pay.</span>
+              </div>
               <form id="payment-form" data-phone="${sanitizedPhone}" data-token="${sanitizedToken}" data-api-url="${apiBaseUrl}" data-first-name="${sanitizedFirstName}" class="input-group" novalidate>
                 <label for="amount">Amount (KES)</label>
                 <input type="number" id="amount" value="${amount}" min="1" max="150000" step="0.01" required aria-describedby="amount-error" inputmode="decimal" />
@@ -299,6 +309,7 @@ async function renderPayPage(req, res, next) {
     res.status(500).send('An error occurred while loading the payment page');
   }
 }
+
 
 
 
