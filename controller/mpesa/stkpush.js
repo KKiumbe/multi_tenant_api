@@ -8,6 +8,7 @@ const { settleInvoice } = require('./paymentSettlement');
 const axios = require('axios');
 const { getTenantSettings, getTenantSettingSTK } = require('./mpesaConfig');
 const sanitizeHtml = require('sanitize-html');
+require('dotenv').config();
 
 
 async function generatePaymentLink(customerId, tenantId) {
@@ -194,7 +195,7 @@ async function stkPush(req, res, next) {
       return res.status(400).json({ error: 'MPESA configuration not found for this tenant' });
     }
 
-    const accessToken = await getAccessToken();
+    const accessToken = await getAccessToken(tenantId);
 
     console.log(`initiating STK Push for token ${token} with amount ${amount} to phone ${phoneNumber}`);
 
