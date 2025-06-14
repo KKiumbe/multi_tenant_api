@@ -1,26 +1,38 @@
-// controller/mpesa/token.js
 const axios = require('axios');
+const { getTenantSettingSTK } = require('./mpesaConfig');
+require('dotenv').config();
 
-async function getAccessToken() {
-  // 👉 Hard-coded for testing only
-  const consumerKey    = '708fTsZI64G7WLMBDBZ74r7hBBMoNEbyxptPlTPywUwoEvvx';
-  const consumerSecret = 'EPfcU4oQoMGy56qAjrDk6j0ABi7vJzsWCXFGXbIz0d8aSh88t1GwApsBBi2usQjs';
+async function getAccessToken(tenantId) {
+  if (!tenantId) throw new Error('Tenant ID is required');
 
-  const credentials = `${consumerKey}:${consumerSecret}`;
+
+
+  const { apiKey, secretKey } = await getTenantSettingSTK(tenantId);
+  const credentials = `${apiKey}:${secretKey}`;
   const basicAuth   = Buffer.from(credentials).toString('base64');
-  const url         = `${process.env.MPESA_BASE_URL}/oauth/v1/generate?grant_type=client_credentials`;
 
-  console.log('▶️ Requesting token from:', url);
-  const resp = await axios.get(url, {
-    headers: { Authorization: `Basic ${basicAuth}` }
-  });
+  // <-- include grant_type here
+  const url = `https://api.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials`;
 
-  if (!resp.data.access_token) {
-    throw new Error('No access token returned');
+  try {
+    console.log(`Requesting token from: ${url}`);
+    const response = await axios.get(url, {
+      headers: { Authorization: `Basic ${basicAuth}` },
+    });
+
+    if (!response.data.access_token) {
+      throw new Error('No access token in M-Pesa response');
+    }
+    return response.data.access_token;
+
+  } catch (error) {
+    console.error('GetAccessToken error:', {
+      status: error.response?.status,
+      data:   error.response?.data,
+      message:error.message,
+    });
+    throw new Error(`Failed to get access token: ${error.message}`);
   }
-
-  console.log('✅ Got access token:', resp.data.access_token);
-  return resp.data.access_token;
 }
 
 module.exports = { getAccessToken };
