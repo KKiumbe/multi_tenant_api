@@ -14,7 +14,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const firstName = formEl.dataset.firstName || 'Customer';
 
   // Function to check payment status
-  async function checkPaymentStatus(checkoutRequestId, retries = 30, interval = 2000) {
+  async function checkPaymentStatus(checkoutRequestId, retries = 30, interval = 5000) {
     for (let i = 0; i < retries; i++) {
       try {
         const response = await fetch(`${apiBaseUrl}/api/status/${checkoutRequestId}`, {

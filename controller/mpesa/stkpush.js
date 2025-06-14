@@ -40,7 +40,6 @@ async function renderPayPage(req, res, next) {
       return res.status(400).send('Payment token is required');
     }
 
-    // Fetch payment link with customer and tenant details
     const link = await prisma.paymentLink.findUnique({
       where: { token },
       include: {
@@ -65,42 +64,37 @@ async function renderPayPage(req, res, next) {
       return res.status(404).send('Payment link expired or invalid');
     }
 
-    // Validate customer and tenant data
     if (!link.customer || !link.customer.phoneNumber || !link.customer.id) {
       return res.status(400).send('Invalid customer data');
     }
+
     if (!link.tenant || !link.tenant.name) {
       return res.status(400).send('Invalid tenant data');
     }
 
-    // Get closing balance as default amount
     const defaultAmount = link.customer.closingBalance || 0;
     const amount = Number(defaultAmount).toFixed(2);
     if (isNaN(amount) || amount < 0) {
       return res.status(400).send('Invalid balance');
     }
 
-    // Base API URL with fallback
     const apiBaseUrl = process.env.APP_URL || 'http://localhost:5000';
 
-    // Sanitize user inputs
+    const sanitizeHtml = require('sanitize-html');
     const sanitizedPhone = sanitizeHtml(link.customer.phoneNumber);
     const sanitizedToken = sanitizeHtml(link.token);
     const sanitizedFirstName = sanitizeHtml(link.customer.firstName || 'Customer');
     const sanitizedTenantName = sanitizeHtml(link.tenant.name);
 
-    // Render full-screen mobile payment prompt with card layout
     res.set('Content-Type', 'text/html');
     res.send(`
       <!DOCTYPE html>
       <html lang="en">
         <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-          <meta name="description" content="Pay your ${sanitizedTenantName} bill for garbage collection.">
-          <meta name="theme-color" content="#28a745">
+          <meta charset="UTF-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+          <meta name="theme-color" content="#28a745" />
           <title>Pay ${sanitizedTenantName}</title>
-          <link rel="icon" href="/favicon.ico" type="image/x-icon">
           <style>
             :root {
               --primary: #28a745;
@@ -128,84 +122,76 @@ async function renderPayPage(req, res, next) {
               box-sizing: border-box;
             }
             html, body {
-              height: 100vh;
-              width: 100vw;
-              overflow: hidden;
-              font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+              height: 100%;
+              width: 100%;
               background: var(--bg);
               color: var(--text);
-              -webkit-font-smoothing: antialiased;
-              touch-action: none;
+              font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+              font-size: 18px;
               display: flex;
               justify-content: center;
               align-items: center;
+              overflow: hidden;
             }
             .card {
-              width: 90vw;
-              max-height: 80vh;
+              width: 95vw;
+              max-width: 500px;
+              max-height: 90vh;
               background: var(--card-bg);
-              border-radius: 16px;
+              border-radius: 20px;
               box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-              padding: 20px;
+              padding: 24px;
               display: flex;
               flex-direction: column;
               justify-content: space-between;
-              overflow: hidden;
+              overflow-y: auto;
             }
             .header {
               text-align: center;
-            }
-            .logo {
-              width: 48px;
-              height: 48px;
-              margin-bottom: 8px;
+              margin-bottom: 16px;
             }
             h1 {
-              font-size: 1.25rem;
-              font-weight: 600;
+              font-size: 1.75rem;
+              font-weight: 700;
               margin-bottom: 6px;
             }
             .message {
-              font-size: 0.875rem;
+              font-size: 1rem;
               color: var(--primary);
               font-style: italic;
               margin-bottom: 12px;
             }
-            .content {
-              text-align: center;
-            }
             .balance {
-              font-size: 0.875rem;
+              font-size: 1rem;
               color: var(--text-light);
               margin-bottom: 16px;
+              text-align: center;
             }
             .input-group {
               margin-bottom: 16px;
-              text-align: left;
             }
             label {
-              font-size: 0.875rem;
-              font-weight: 500;
+              font-size: 1rem;
+              font-weight: 600;
               display: block;
               margin-bottom: 6px;
             }
             input {
               width: 100%;
-              padding: 12px;
-              font-size: 1.125rem;
+              padding: 14px;
+              font-size: 1.25rem;
               border: 1px solid var(--border);
-              border-radius: 8px;
+              border-radius: 10px;
               background: var(--card-bg);
               color: var(--text);
               outline: none;
-              transition: border-color 0.2s, box-shadow 0.2s;
             }
             input:focus {
               border-color: var(--primary);
               box-shadow: 0 0 0 3px rgba(40,167,69,0.1);
             }
             .error {
-              font-size: 0.75rem;
+              font-size: 0.875rem;
               color: var(--danger);
               margin-top: 6px;
               display: none;
@@ -213,25 +199,21 @@ async function renderPayPage(req, res, next) {
             .error.show {
               display: block;
             }
-            .footer {
-              margin-top: 16px;
-            }
             .button-group {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
+              display: flex;
+              flex-direction: column;
               gap: 12px;
+              margin-top: 12px;
             }
             button {
               background: var(--primary);
-              color: #fff;
+              color: white;
               border: none;
-              border-radius: 8px;
-              padding: 14px;
-              font-size: 1rem;
-              font-weight: 500;
+              border-radius: 10px;
+              padding: 16px;
+              font-size: 1.125rem;
+              font-weight: 600;
               cursor: pointer;
-              transition: background 0.2s, transform 0.1s;
-              touch-action: manipulation;
             }
             button:hover {
               background: var(--primary-dark);
@@ -239,21 +221,18 @@ async function renderPayPage(req, res, next) {
             button:active {
               transform: scale(0.98);
             }
-            button:disabled {
-              background: #ccc;
-              cursor: not-allowed;
-            }
-            .cancel-btn {
+            button.cancel-btn {
               background: var(--danger);
             }
-            .cancel-btn:hover {
+            button.cancel-btn:hover {
               background: var(--danger-dark);
             }
             .status {
               margin-top: 12px;
-              font-size: 0.875rem;
+              font-size: 1rem;
               min-height: 1.25rem;
               color: var(--text-light);
+              text-align: center;
             }
             .success {
               color: var(--primary);
@@ -267,8 +246,8 @@ async function renderPayPage(req, res, next) {
               border: 3px solid #e0e0e0;
               border-top: 3px solid var(--primary);
               border-radius: 50%;
-              width: 24px;
-              height: 24px;
+              width: 30px;
+              height: 30px;
               animation: spin 1s linear infinite;
             }
             .loader.show {
@@ -279,22 +258,11 @@ async function renderPayPage(req, res, next) {
               100% { transform: rotate(360deg); }
             }
             @media (max-height: 600px) {
+              html, body {
+                font-size: 16px;
+              }
               .card {
                 padding: 16px;
-              }
-              h1 {
-                font-size: 1.125rem;
-              }
-              .message, .balance {
-                font-size: 0.75rem;
-              }
-              input {
-                padding: 10px;
-                font-size: 1rem;
-              }
-              button {
-                padding: 12px;
-                font-size: 0.875rem;
               }
             }
           </style>
@@ -302,7 +270,6 @@ async function renderPayPage(req, res, next) {
         <body>
           <div class="card">
             <div class="header">
-              <img src="/logo.png" alt="${sanitizedTenantName} Logo" class="logo" onerror="this.style.display='none'">
               <h1>Pay ${sanitizedTenantName}</h1>
               <div class="message">Paying for garbage collection helps make our world cleaner and greener!</div>
             </div>
@@ -310,7 +277,7 @@ async function renderPayPage(req, res, next) {
               <div class="balance">Balance: KES ${amount}</div>
               <form id="payment-form" data-phone="${sanitizedPhone}" data-token="${sanitizedToken}" data-api-url="${apiBaseUrl}" data-first-name="${sanitizedFirstName}" class="input-group" novalidate>
                 <label for="amount">Amount (KES)</label>
-                <input type="number" id="amount" value="${amount}" min="1" max="150000" step="0.01" required aria-describedby="amount-error" inputmode="decimal">
+                <input type="number" id="amount" value="${amount}" min="1" max="150000" step="0.01" required aria-describedby="amount-error" inputmode="decimal" />
                 <div id="amount-error" class="error" role="alert"></div>
               </form>
               <div id="loader" class="loader"></div>
@@ -332,6 +299,7 @@ async function renderPayPage(req, res, next) {
     res.status(500).send('An error occurred while loading the payment page');
   }
 }
+
 
 
 
