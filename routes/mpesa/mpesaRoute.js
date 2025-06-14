@@ -4,7 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 const { lipaNaMpesa } = require('../../controller/mpesa/payment.js');
 const prisma = new PrismaClient();
 const { settleInvoice } = require('../../controller/mpesa/paymentSettlement.js');
-const { renderPayPage, stkPush, stkCallback } = require('../../controller/mpesa/stkpush.js');
+const { renderPayPage, stkPush, stkCallback, checkPaymentStatus } = require('../../controller/mpesa/stkpush.js');
 
 // Route to handle M-Pesa callback notifications
 router.post('/callback', async (req, res) => {
@@ -107,6 +107,13 @@ router.post('/stkpush', stkPush);
 
 // Public callback endpoint
 router.post('/stkcallback', stkCallback);
+
+router.get('/status/:checkoutRequestId', checkPaymentStatus); // Add status route
+
+// Optional: Add a cancel page route
+router.get('/cancelled', (req, res) => {
+  res.send('Payment cancelled. You can return to the home page.');
+});
 
 
 // Route to handle Lipa Na M-Pesa requests

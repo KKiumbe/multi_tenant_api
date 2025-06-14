@@ -42,7 +42,7 @@ async function renderPayPage(req, res, next) {
       return res.status(400).send('Payment token is required');
     }
 
-    // Fetch payment link with customer details
+    // Fetch payment link with customer and tenant details
     const link = await prisma.paymentLink.findUnique({
       where: { token },
       include: {
@@ -51,6 +51,13 @@ async function renderPayPage(req, res, next) {
             id: true,
             phoneNumber: true,
             closingBalance: true,
+            firstName: true,
+          },
+        },
+        tenant: {
+          select: {
+            id: true,
+            name: true,
           },
         },
       },
@@ -60,9 +67,12 @@ async function renderPayPage(req, res, next) {
       return res.status(404).send('Payment link expired or invalid');
     }
 
-    // Validate customer data
+    // Validate customer and tenant data
     if (!link.customer || !link.customer.phoneNumber || !link.customer.id) {
       return res.status(400).send('Invalid customer data');
+    }
+    if (!link.tenant || !link.tenant.name) {
+      return res.status(400).send('Invalid tenant data');
     }
 
     // Get closing balance as default amount
@@ -78,6 +88,8 @@ async function renderPayPage(req, res, next) {
     // Sanitize user inputs
     const sanitizedPhone = sanitizeHtml(link.customer.phoneNumber);
     const sanitizedToken = sanitizeHtml(link.token);
+    const sanitizedFirstName = sanitizeHtml(link.customer.firstName || 'Customer');
+    const sanitizedTenantName = sanitizeHtml(link.tenant.name);
 
     // Render mobile-optimized payment page
     res.set('Content-Type', 'text/html');
@@ -87,7 +99,7 @@ async function renderPayPage(req, res, next) {
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Pay Your Bill</title>
+          <title>Pay Your ${sanitizedTenantName} Bill</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
             body {
@@ -111,6 +123,7 @@ async function renderPayPage(req, res, next) {
               text-align: center;
             }
             h1 { font-size: 1.5rem; margin-bottom: 10px; }
+            .message { font-size: 1rem; color: #28a745; margin-bottom: 15px; font-style: italic; }
             .balance { font-size: 1rem; color: #666; margin-bottom: 15px; }
             .input-group {
               margin-bottom: 20px;
@@ -126,6 +139,7 @@ async function renderPayPage(req, res, next) {
               outline: none;
             }
             input:focus { border-color: #28a745; }
+            .button-group { display: flex; gap: 10px; }
             button {
               background: #28a745;
               color: white;
@@ -134,12 +148,15 @@ async function renderPayPage(req, res, next) {
               padding: 14px;
               font-size: 1.1rem;
               cursor: pointer;
-              width: 100%;
+              flex: 1;
               transition: background 0.2s;
             }
             button:hover { background: #218838; }
             button:disabled { background: #ccc; cursor: not-allowed; }
+            .cancel-btn { background: #dc3545; }
+            .cancel-btn:hover { background: #c82333; }
             .status { margin-top: 15px; font-size: 1rem; }
+            .success { color: #28a745; }
             .error { color: #dc3545; }
             .loader { display: none; margin: 10px auto; border: 4px solid #f3f3f3; border-top: 4px solid #28a745; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
             @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -152,14 +169,18 @@ async function renderPayPage(req, res, next) {
         </head>
         <body>
           <div class="container">
-            <h1>Payment Request</h1>
+            <h1>Pay Your ${sanitizedTenantName} Bill</h1>
+            <div class="message">Paying for garbage collection helps make our world cleaner and greener!</div>
             <div class="balance">Balance: KES ${amount}</div>
-            <div id="payment-form" data-phone="${sanitizedPhone}" data-token="${sanitizedToken}" data-api-url="${apiBaseUrl}" class="input-group">
+            <div id="payment-form" data-phone="${sanitizedPhone}" data-token="${sanitizedToken}" data-api-url="${apiBaseUrl}" data-first-name="${sanitizedFirstName}" class="input-group">
               <label for="amount">Enter Amount (KES)</label>
               <input type="number" id="amount" value="${amount}" min="1" max="150000" step="0.01" required aria-describedby="amount-error">
               <div id="amount-error" class="error"></div>
             </div>
-            <button id="pay">Pay Now</button>
+            <div class="button-group">
+              <button id="pay">Pay Now</button>
+              <button id="cancel" class="cancel-btn">Cancel</button>
+            </div>
             <div id="loader" class="loader"></div>
             <p id="status" class="status"></p>
           </div>
@@ -367,7 +388,7 @@ async function stkCallback(req, res) {
 
     // Call settleInvoice with the link object
     await settleInvoice();
-    
+
 
     console.log(`STK Callback processed for CheckoutRequestID ${checkoutRequestId}`);
   } catch (err) {
@@ -376,11 +397,58 @@ async function stkCallback(req, res) {
 }
 
 
+async function checkPaymentStatus(req, res) {
+  try {
+    const { checkoutRequestId } = req.params;
+
+    // Find the payment link to get tenantId and customerId
+    const link = await prisma.paymentLink.findUnique({
+      where: { checkoutRequestId },
+      select: { tenantId: true, customerId: true },
+    });
+
+    if (!link) {
+      return res.status(404).json({ error: 'Payment link not found' });
+    }
+
+    // Check if a transaction exists for this CheckoutRequestID
+    const transaction = await prisma.mPESATransactions.findFirst({
+      where: {
+        tenantId: link.tenantId,
+        TransID: { not: null },
+      },
+      include: {
+        tenant: {
+          select: {
+            mpesaConfig: {
+              select: { shortCode: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (transaction && transaction.processed) {
+      return res.json({ status: 'completed' });
+    } else if (transaction) {
+      return res.json({ status: 'pending' });
+    } else {
+      return res.json({ error: 'No transaction found', status: 'failed' });
+    }
+  } catch (err) {
+    console.error(`Error checking payment status for ${req.params.checkoutRequestId}:`, err.message);
+    res.status(500).json({ error: 'Failed to check payment status' });
+  }
+}
+
+
+
+
 
 
 module.exports = {
   generatePaymentLink,
   renderPayPage,
   stkPush,
-  stkCallback
+  stkCallback,checkPaymentStatus
 }
