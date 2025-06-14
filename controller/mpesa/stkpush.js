@@ -256,6 +256,8 @@ async function stkPush(req, res, next) {
     res.status(500).json({ error: 'Failed to initiate STK Push' });
   }
 }
+
+
 async function stkCallback(req, res) {
   // Acknowledge immediately to M-Pesa
   res.status(200).end();
@@ -274,13 +276,25 @@ async function stkCallback(req, res) {
       return;
     }
 
-    // Find payment link
+    // Find payment link with customer details to get phone number
     const link = await prisma.paymentLink.findUnique({
       where: { checkoutRequestId },
-      include: { customer: true },
+      include: {
+        customer: {
+          select: {
+            phoneNumber: true,
+            firstName: true,
+          },
+        },
+      },
     });
     if (!link) {
       console.error(`No payment link found for CheckoutRequestID ${checkoutRequestId}`);
+      return;
+    }
+
+    if (!link.customer || !link.customer.phoneNumber) {
+      console.error(`No customer or phone number found for CheckoutRequestID ${checkoutRequestId}`);
       return;
     }
 
@@ -293,14 +307,14 @@ async function stkCallback(req, res) {
 
     const amount = parseFloat(items.find(i => i.Name === 'Amount')?.Value);
     const receipt = items.find(i => i.Name === 'MpesaReceiptNumber')?.Value;
-    const phone = items.find(i => i.Name === 'PhoneNumber')?.Value;
+    const callbackPhone = items.find(i => i.Name === 'PhoneNumber')?.Value;
     const transactionDate = items.find(i => i.Name === 'TransactionDate')?.Value;
 
     // Log raw metadata for debugging
-    console.log('Callback Metadata:', { amount, receipt, phone, transactionDate });
+    console.log('Callback Metadata:', { amount, receipt, callbackPhone, transactionDate });
 
-    if (!amount || !receipt || !phone || !transactionDate) {
-      console.error('Missing required callback metadata:', { amount, receipt, phone, transactionDate });
+    if (!amount || !receipt || !callbackPhone || !transactionDate) {
+      console.error('Missing required callback metadata:', { amount, receipt, callbackPhone, transactionDate });
       return;
     }
 
@@ -310,7 +324,6 @@ async function stkCallback(req, res) {
       return;
     }
 
-    // Ensure transactionDate is a 14-digit string (YYYYMMDDHHMMSS)
     const cleanTransactionDate = transactionDate.trim();
     if (!/^\d{14}$/.test(cleanTransactionDate)) {
       console.error(`Invalid transactionDate format: ${cleanTransactionDate}`);
@@ -328,8 +341,12 @@ async function stkCallback(req, res) {
       return;
     }
 
-    // Use customer's phone number as BillRefNumber (ensure 07 or 01 format)
-    const billRefNumber = phone.startsWith('254') ? `0${phone.slice(3)}` : phone; // Convert 254722230603 to 0722230603
+    // Use phone number from paymentLink.customer as BillRefNumber in 07 or 01 format
+    const customerPhoneNumber = link.customer.phoneNumber;
+
+ 
+
+    // Log for debugging
 
     // Check for duplicate transaction
     const existingTransaction = await prisma.mPESATransactions.findUnique({
@@ -343,10 +360,10 @@ async function stkCallback(req, res) {
     // Store transaction in mPESATransactions
     await prisma.mPESATransactions.create({
       data: {
-        BillRefNumber: billRefNumber,
+        BillRefNumber: customerPhoneNumber, // Use phone number from paymentLink (e.g., 0722230603)
         TransAmount: amount.toString(),
         FirstName: link.customer.firstName || 'Unknown',
-        MSISDN: phone,
+        MSISDN: callbackPhone, // Store callback phone number (e.g., 254722230603)
         TransID: receipt,
         TransTime: transTime,
         processed: false,
