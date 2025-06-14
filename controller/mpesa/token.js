@@ -4,7 +4,10 @@ const { getTenantSettings } = require("./mpesaConfig");
 
 async function getAccessToken(tenantId) {
 
-  if (!config) throw new Error('MPESAConfig not found for tenant ' + tenantId);
+if (!tenantId) {
+    throw new Error('Tenant ID is required to fetch M-Pesa access token');
+  }
+  
 
 const settings = await getTenantSettings(tenantId);
 
