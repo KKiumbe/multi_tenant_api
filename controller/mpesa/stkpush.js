@@ -89,7 +89,7 @@ async function renderPayPage(req, res, next) {
     const sanitizedFirstName = sanitizeHtml(link.customer.firstName || 'Customer');
     const sanitizedTenantName = sanitizeHtml(link.tenant.name);
 
-    // Render full-screen mobile payment prompt
+    // Render full-screen mobile payment prompt with card layout
     res.set('Content-Type', 'text/html');
     res.send(`
       <!DOCTYPE html>
@@ -136,64 +136,63 @@ async function renderPayPage(req, res, next) {
               color: var(--text);
               -webkit-font-smoothing: antialiased;
               touch-action: none;
+              display: flex;
+              justify-content: center;
+              align-items: center;
             }
-            .container {
-              height: 100vh;
-              width: 100vw;
+            .card {
+              width: 90vw;
+              max-height: 80vh;
+              background: var(--card-bg);
+              border-radius: 16px;
+              box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+              padding: 20px;
               display: flex;
               flex-direction: column;
               justify-content: space-between;
-              background: var(--card-bg);
-              padding: 24px;
-              border-radius: 0;
-              box-shadow: none;
+              overflow: hidden;
             }
             .header {
-              flex: 0;
               text-align: center;
             }
             .logo {
-              width: 56px;
-              height: 56px;
-              margin-bottom: 12px;
-            }
-            h1 {
-              font-size: 1.5rem;
-              font-weight: 600;
+              width: 48px;
+              height: 48px;
               margin-bottom: 8px;
             }
+            h1 {
+              font-size: 1.25rem;
+              font-weight: 600;
+              margin-bottom: 6px;
+            }
             .message {
-              font-size: 1rem;
+              font-size: 0.875rem;
               color: var(--primary);
               font-style: italic;
               margin-bottom: 12px;
             }
             .content {
-              flex: 1;
-              display: flex;
-              flex-direction: column;
-              justify-content: center;
               text-align: center;
             }
             .balance {
-              font-size: 1rem;
+              font-size: 0.875rem;
               color: var(--text-light);
-              margin-bottom: 24px;
+              margin-bottom: 16px;
             }
             .input-group {
-              margin-bottom: 24px;
+              margin-bottom: 16px;
               text-align: left;
             }
             label {
-              font-size: 1rem;
+              font-size: 0.875rem;
               font-weight: 500;
               display: block;
-              margin-bottom: 8px;
+              margin-bottom: 6px;
             }
             input {
               width: 100%;
-              padding: 16px;
-              font-size: 1.25rem;
+              padding: 12px;
+              font-size: 1.125rem;
               border: 1px solid var(--border);
               border-radius: 8px;
               background: var(--card-bg);
@@ -206,29 +205,29 @@ async function renderPayPage(req, res, next) {
               box-shadow: 0 0 0 3px rgba(40,167,69,0.1);
             }
             .error {
-              font-size: 0.875rem;
+              font-size: 0.75rem;
               color: var(--danger);
-              margin-top: 8px;
+              margin-top: 6px;
               display: none;
             }
             .error.show {
               display: block;
             }
             .footer {
-              flex: 0;
+              margin-top: 16px;
             }
             .button-group {
               display: grid;
               grid-template-columns: 1fr 1fr;
-              gap: 16px;
+              gap: 12px;
             }
             button {
               background: var(--primary);
               color: #fff;
               border: none;
               border-radius: 8px;
-              padding: 18px;
-              font-size: 1.125rem;
+              padding: 14px;
+              font-size: 1rem;
               font-weight: 500;
               cursor: pointer;
               transition: background 0.2s, transform 0.1s;
@@ -251,9 +250,9 @@ async function renderPayPage(req, res, next) {
               background: var(--danger-dark);
             }
             .status {
-              margin-top: 16px;
-              font-size: 1rem;
-              min-height: 1.5rem;
+              margin-top: 12px;
+              font-size: 0.875rem;
+              min-height: 1.25rem;
               color: var(--text-light);
             }
             .success {
@@ -264,12 +263,12 @@ async function renderPayPage(req, res, next) {
             }
             .loader {
               display: none;
-              margin: 16px auto;
-              border: 4px solid #e0e0e0;
-              border-top: 4px solid var(--primary);
+              margin: 12px auto;
+              border: 3px solid #e0e0e0;
+              border-top: 3px solid var(--primary);
               border-radius: 50%;
-              width: 32px;
-              height: 32px;
+              width: 24px;
+              height: 24px;
               animation: spin 1s linear infinite;
             }
             .loader.show {
@@ -280,31 +279,31 @@ async function renderPayPage(req, res, next) {
               100% { transform: rotate(360deg); }
             }
             @media (max-height: 600px) {
-              .container {
+              .card {
                 padding: 16px;
               }
               h1 {
-                font-size: 1.25rem;
+                font-size: 1.125rem;
               }
               .message, .balance {
-                font-size: 0.875rem;
+                font-size: 0.75rem;
               }
               input {
-                padding: 12px;
+                padding: 10px;
                 font-size: 1rem;
               }
               button {
-                padding: 14px;
-                font-size: 1rem;
+                padding: 12px;
+                font-size: 0.875rem;
               }
             }
           </style>
         </head>
         <body>
-          <div class="container">
+          <div class="card">
             <div class="header">
-              
-              <h1>Pay are about to pay ${sanitizedTenantName}</h1>
+              <img src="/logo.png" alt="${sanitizedTenantName} Logo" class="logo" onerror="this.style.display='none'">
+              <h1>Pay ${sanitizedTenantName}</h1>
               <div class="message">Paying for garbage collection helps make our world cleaner and greener!</div>
             </div>
             <div class="content">

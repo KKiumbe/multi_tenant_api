@@ -28,12 +28,12 @@ window.addEventListener('DOMContentLoaded', () => {
           payButton.disabled = true;
           cancelButton.disabled = true;
           loader.classList.remove('show');
-          // Auto-close after 2 seconds
+          // Delay 3 seconds before closing
           setTimeout(() => {
             window.close(); // Try to close the window
             // Fallback redirect if window.close() fails
             window.location.href = `${apiBaseUrl}/api/cancelled`; // Or a success page
-          }, 2000);
+          }, 3000);
           return;
         } else if (response.ok && data.status === 'failed') {
           throw new Error(data.error || 'Payment failed');
