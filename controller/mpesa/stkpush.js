@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 const { getAccessToken } = require('./token');
 const { settleInvoice } = require('./paymentSettlement');
 const axios = require('axios');
-const { getTenantSettings } = require('./mpesaConfig');
+const { getTenantSettings, getTenantSettingSTK } = require('./mpesaConfig');
 const sanitizeHtml = require('sanitize-html');
 
 
@@ -190,7 +190,7 @@ async function stkPush(req, res, next) {
     const tenantId = link.tenantId;
 
     // fetch MPESA config for this tenant
-    const {shortCode,passKey} =  getTenantSettings(tenantId);
+    const {shortCode,passKey} =  getTenantSettingSTK(tenantId);
 
     if (!shortCode || !passKey) {
       return res.status(400).json({ error: 'MPESA configuration not found for this tenant' });
