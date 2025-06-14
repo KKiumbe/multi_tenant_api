@@ -580,7 +580,7 @@ const sendBill = async (req, res) => {
     // Construct SMS message, conditionally including payment link
     let message = `Dear ${customer.firstName}, your ${nameOfMonth} bill is KES ${customer.monthlyCharge}, balance ${balanceMessage}. Paybill: ${paybill}, acct: your phone number ${customer.phoneNumber}.`;
     if (paymentLink) {  
-      const linkUrl = `${process.env.APP_URL}/pay/${paymentLink.token}`;
+      const linkUrl = `${process.env.APP_URL}/api/pay/${paymentLink.token}`;
       message += ` Pay here: ${linkUrl}.`;
     }
     message += ` Inquiries? ${customerSupportPhoneNumber}`;

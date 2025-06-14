@@ -179,6 +179,16 @@ async function stkPush(req, res, next) {
   try {
     const { amount, phoneNumber, accountReference: token, transactionDesc } = req.body;
 
+    // Validate amount
+    const parsedAmount = Number(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({ error: 'Amount must be a positive number' });
+    }
+    const integerAmount = Math.floor(parsedAmount);
+    if (integerAmount < 1) {
+      return res.status(400).json({ error: 'Amount must be at least 1' });
+    }
+
     const link = await prisma.paymentLink.findUnique({
       where: { token },
       select: { tenantId: true }
@@ -197,7 +207,7 @@ async function stkPush(req, res, next) {
 
     const accessToken = await getAccessToken(tenantId);
 
-    console.log(`initiating STK Push for token ${token} with amount ${amount} to phone ${phoneNumber}`);
+    console.log(`initiating STK Push for token ${token} with amount ${integerAmount} to phone ${phoneNumber}`);
 
     const timestamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0,14);
     const password = Buffer.from(shortCode + passKey + timestamp).toString('base64');
@@ -206,7 +216,7 @@ async function stkPush(req, res, next) {
       Password: password,
       Timestamp: timestamp,
       TransactionType: 'CustomerPayBillOnline',
-      Amount: amount,
+      Amount: integerAmount, // Use integer amount
       PartyA: phoneNumber.replace(/^0/, '254'),
       PartyB: shortCode,
       PhoneNumber: phoneNumber.replace(/^0/, '254'),
