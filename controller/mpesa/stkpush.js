@@ -205,6 +205,8 @@ console.log({ shortCode, passKey });
     // get OAuth token
     const accessToken = await getAccessToken(tenantId);
 
+    console.log(`initiating STK Push for token ${token} with amount ${amount} to phone ${phoneNumber}`);
+
     // build STK Push password and payload
     const timestamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0,14);
     const password = Buffer.from(shortCode + passKey + timestamp).toString('base64');
