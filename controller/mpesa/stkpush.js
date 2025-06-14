@@ -256,13 +256,12 @@ async function stkPush(req, res, next) {
     res.status(500).json({ error: 'Failed to initiate STK Push' });
   }
 }
-
-// STK Callback
 async function stkCallback(req, res) {
   // Acknowledge immediately to M-Pesa
   res.status(200).end();
 
   try {
+    console.log('STK Callback Request Body:', JSON.stringify(req.body, null, 2));
     const cb = req.body.Body?.stkCallback;
     if (!cb || cb.ResultCode !== 0) {
       console.log(`STK Callback failed: ResultCode ${cb.ResultCode}, ${cb.ResultDesc}`);
@@ -306,24 +305,31 @@ async function stkCallback(req, res) {
     }
 
     // Validate transactionDate
-    if (typeof transactionDate !== 'string' || !/^\d{14}$/.test(transactionDate)) {
-      console.error(`Invalid transactionDate format: ${transactionDate}`);
+    if (typeof transactionDate !== 'string') {
+      console.error(`transactionDate is not a string: ${typeof transactionDate}`, transactionDate);
+      return;
+    }
+
+    // Ensure transactionDate is a 14-digit string (YYYYMMDDHHMMSS)
+    const cleanTransactionDate = transactionDate.trim();
+    if (!/^\d{14}$/.test(cleanTransactionDate)) {
+      console.error(`Invalid transactionDate format: ${cleanTransactionDate}`);
       return;
     }
 
     // Format transaction date (YYYYMMDDHHMMSS to Date)
     const transTime = new Date(
-      `${transactionDate.slice(0, 4)}-${transactionDate.slice(4, 6)}-${transactionDate.slice(6, 8)}T${transactionDate.slice(8, 10)}:${transactionDate.slice(10, 12)}:${transactionDate.slice(12, 14)}`
+      `${cleanTransactionDate.slice(0, 4)}-${cleanTransactionDate.slice(4, 6)}-${cleanTransactionDate.slice(6, 8)}T${cleanTransactionDate.slice(8, 10)}:${cleanTransactionDate.slice(10, 12)}:${cleanTransactionDate.slice(12, 14)}`
     );
 
     // Validate parsed date
     if (isNaN(transTime.getTime())) {
-      console.error(`Invalid parsed transaction date: ${transTime}`);
+      console.error(`Invalid parsed transaction date: ${transTime} from ${cleanTransactionDate}`);
       return;
     }
 
-    // Use customer's phone number as BillRefNumber
-    const billRefNumber = phone; // e.g., "254708920430"
+    // Use customer's phone number as BillRefNumber (ensure 07 or 01 format)
+    const billRefNumber = phone.startsWith('254') ? `0${phone.slice(3)}` : phone; // Convert 254722230603 to 0722230603
 
     // Check for duplicate transaction
     const existingTransaction = await prisma.mPESATransactions.findUnique({
@@ -345,21 +351,19 @@ async function stkCallback(req, res) {
         TransTime: transTime,
         processed: false,
         mpesaConfig: {
-          connect: { tenantId: link.tenantId }, // Link to tenant's M-Pesa config
+          connect: { tenantId: link.tenantId },
         },
       },
     });
 
-    // Call settleInvoice to process the transaction
-    await settleInvoice();
+    // Call settleInvoice with the link object
+    await settleInvoice(link);
 
     console.log(`STK Callback processed for CheckoutRequestID ${checkoutRequestId}`);
   } catch (err) {
     console.error('STK Callback error:', err.message);
   }
 }
-
-module.exports = { stkCallback };
 
 
 
