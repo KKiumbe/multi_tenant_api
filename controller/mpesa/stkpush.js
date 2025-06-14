@@ -224,7 +224,7 @@ console.log({ shortCode, passKey });
 
     // send STK Push request
     const { data } = await axios.post(
-      `${process.env.MPESA_BASE_URL}/mpesa/stkpush/v1/processrequest`,
+      `${process.env.MPESA_URL}/mpesa/stkpush/v1/processrequest`,
       payload,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
