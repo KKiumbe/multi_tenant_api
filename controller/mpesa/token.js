@@ -1,15 +1,15 @@
 
 const axios = require('axios');
-const { getTenantSettings } = require("./mpesaConfig");
+const {  getTenantSettingSTK } = require("./mpesaConfig");
 
 async function getAccessToken(tenantId) {
 
 if (!tenantId) {
     throw new Error('Tenant ID is required to fetch M-Pesa access token');
   }
-  
 
-const settings = await getTenantSettings(tenantId);
+
+const settings = await getTenantSettingSTK(tenantId);
 
     if (!settings.success) throw new Error(settings.message || 'Failed to fetch M-Pesa config');
 
