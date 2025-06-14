@@ -20,6 +20,8 @@ async function getAccessToken(tenantId) {
       headers: { Authorization: `Basic ${basicAuth}` },
     });
 
+    console.log(`toke is here ${response.data} `);
+
     if (!response.data.access_token) {
       throw new Error('No access token in M-Pesa response');
     }
