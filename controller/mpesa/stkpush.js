@@ -297,8 +297,17 @@ async function stkCallback(req, res) {
     const phone = items.find(i => i.Name === 'PhoneNumber')?.Value;
     const transactionDate = items.find(i => i.Name === 'TransactionDate')?.Value;
 
+    // Log raw metadata for debugging
+    console.log('Callback Metadata:', { amount, receipt, phone, transactionDate });
+
     if (!amount || !receipt || !phone || !transactionDate) {
-      console.error('Missing required callback metadata');
+      console.error('Missing required callback metadata:', { amount, receipt, phone, transactionDate });
+      return;
+    }
+
+    // Validate transactionDate
+    if (typeof transactionDate !== 'string' || !/^\d{14}$/.test(transactionDate)) {
+      console.error(`Invalid transactionDate format: ${transactionDate}`);
       return;
     }
 
@@ -306,6 +315,12 @@ async function stkCallback(req, res) {
     const transTime = new Date(
       `${transactionDate.slice(0, 4)}-${transactionDate.slice(4, 6)}-${transactionDate.slice(6, 8)}T${transactionDate.slice(8, 10)}:${transactionDate.slice(10, 12)}:${transactionDate.slice(12, 14)}`
     );
+
+    // Validate parsed date
+    if (isNaN(transTime.getTime())) {
+      console.error(`Invalid parsed transaction date: ${transTime}`);
+      return;
+    }
 
     // Use customer's phone number as BillRefNumber
     const billRefNumber = phone; // e.g., "254708920430"
