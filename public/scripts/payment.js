@@ -35,7 +35,7 @@ window.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({
           amount: amount.toFixed(2),
           phoneNumber,
-          accountReference,
+          accountReference:phoneNumber,
           transactionDesc: 'Balance payment'
         })
       });
