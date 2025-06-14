@@ -176,10 +176,8 @@ async function renderPayPage(req, res, next) {
 
 async function stkPush(req, res, next) {
   try {
-    // extract fields from request body
     const { amount, phoneNumber, accountReference: token, transactionDesc } = req.body;
 
-    // look up tenantId by payment link token
     const link = await prisma.paymentLink.findUnique({
       where: { token },
       select: { tenantId: true }
@@ -189,25 +187,17 @@ async function stkPush(req, res, next) {
     }
     const tenantId = link.tenantId;
 
-// fetch MPESA config for this tenant
-//i need help with this function, have await
-
-const { shortCode, passKey } = await getTenantSettingSTK(tenantId);
-
-// now you can use shortCode and passKey
-console.log({ shortCode, passKey });
+    const { shortCode, passKey } = await getTenantSettingSTK(tenantId);
+    console.log({ shortCode, passKey });
 
     if (!shortCode || !passKey) {
       return res.status(400).json({ error: 'MPESA configuration not found for this tenant' });
     }
-  
 
-    // get OAuth token
     const accessToken = await getAccessToken(tenantId);
 
     console.log(`initiating STK Push for token ${token} with amount ${amount} to phone ${phoneNumber}`);
 
-    // build STK Push password and payload
     const timestamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0,14);
     const password = Buffer.from(shortCode + passKey + timestamp).toString('base64');
     const payload = {
@@ -224,26 +214,35 @@ console.log({ shortCode, passKey });
       TransactionDesc: transactionDesc
     };
 
-    // send STK Push request
-    const { data } = await axios.post(
-      `${process.env.MPESA_URL}/mpesa/stkpush/v1/processrequest`,
-      payload,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
+    console.log(`M-Pesa URL: ${process.env.MPESA_URL}/mpesa/stkpush/v1/processrequest`);
+    try {
+      const { data } = await axios.post(
+        `${process.env.MPESA_URL}/mpesa/stkpush/v1/processrequest`,
+        payload,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
 
-    // persist STK request IDs on the link
-    await prisma.paymentLink.update({
-      where: { token },
-      data: {
-        merchantRequestId: data.MerchantRequestID,
-        checkoutRequestId: data.CheckoutRequestID
-      }
-    });
+      await prisma.paymentLink.update({
+        where: { token },
+        data: {
+          merchantRequestId: data.MerchantRequestID,
+          checkoutRequestId: data.CheckoutRequestID
+        }
+      });
 
-    // respond with Safaricom's immediate response
-    res.json(data);
+      res.json(data);
+    } catch (axiosError) {
+      console.error('Axios error details:', {
+        status: axiosError.response?.status,
+        data: axiosError.response?.data,
+        message: axiosError.message,
+        url: `${process.env.MPESA_URL}/mpesa/stkpush/v1/processrequest`
+      });
+      throw axiosError;
+    }
   } catch (err) {
-    next(err);
+    console.error('STK Push error:', err.message);
+    res.status(500).json({ error: 'Failed to initiate STK Push' });
   }
 }
 
