@@ -23,18 +23,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
         const data = await response.json();
         if (response.ok && data.status === 'completed') {
-          status.className = 'status success';
-          status.textContent = `Payment Successful, ${firstName}!`;
-          payButton.disabled = true;
-          cancelButton.disabled = true;
-          loader.classList.remove('show');
-          // Delay 3 seconds before closing
-          setTimeout(() => {
-            window.close(); // Try to close the window
-            // Fallback redirect if window.close() fails
-            window.location.href = `${apiBaseUrl}/api/cancelled`; // Or a success page
-          }, 3000);
-          return;
+          return true;
         } else if (response.ok && data.status === 'failed') {
           throw new Error(data.error || 'Payment failed');
         }
@@ -49,8 +38,8 @@ window.addEventListener('DOMContentLoaded', () => {
   // Form submit handler
   formEl.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const amount = parseFloat(amountInput.value);
-    if (!amount || amount < 1 || amount > 150000) {
+    const rawAmt = parseFloat(amountInput.value);
+    if (!rawAmt || rawAmt < 1 || rawAmt > 150000) {
       errorDiv.textContent = 'Amount must be between KES 1 and 150,000';
       errorDiv.classList.add('show');
       status.className = 'status error';
@@ -68,11 +57,9 @@ window.addEventListener('DOMContentLoaded', () => {
     try {
       const resp = await fetch(`${apiBaseUrl}/api/stkpush`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: amount.toFixed(2),
+          amount: amountInput.value,
           phoneNumber,
           accountReference,
           transactionDesc: 'Balance payment for garbage collection',
@@ -80,45 +67,36 @@ window.addEventListener('DOMContentLoaded', () => {
       });
 
       if (!resp.ok) {
-        let errMsg;
-        try {
-          const errJSON = await resp.json();
-          errMsg = errJSON.error || JSON.stringify(errJSON);
-        } catch {
-          errMsg = await resp.text();
-        }
+        const errJSON = await resp.json().catch(() => null);
+        const errMsg = errJSON?.error || (await resp.text());
         throw new Error(errMsg);
       }
 
       const data = await resp.json();
-      status.textContent = 'Payment prompt sent to your phone!';
-      alert('Payment prompt sent. Please check and approve on your device.');
+      status.textContent = 'Payment prompt sent. Please approve on your phone.';
 
       // Start polling for payment status
       await checkPaymentStatus(data.CheckoutRequestID);
+
+      // On success, show confirmation then close
+      status.className = 'status success';
+      status.textContent = `Payment successful, ${firstName}!`;
+      loader.classList.remove('show');
+      setTimeout(() => window.close(), 5000);
     } catch (err) {
       loader.classList.remove('show');
       status.textContent = `Error: ${err.message}`;
       status.className = 'status error';
-      errorDiv.textContent = `Payment request failed: ${err.message}`;
+      errorDiv.textContent = `Payment error: ${err.message}`;
       errorDiv.classList.add('show');
-      console.error('Payment error:', err);
       payButton.disabled = false;
       cancelButton.disabled = false;
+      console.error('Payment error:', err);
     }
   });
 
-  // Cancel button click handler
+  // Cancel button click handler simply closes the page
   cancelButton.addEventListener('click', () => {
-    if (confirm('Are you sure you want to cancel the payment?')) {
-      status.className = 'status';
-      status.textContent = 'Payment cancelled';
-      payButton.disabled = true;
-      cancelButton.disabled = true;
-      setTimeout(() => {
-        window.close(); // Try to close the window
-        window.location.href = `${apiBaseUrl}/api/cancelled`; // Fallback
-      }, 2000);
-    }
+    window.close();
   });
 });

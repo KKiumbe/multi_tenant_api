@@ -368,11 +368,18 @@ async function stkPush(req, res, next) {
 
     console.log(`M-Pesa URL: ${process.env.MPESA_URL}/mpesa/stkpush/v1/processrequest`);
     try {
-      const { data } = await axios.post(
+     
+       const response = await axios.post(
         `${process.env.MPESA_URL}/mpesa/stkpush/v1/processrequest`,
         payload,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
+
+      console.log('STK Push HTTP status:',   response.status);
+      console.log('STK Push response headers:', response.headers);
+      console.log('STK Push response body:',    JSON.stringify(response.data, null, 2));
+
+      const data = response.data;
 
       await prisma.paymentLink.update({
         where: { token },
