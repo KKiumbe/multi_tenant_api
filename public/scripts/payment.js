@@ -24,10 +24,16 @@ window.addEventListener('DOMContentLoaded', () => {
         const data = await response.json();
         if (response.ok && data.status === 'completed') {
           status.className = 'status success';
-          status.textContent = `Payment Successful, ${firstName}! Thank you for supporting garbage collection.`;
+          status.textContent = `Payment Successful, ${firstName}!`;
           payButton.disabled = true;
           cancelButton.disabled = true;
-          loader.style.display = 'none';
+          loader.classList.remove('show');
+          // Auto-close after 2 seconds
+          setTimeout(() => {
+            window.close(); // Try to close the window
+            // Fallback redirect if window.close() fails
+            window.location.href = `${apiBaseUrl}/api/cancelled`; // Or a success page
+          }, 2000);
           return;
         } else if (response.ok && data.status === 'failed') {
           throw new Error(data.error || 'Payment failed');
@@ -40,20 +46,23 @@ window.addEventListener('DOMContentLoaded', () => {
     throw new Error('Payment status check timed out');
   }
 
-  // Pay button click handler
-  payButton.addEventListener('click', async () => {
+  // Form submit handler
+  formEl.addEventListener('submit', async (e) => {
+    e.preventDefault();
     const amount = parseFloat(amountInput.value);
     if (!amount || amount < 1 || amount > 150000) {
-      errorDiv.textContent = 'Please enter an amount between KES 1 and KES 150,000';
+      errorDiv.textContent = 'Amount must be between KES 1 and 150,000';
+      errorDiv.classList.add('show');
       status.className = 'status error';
       return;
     }
     errorDiv.textContent = '';
+    errorDiv.classList.remove('show');
 
     // UI feedback
     payButton.disabled = true;
     cancelButton.disabled = true;
-    loader.style.display = 'block';
+    loader.classList.add('show');
     status.textContent = 'Sending payment request...';
 
     try {
@@ -88,10 +97,11 @@ window.addEventListener('DOMContentLoaded', () => {
       // Start polling for payment status
       await checkPaymentStatus(data.CheckoutRequestID);
     } catch (err) {
-      loader.style.display = 'none';
+      loader.classList.remove('show');
       status.textContent = `Error: ${err.message}`;
       status.className = 'status error';
       errorDiv.textContent = `Payment request failed: ${err.message}`;
+      errorDiv.classList.add('show');
       console.error('Payment error:', err);
       payButton.disabled = false;
       cancelButton.disabled = false;
@@ -106,7 +116,8 @@ window.addEventListener('DOMContentLoaded', () => {
       payButton.disabled = true;
       cancelButton.disabled = true;
       setTimeout(() => {
-        window.location.href = `${apiBaseUrl}/api/cancelled`; // Updated to match route namespace
+        window.close(); // Try to close the window
+        window.location.href = `${apiBaseUrl}/api/cancelled`; // Fallback
       }, 2000);
     }
   });

@@ -89,7 +89,7 @@ async function renderPayPage(req, res, next) {
     const sanitizedFirstName = sanitizeHtml(link.customer.firstName || 'Customer');
     const sanitizedTenantName = sanitizeHtml(link.tenant.name);
 
-    // Render mobile-optimized payment page
+    // Render full-screen mobile payment prompt
     res.set('Content-Type', 'text/html');
     res.send(`
       <!DOCTYPE html>
@@ -97,9 +97,9 @@ async function renderPayPage(req, res, next) {
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-          <meta name="description" content="Pay your ${sanitizedTenantName} bill for garbage collection securely.">
+          <meta name="description" content="Pay your ${sanitizedTenantName} bill for garbage collection.">
           <meta name="theme-color" content="#28a745">
-          <title>Pay ${sanitizedTenantName} Bill</title>
+          <title>Pay ${sanitizedTenantName}</title>
           <link rel="icon" href="/favicon.ico" type="image/x-icon">
           <style>
             :root {
@@ -127,67 +127,73 @@ async function renderPayPage(req, res, next) {
               padding: 0;
               box-sizing: border-box;
             }
-            body {
+            html, body {
+              height: 100vh;
+              width: 100vw;
+              overflow: hidden;
               font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
               background: var(--bg);
               color: var(--text);
-              display: flex;
-              flex-direction: column;
-              min-height: 100vh;
-              padding: 16px;
-              line-height: 1.5;
               -webkit-font-smoothing: antialiased;
+              touch-action: none;
             }
             .container {
+              height: 100vh;
+              width: 100vw;
+              display: flex;
+              flex-direction: column;
+              justify-content: space-between;
               background: var(--card-bg);
-              border-radius: 16px;
-              box-shadow: 0 4px 16px rgba(0,0,0,0.1);
               padding: 24px;
-              width: 100%;
-              max-width: 360px;
-              margin: auto;
-              text-align: center;
-              animation: fadeIn 0.3s ease-out;
+              border-radius: 0;
+              box-shadow: none;
             }
-            @keyframes fadeIn {
-              from { opacity: 0; transform: translateY(10px); }
-              to { opacity: 1; transform: translateY(0); }
+            .header {
+              flex: 0;
+              text-align: center;
             }
             .logo {
-              width: 48px;
-              height: 48px;
-              margin-bottom: 16px;
-            }
-            h1 {
-              font-size: 1.25rem;
-              font-weight: 600;
+              width: 56px;
+              height: 56px;
               margin-bottom: 12px;
             }
+            h1 {
+              font-size: 1.5rem;
+              font-weight: 600;
+              margin-bottom: 8px;
+            }
             .message {
-              font-size: 0.875rem;
+              font-size: 1rem;
               color: var(--primary);
-              margin-bottom: 16px;
               font-style: italic;
+              margin-bottom: 12px;
+            }
+            .content {
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              text-align: center;
             }
             .balance {
-              font-size: 0.875rem;
+              font-size: 1rem;
               color: var(--text-light);
-              margin-bottom: 16px;
+              margin-bottom: 24px;
             }
             .input-group {
               margin-bottom: 24px;
               text-align: left;
             }
             label {
-              font-size: 0.875rem;
+              font-size: 1rem;
               font-weight: 500;
               display: block;
               margin-bottom: 8px;
             }
             input {
               width: 100%;
-              padding: 12px;
-              font-size: 1rem;
+              padding: 16px;
+              font-size: 1.25rem;
               border: 1px solid var(--border);
               border-radius: 8px;
               background: var(--card-bg);
@@ -199,11 +205,8 @@ async function renderPayPage(req, res, next) {
               border-color: var(--primary);
               box-shadow: 0 0 0 3px rgba(40,167,69,0.1);
             }
-            input:invalid:focus {
-              border-color: var(--danger);
-            }
             .error {
-              font-size: 0.75rem;
+              font-size: 0.875rem;
               color: var(--danger);
               margin-top: 8px;
               display: none;
@@ -211,18 +214,21 @@ async function renderPayPage(req, res, next) {
             .error.show {
               display: block;
             }
+            .footer {
+              flex: 0;
+            }
             .button-group {
               display: grid;
               grid-template-columns: 1fr 1fr;
-              gap: 12px;
+              gap: 16px;
             }
             button {
               background: var(--primary);
               color: #fff;
               border: none;
               border-radius: 8px;
-              padding: 14px;
-              font-size: 1rem;
+              padding: 18px;
+              font-size: 1.125rem;
               font-weight: 500;
               cursor: pointer;
               transition: background 0.2s, transform 0.1s;
@@ -246,8 +252,9 @@ async function renderPayPage(req, res, next) {
             }
             .status {
               margin-top: 16px;
-              font-size: 0.875rem;
-              min-height: 1.25rem;
+              font-size: 1rem;
+              min-height: 1.5rem;
+              color: var(--text-light);
             }
             .success {
               color: var(--primary);
@@ -258,11 +265,11 @@ async function renderPayPage(req, res, next) {
             .loader {
               display: none;
               margin: 16px auto;
-              border: 3px solid #e0e0e0;
-              border-top: 3px solid var(--primary);
+              border: 4px solid #e0e0e0;
+              border-top: 4px solid var(--primary);
               border-radius: 50%;
-              width: 24px;
-              height: 24px;
+              width: 32px;
+              height: 32px;
               animation: spin 1s linear infinite;
             }
             .loader.show {
@@ -272,43 +279,50 @@ async function renderPayPage(req, res, next) {
               0% { transform: rotate(0deg); }
               100% { transform: rotate(360deg); }
             }
-            @media (max-width: 360px) {
+            @media (max-height: 600px) {
               .container {
                 padding: 16px;
-                max-width: 100%;
               }
               h1 {
-                font-size: 1.125rem;
+                font-size: 1.25rem;
               }
-              button {
-                padding: 12px;
+              .message, .balance {
                 font-size: 0.875rem;
               }
-            }
-            @media (min-width: 361px) {
-              .container {
-                max-width: 360px;
+              input {
+                padding: 12px;
+                font-size: 1rem;
+              }
+              button {
+                padding: 14px;
+                font-size: 1rem;
               }
             }
           </style>
         </head>
         <body>
           <div class="container">
-            <img src="/logo.png" alt="${sanitizedTenantName} Logo" class="logo" onerror="this.style.display='none'">
-            <h1>You are about to pay ${sanitizedTenantName}</h1>
-            <div class="message">Paying for garbage collection helps make our world cleaner and greener!</div>
-            <div class="balance">Balance: KES ${amount}</div>
-            <form id="payment-form" data-phone="${sanitizedPhone}" data-token="${sanitizedToken}" data-api-url="${apiBaseUrl}" data-first-name="${sanitizedFirstName}" class="input-group" novalidate>
-              <label for="amount">Enter Amount (KES)</label>
-              <input type="number" id="amount" value="${amount}" min="1" max="150000" step="0.01" required aria-describedby="amount-error" inputmode="decimal">
-              <div id="amount-error" class="error" role="alert"></div>
-            </form>
-            <div class="button-group">
-              <button id="pay" type="submit" form="payment-form">Pay Now</button>
-              <button id="cancel" class="cancel-btn" type="button">Cancel</button>
+            <div class="header">
+              
+              <h1>Pay are about to pay ${sanitizedTenantName}</h1>
+              <div class="message">Paying for garbage collection helps make our world cleaner and greener!</div>
             </div>
-            <div id="loader" class="loader"></div>
-            <p id="status" class="status" role="status"></p>
+            <div class="content">
+              <div class="balance">Balance: KES ${amount}</div>
+              <form id="payment-form" data-phone="${sanitizedPhone}" data-token="${sanitizedToken}" data-api-url="${apiBaseUrl}" data-first-name="${sanitizedFirstName}" class="input-group" novalidate>
+                <label for="amount">Amount (KES)</label>
+                <input type="number" id="amount" value="${amount}" min="1" max="150000" step="0.01" required aria-describedby="amount-error" inputmode="decimal">
+                <div id="amount-error" class="error" role="alert"></div>
+              </form>
+              <div id="loader" class="loader"></div>
+              <p id="status" class="status" role="status"></p>
+            </div>
+            <div class="footer">
+              <div class="button-group">
+                <button id="pay" type="submit" form="payment-form">Pay Now</button>
+                <button id="cancel" class="cancel-btn" type="button">Cancel</button>
+              </div>
+            </div>
           </div>
           <script defer src="/scripts/payment.js"></script>
         </body>
