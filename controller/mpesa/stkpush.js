@@ -337,9 +337,9 @@ async function stkCallback(req, res) {
       return;
     }
 
-    const localPhone = callbackPhone.startsWith('254') && callbackPhone.length === 12
-  ? '0' + callbackPhone.slice(3)
-  : callbackPhone;
+ const localPhone = String(callbackPhone).startsWith('254') && String(callbackPhone).length === 12
+  ? '0' + String(callbackPhone).slice(3)
+  : String(callbackPhone);
 
   const now = new Date();
 const transTime = now.toISOString().replace('T', ' ').substring(0, 19); // "YYYY-MM-DD HH:mm:ss"
