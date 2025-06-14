@@ -318,31 +318,11 @@ async function stkCallback(req, res) {
       return;
     }
 
-    // Validate transactionDate
-    if (typeof transactionDate !== 'string') {
-      console.error(`transactionDate is not a string: ${typeof transactionDate}`, transactionDate);
-      return;
-    }
+  
 
-    const cleanTransactionDate = transactionDate.trim();
-    if (!/^\d{14}$/.test(cleanTransactionDate)) {
-      console.error(`Invalid transactionDate format: ${cleanTransactionDate}`);
-      return;
-    }
+   
 
-    // Format transaction date (YYYYMMDDHHMMSS to Date)
-    const transTime = new Date(
-      `${cleanTransactionDate.slice(0, 4)}-${cleanTransactionDate.slice(4, 6)}-${cleanTransactionDate.slice(6, 8)}T${cleanTransactionDate.slice(8, 10)}:${cleanTransactionDate.slice(10, 12)}:${cleanTransactionDate.slice(12, 14)}`
-    );
 
-    // Validate parsed date
-    if (isNaN(transTime.getTime())) {
-      console.error(`Invalid parsed transaction date: ${transTime} from ${cleanTransactionDate}`);
-      return;
-    }
-
-    // Use phone number from paymentLink.customer as BillRefNumber in 07 or 01 format
-    const customerPhoneNumber = link.customer.phoneNumber;
 
  
 
@@ -357,10 +337,18 @@ async function stkCallback(req, res) {
       return;
     }
 
+    const localPhone = callbackPhone.startsWith('254') && callbackPhone.length === 12
+  ? '0' + callbackPhone.slice(3)
+  : callbackPhone;
+
+  const now = new Date();
+const transTime = now.toISOString().replace('T', ' ').substring(0, 19); // "YYYY-MM-DD HH:mm:ss"
+
+
     // Store transaction in mPESATransactions
     await prisma.mPESATransactions.create({
       data: {
-        BillRefNumber: customerPhoneNumber, // Use phone number from paymentLink (e.g., 0722230603)
+        BillRefNumber: localPhone, // Use phone number from paymentLink (e.g., 0722230603)
         TransAmount: amount.toString(),
         FirstName: link.customer.firstName || 'Unknown',
         MSISDN: callbackPhone, // Store callback phone number (e.g., 254722230603)
