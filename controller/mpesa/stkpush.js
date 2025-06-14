@@ -189,8 +189,13 @@ async function stkPush(req, res, next) {
     }
     const tenantId = link.tenantId;
 
-    // fetch MPESA config for this tenant
-    const {shortCode,passKey} =  getTenantSettingSTK(tenantId);
+// fetch MPESA config for this tenant
+//i need help with this function, have await
+
+const { shortCode, passKey } = await getTenantSettingSTK(tenantId);
+
+// now you can use shortCode and passKey
+console.log({ shortCode, passKey });
 
     if (!shortCode || !passKey) {
       return res.status(400).json({ error: 'MPESA configuration not found for this tenant' });
