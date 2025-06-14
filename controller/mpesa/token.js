@@ -15,7 +15,7 @@ async function getAccessToken(tenantId) {
 
   const credentials = `${apiKey}:${secretKey}`;
   const basicAuth = Buffer.from(credentials).toString('base64');
-  const url = `${process.env.MPESA_URL}/oauth/v1/generate?grant_type=client_credentials`;
+  const url = `${process.env.MPESA_URL}/oauth/v1/generate`;
 
   try {
     console.log(`Requesting token from: ${url}`);
