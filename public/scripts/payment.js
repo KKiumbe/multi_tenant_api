@@ -1,8 +1,8 @@
 // public/scripts/payment.js
 
+
+const axios = require('axios');
 // Import Axios for making HTTP requests
-import axios from 'axios';
-// Ensure the DOM is fully loaded before running the script
 
 window.addEventListener('DOMContentLoaded', () => {
   const payButton = document.getElementById('pay');
