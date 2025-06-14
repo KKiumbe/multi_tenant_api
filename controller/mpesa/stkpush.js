@@ -397,7 +397,6 @@ async function stkCallback(req, res) {
 }
 
 
-
 async function checkPaymentStatus(req, res) {
   try {
     const { checkoutRequestId } = req.params;
@@ -412,11 +411,10 @@ async function checkPaymentStatus(req, res) {
       return res.status(404).json({ error: 'Payment link not found' });
     }
 
-    // Check if a transaction exists for this CheckoutRequestID
+    // Check if a transaction exists for this tenantId
     const transaction = await prisma.mPESATransactions.findFirst({
       where: {
         tenantId: link.tenantId,
-        TransID: { not: null }, // Fixed: Use null instead of String
       },
       include: {
         tenant: {
@@ -441,6 +439,7 @@ async function checkPaymentStatus(req, res) {
     res.status(500).json({ error: 'Failed to check payment status' });
   }
 }
+
 
 
 
