@@ -286,6 +286,15 @@ async function stkCallback(req, res) {
             firstName: true,
           },
         },
+        tenant: {
+          select: {
+            mpesaConfig: {
+              select: {
+                shortCode: true,
+              },
+            },
+          },
+        },
       },
     });
     if (!link) {
@@ -295,6 +304,13 @@ async function stkCallback(req, res) {
 
     if (!link.customer || !link.customer.phoneNumber) {
       console.error(`No customer or phone number found for CheckoutRequestID ${checkoutRequestId}`);
+      return;
+    }
+
+    // Extract shortCode from MPESAConfig
+    const shortCode = link.tenant?.mpesaConfig?.shortCode;
+    if (!shortCode) {
+      console.error(`No shortCode found for tenantId ${link.tenantId}`);
       return;
     }
 
@@ -318,16 +334,6 @@ async function stkCallback(req, res) {
       return;
     }
 
-  
-
-   
-
-
-
- 
-
-    // Log for debugging
-
     // Check for duplicate transaction
     const existingTransaction = await prisma.mPESATransactions.findUnique({
       where: { TransID: receipt },
@@ -337,27 +343,25 @@ async function stkCallback(req, res) {
       return;
     }
 
- const localPhone = String(callbackPhone).startsWith('254') && String(callbackPhone).length === 12
-  ? '0' + String(callbackPhone).slice(3)
-  : String(callbackPhone);
+    const localPhone = String(callbackPhone).startsWith('254') && String(callbackPhone).length === 12
+      ? '0' + String(callbackPhone).slice(3)
+      : String(callbackPhone);
 
-  const now = new Date();
-const transTime = now.toISOString().replace('T', ' ').substring(0, 19); // "YYYY-MM-DD HH:mm:ss"
-
+    const now = new Date();
+    const transTime = now.toISOString().replace('T', ' ').substring(0, 19); // "YYYY-MM-DD HH:mm:ss"
 
     // Store transaction in mPESATransactions
     await prisma.mPESATransactions.create({
       data: {
         BillRefNumber: localPhone, // Use phone number from paymentLink (e.g., 0722230603)
-        TransAmount: amount.toString(),
+        TransAmount: amount,
         FirstName: link.customer.firstName || 'Unknown',
         MSISDN: callbackPhone, // Store callback phone number (e.g., 254722230603)
         TransID: receipt,
         TransTime: transTime,
         processed: false,
-        mpesaConfig: {
-          connect: { tenantId: link.tenantId },
-        },
+        tenantId: link.tenantId, // Use tenantId from paymentLink
+        ShortCode: shortCode, // Use shortCode from MPESAConfig
       },
     });
 
