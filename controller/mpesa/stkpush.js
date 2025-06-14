@@ -194,7 +194,7 @@ async function stkPush(req, res, next) {
       return res.status(400).json({ error: 'MPESA configuration not found for this tenant' });
     }
 
-    const accessToken = await getAccessToken(tenantId);
+    const accessToken = await getAccessToken();
 
     console.log(`initiating STK Push for token ${token} with amount ${amount} to phone ${phoneNumber}`);
 
