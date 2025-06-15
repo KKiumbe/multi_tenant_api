@@ -332,11 +332,16 @@ async function stkPush(req, res, next) {
 
     const link = await prisma.paymentLink.findUnique({
       where: { token },
-      select: { tenantId: true }
+      select: { tenantId: true, expiresAt: true, paid: true }
     });
     if (!link) {
       return res.status(400).json({ error: 'Invalid payment link token' });
     }
+if (link.expiresAt < new Date() || link.paid) {
+  return res.status(400).json({ error: 'Payment link expired or already used' });
+}
+
+
     const tenantId = link.tenantId;
 
     const { shortCode, passKey } = await getTenantSettingSTK(tenantId);
