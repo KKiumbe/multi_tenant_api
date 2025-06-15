@@ -1,6 +1,4 @@
 const { PrismaClient } = require('@prisma/client');
-const { sendSMS } = require('../sms/sms.js');
-
 
 const prisma = new PrismaClient();
 
@@ -33,6 +31,9 @@ async function generateUniqueReceiptNumber(paymentId) {
 
 
 async function settleInvoice() {
+
+const { sendSMS } = require('../sms/sms.js');
+
     try {
         // Fetch unprocessed Mpesa transactions and include tenantId
         const mpesaTransactions = await prisma.mPESATransactions.findMany({
