@@ -4,6 +4,7 @@ const axios = require('axios');
 const {getSMSConfigForTenant }= require('../smsConfig/getSMSConfig.js')
 const {fetchTenant} = require('../tenants/tenantupdate.js')
 const { v4: uuidv4 } = require('uuid');
+const { generatePaymentLink } = require('../mpesa/stkpush.js');
 
 
 const prisma = new PrismaClient();
@@ -533,6 +534,7 @@ const sendToEstate = async (req, res) => {
 
 
 
+
 const sendBill = async (req, res) => {
   const { customerId } = req.body;
   const { tenantId } = req.user;
@@ -560,16 +562,8 @@ const sendBill = async (req, res) => {
       return res.status(404).json({ error: 'Customer not found.' });
     }
 
-    // Fetch the latest valid payment link
-    const paymentLink = await prisma.paymentLink.findFirst({
-      where: {
-        customerId,
-        tenantId,
-        expiresAt: { gt: new Date() }, // Only non-expired links
-      },
-      orderBy: { createdAt: 'desc' }, // Most recent first
-      select: { token: true },
-    });
+    // Generate a new payment link
+    const linkUrl = await generatePaymentLink(customerId, tenantId);
 
     // Format balance message
     const balanceMessage =
@@ -577,18 +571,13 @@ const sendBill = async (req, res) => {
         ? `overpayment of KES ${Math.abs(customer.closingBalance)}`
         : `KES ${customer.closingBalance}`;
 
-    // Construct SMS message, conditionally including payment link
-    let message = `Dear ${customer.firstName}, your ${nameOfMonth} bill is KES ${customer.monthlyCharge}, balance ${balanceMessage}. Paybill: ${paybill}, acct: your phone number ${customer.phoneNumber}.`;
-    if (paymentLink) {  
-      const linkUrl = `${process.env.APP_URL}/api/pay/${paymentLink.token}`;
-      message += ` Pay here: ${linkUrl}.`;
-    }
-    message += ` Inquiries? ${customerSupportPhoneNumber}`;
+    // Construct SMS message with payment link
+    const message = `Dear ${customer.firstName}, your ${nameOfMonth} bill is KES ${customer.monthlyCharge}, balance ${balanceMessage}. Paybill: ${paybill}, acct: ${customer.phoneNumber}.Or use Prompt to pay, click on the link: ${linkUrl}. Inquiries? ${customerSupportPhoneNumber}`;
 
     // Send SMS
     const smsResponses = await sendSMS(tenantId, customer.phoneNumber, message);
 
-    res.status(200).json({ message: 'Bill sent successfully.', smsResponses });
+    res.status(200).json({ message: 'Bill sent successfully.', smsResponses, linkUrl });
   } catch (error) {
     console.error('Error sending bill:', error.message);
     res.status(500).json({ error: 'Failed to send bill.', details: error.message });
