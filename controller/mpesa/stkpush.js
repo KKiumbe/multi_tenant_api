@@ -6,6 +6,7 @@ const prisma = new PrismaClient();
 const { getAccessToken } = require('./token');
 const { settleInvoice } = require('./paymentSettlement');
 const axios = require('axios');
+const crypto = require('crypto');
 const { getTenantSettings, getTenantSettingSTK } = require('./mpesaConfig');
 const sanitizeHtml = require('sanitize-html');
 require('dotenv').config();
@@ -16,14 +17,32 @@ async function generatePaymentLink(customerId, tenantId) {
     throw new Error('APP_URL environment variable is not set');
   }
 
-  const token = uuidv4();
   const expiresAt = new Date();
-  expiresAt.setMonth(expiresAt.getMonth() + 2); // Set expiration to 2 months from now
+  expiresAt.setMonth(expiresAt.getMonth() + 2); // expires in 2 months
 
-  await prisma.paymentLink.create({
-    data: { token, tenantId, customerId, expiresAt },
-  });
-
+  let token;
+  let record;
+  const maxAttempts = 5;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    token = crypto.randomBytes(4).toString('hex'); // e.g. "9f8d7a3b"
+    try {
+      record = await prisma.paymentLink.create({
+        data: { token, tenantId, customerId, expiresAt }
+      });
+      break;
+    } catch (err) {
+      // Prisma unique violation code
+      if (err.code === 'P2002' && attempt < maxAttempts) {
+        // collision: retry generating token
+        console.warn(`Token collision on generatePaymentLink, retrying (attempt ${attempt})`);
+        continue;
+      }
+      throw err;
+    }
+  }
+  if (!record) {
+    throw new Error('Failed to generate unique payment link token');
+  }
   return `${process.env.APP_URL}/api/pay/${token}`;
 }
 
