@@ -291,7 +291,7 @@ model PaymentLink {
   customerId         String
   expiresAt          DateTime
   createdAt          DateTime  @default(now())
-
+  paid               Boolean   @default(false)    // ← new
   // These will be filled in when you call the STK-Push API:
   merchantRequestId  String?   @unique
   checkoutRequestId  String?   @unique

@@ -424,6 +424,14 @@ async function stkCallback(req, res) {
       return;
     }
 
+  await prisma.paymentLink.update({
+  where: { checkoutRequestId },
+  data: {
+    expiresAt: new Date(),
+    paid:      true
+  }
+});
+
     // Find payment link with customer details to get phone number
     const link = await prisma.paymentLink.findUnique({
       where: { checkoutRequestId },
@@ -525,47 +533,26 @@ async function stkCallback(req, res) {
 
 
 async function checkPaymentStatus(req, res) {
-  try {
-    const { checkoutRequestId } = req.params;
+  const { checkoutRequestId } = req.params;
 
-    // Find the payment link to get tenantId and customerId
-    const link = await prisma.paymentLink.findUnique({
-      where: { checkoutRequestId },
-      select: { tenantId: true, customerId: true },
-    });
+  const link = await prisma.paymentLink.findUnique({
+    where: { checkoutRequestId },
+    select: { paid: true }
+  });
 
-    if (!link) {
-      return res.status(404).json({ error: 'Payment link not found' });
-    }
+  if (!link) {
+    return res.status(404).json({ error: 'Payment link not found' });
+  }
 
-    // Check if a transaction exists for this tenantId
-    const transaction = await prisma.mPESATransactions.findFirst({
-      where: {
-        tenantId: link.tenantId,
-      },
-      include: {
-        tenant: {
-          select: {
-            mpesaConfig: {
-              select: { shortCode: true },
-            },
-          },
-        },
-      },
-    });
-
-    if (transaction && transaction.processed) {
-      return res.json({ status: 'completed' });
-    } else if (transaction) {
-      return res.json({ status: 'pending' });
-    } else {
-      return res.json({ error: 'No transaction found', status: 'failed' });
-    }
-  } catch (err) {
-    console.error(`Error checking payment status for ${req.params.checkoutRequestId}:`, err.message);
-    res.status(500).json({ error: 'Failed to check payment status' });
+  if (link.paid) {
+    return res.json({ status: 'completed' });
+  } else if (link.expiresAt < new Date()) {
+    return res.json({ status: 'failed' });
+  } else {
+    return res.json({ status: 'pending' });
   }
 }
+
 
 
 
