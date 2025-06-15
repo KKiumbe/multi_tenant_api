@@ -462,7 +462,7 @@ async function stkCallback(req, res) {
     const items = cb.CallbackMetadata?.Item || [];
     const amount  = items.find(i => i.Name === 'Amount')?.Value;
     const receipt = items.find(i => i.Name === 'MpesaReceiptNumber')?.Value;
-    const phone   = items.find(i => i.Name === 'PhoneNumber')?.Value;
+    const msisdn   = items.find(i => i.Name === 'PhoneNumber')?.Value;
     const txDate  = items.find(i => i.Name === 'TransactionDate')?.Value;
 
     // Avoid duplicate TransID errors
@@ -478,12 +478,22 @@ async function stkCallback(req, res) {
       `${dt.slice(0,4)}-${dt.slice(4,6)}-${dt.slice(6,8)}T${dt.slice(8,10)}:${dt.slice(10,12)}:${dt.slice(12,14)}Z`
     );
 
+       // Convert to local format (07 or 01)
+    let localPhone = String(msisdn);
+    if (localPhone.startsWith('254') && localPhone.length === 12) {
+      localPhone = '0' + localPhone.slice(3);
+    }
+    if (!/^0(7|1)\d{8}$/.test(localPhone)) {
+      console.error(`Invalid BillRefNumber format: ${localPhone}`);
+      return;
+    }
+
     // Store transaction
     await prisma.mPESATransactions.create({ data: {
-      BillRefNumber: phone.toString(),
-      TransAmount:   amount.toString(),
+      BillRefNumber: localPhone,
+      TransAmount:   parseFloat(amount),
       FirstName:     link.customer.firstName || 'Unknown',
-      MSISDN:        phone.toString(),
+      MSISDN:        msisdn.toString(),
       TransID:       receipt,
       TransTime:     transTime,
       processed:     false,
