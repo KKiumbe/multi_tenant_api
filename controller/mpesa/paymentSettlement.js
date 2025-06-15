@@ -1,5 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
-const { sendSMS } = require('../sms/sms');
+const { sendSMS } = require('../sms/sms.js');
 
 
 const prisma = new PrismaClient();
