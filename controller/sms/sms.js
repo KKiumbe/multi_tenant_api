@@ -1,6 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
 const axios = require('axios');
-
 const {getSMSConfigForTenant }= require('../smsConfig/getSMSConfig.js')
 const {fetchTenant} = require('../tenants/tenantupdate.js')
 const { v4: uuidv4 } = require('uuid');
@@ -388,17 +387,17 @@ const sendBillsEstate = async (req, res) => {
   }
 };
 
+
+
 const sendToAll = async (req, res) => {
   const { tenantId } = req.user;
-  const { message } = req.body;
+  const nameOfMonth = new Date().toLocaleString('en-US', { month: 'long' });
 
-  // Validate request body
-  if (!message || typeof message !== 'string') {
-    return res.status(400).json({ error: 'Message is required and must be a string.' });
-  }
+  const { default: pLimit } = await import('p-limit');
+  const limit = pLimit(100); // Limit to 100 concurrent link generations
 
   try {
-    // Check if SMS configuration exists for the tenant
+    // Check SMS configuration
     const smsConfig = await prisma.sMSConfig.findUnique({
       where: { tenantId },
     });
@@ -407,36 +406,83 @@ const sendToAll = async (req, res) => {
       return res.status(400).json({ error: 'Missing SMS configuration for tenant.' });
     }
 
+    // Get customer support number and paybill
+    const { customerSupportPhoneNumber } = await getSMSConfigForTenant(tenantId);
+    const paybill = await getShortCode(tenantId);
+
+    // Check M-Pesa config
+    const mpesaConfig = await prisma.mpesaConfig.findFirst({
+      where: { tenantId },
+      select: { apiKey: true, passKey: true, secretKey: true },
+    });
+
     // Fetch active customers
     const activeCustomers = await prisma.customer.findMany({
       where: { status: 'ACTIVE', tenantId },
-      select: { phoneNumber: true }, // Only need phoneNumber for bulk SMS
+      select: {
+        id: true,
+        phoneNumber: true,
+        firstName: true,
+        closingBalance: true,
+        monthlyCharge: true,
+      },
     });
 
     if (activeCustomers.length === 0) {
       return res.status(200).json({ message: 'No active customers found.' });
     }
 
-    // Prepare messages using the request body message for all customers
-    const messages = activeCustomers.map((customer) => ({
-      mobile: sanitizePhoneNumber(customer.phoneNumber), // Assumes sanitizePhoneNumber exists
-      message: message, // Use the message from req.body directly
-    }));
+    // Process customers in batches of 1000
+    const batchSize = 1000;
+    const messages = [];
+    for (let i = 0; i < activeCustomers.length; i += batchSize) {
+      const customerBatch = activeCustomers.slice(i, i + batchSize);
+      const batchMessages = await Promise.all(
+        customerBatch.map((customer) =>
+          limit(async () => {
+            // Format balance message
+            const balanceMessage =
+              customer.closingBalance < 0
+                ? `overpayment of KES ${Math.abs(customer.closingBalance)}`
+                : `KES ${customer.closingBalance}`;
 
-    //console.log("📞 Prepared messages:", messages);
+            // Generate payment link if all credentials exist
+            let linkUrl = '';
+            if (mpesaConfig && mpesaConfig.apiKey && mpesaConfig.passKey && mpesaConfig.secretKey) {
+              try {
+                linkUrl = await generatePaymentLink(customer.id, tenantId);
+              } catch (err) {
+                console.warn(`Failed to generate payment link for customer ${customer.id}:`, err.message);
+              }
+            }
 
-    // Batch size limit (set to 1000 based on API constraint)
-    const batchSize = 500;
+            // Construct SMS message
+            let message = `Dear ${customer.firstName}, your ${nameOfMonth} bill is KES ${customer.monthlyCharge}, balance ${balanceMessage}. Paybill: ${paybill}, acct: ${customer.phoneNumber}.`;
+            if (linkUrl) {
+              message += ` Pay here: ${linkUrl}.`;
+            }
+            message += ` Inquiries? ${customerSupportPhoneNumber}`;
+
+            return {
+              mobile: sanitizePhoneNumber(customer.phoneNumber),
+              message,
+            };
+          })
+        )
+      );
+      messages.push(...batchMessages);
+    }
+
+    // Send SMS in batches of 500
+    const smsBatchSize = 500;
     const smsResponses = [];
-
-    // Process messages in batches
-    for (let i = 0; i < messages.length; i += batchSize) {
-      const batch = messages.slice(i, i + batchSize);
+    for (let i = 0; i < messages.length; i += smsBatchSize) {
+      const batch = messages.slice(i, i + smsBatchSize);
       try {
-        const batchResponses = await sendSms(tenantId, batch); // Matches sendSms expectation
+        const batchResponses = await sendSMS(tenantId, batch);
         smsResponses.push(...batchResponses);
       } catch (batchError) {
-        console.error(`Error sending batch ${i / batchSize + 1}:`, batchError);
+        console.error(`Error sending SMS batch ${i / smsBatchSize + 1}:`, batchError);
         smsResponses.push(
           ...batch.map((msg) => ({
             phoneNumber: msg.mobile,
@@ -447,10 +493,10 @@ const sendToAll = async (req, res) => {
       }
     }
 
-    // Respond with success message and all SMS responses
+    // Respond with success
     res.status(200).json({
       success: true,
-      message: `SMS sent to ${activeCustomers.length} active customers in ${Math.ceil(messages.length / batchSize)} batches.`,
+      message: `SMS sent to ${activeCustomers.length} active customers in ${Math.ceil(messages.length / smsBatchSize)} SMS batches.`,
       count: activeCustomers.length,
       smsResponses,
     });

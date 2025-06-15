@@ -182,8 +182,15 @@ async function settleInvoice() {
 
             const message = `Dear ${customer.firstName}, payment of KES ${paymentAmount} received successfully. ${formattedBalanceMessage}.`;
 
-            await sendSMS(tenantId, customer.phoneNumber,message);
-            //console.log(`Processed payment and created receipt for transaction ${MpesaCode}.`);
+             
+            try {
+                 await sendSMS(tenantId, customer.phoneNumber,message);
+                
+            } catch (error) {
+                console.error(`Failed to send SMS to ${customer.phoneNumber}:`, error.message);
+            }
+
+           
         }
     } catch (error) {
         console.error('Error processing Mpesa transactions in settleInvoice:', error);
