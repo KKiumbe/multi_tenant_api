@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const { sendSMS } = require('../sms/sms');
 
+
 const prisma = new PrismaClient();
 
 async function generateUniqueReceiptNumber(paymentId) {
@@ -184,7 +185,7 @@ async function settleInvoice() {
 
              
             try {
-                 await sendSMS(tenantId, customer.phoneNumber,message);
+                 await sendSMS(tenantId,customer.phoneNumber,message);
                 
             } catch (error) {
                 console.error(`Failed to send SMS to ${customer.phoneNumber}:`, error.message);
