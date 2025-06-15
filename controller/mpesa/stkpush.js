@@ -18,7 +18,7 @@ async function generatePaymentLink(customerId, tenantId) {
   }
 
   const expiresAt = new Date();
-  expiresAt.setMonth(expiresAt.getMonth() + 2); // expires in 2 months
+  expiresAt.setMonth(expiresAt.getMonth() + 1); // expires in 2 months
 
   let token;
   let record;
@@ -431,129 +431,74 @@ if (link.expiresAt < new Date() || link.paid) {
 
 
 async function stkCallback(req, res) {
-  // Acknowledge immediately to M-Pesa
   res.status(200).end();
-
   try {
     console.log('STK Callback Request Body:', JSON.stringify(req.body, null, 2));
     const cb = req.body.Body?.stkCallback;
-    if (!cb || cb.ResultCode !== 0) {
-      console.log(`STK Callback failed: ResultCode ${cb.ResultCode}, ${cb.ResultDesc}`);
-      return;
+    if (!cb) return console.log('No stkCallback in body');
+    if (cb.ResultCode !== 0) {
+      return console.log(`STK Callback failed: ${cb.ResultCode} – ${cb.ResultDesc}`);
     }
-
     const checkoutRequestId = cb.CheckoutRequestID;
-    if (!checkoutRequestId) {
-      console.error('Missing CheckoutRequestID in callback');
-      return;
-    }
 
-  await prisma.paymentLink.update({
-  where: { checkoutRequestId },
-  data: {
-    expiresAt: new Date(),
-    paid:      true
-  }
-});
+    // Mark link as paid and expire
+    await prisma.paymentLink.update({
+      where: { checkoutRequestId },
+      data: { expiresAt: new Date(), paid: true }
+    });
 
-    // Find payment link with customer details to get phone number
+    // Re-fetch link for customer and config
     const link = await prisma.paymentLink.findUnique({
       where: { checkoutRequestId },
       include: {
-        customer: {
-          select: {
-            phoneNumber: true,
-            firstName: true,
-          },
-        },
-        tenant: {
-          select: {
-            mpesaConfig: {
-              select: {
-                shortCode: true,
-              },
-            },
-          },
-        },
-      },
+        customer: { select: { firstName: true, phoneNumber: true } },
+        tenant:   {
+          select: { mpesaConfig: { select: { shortCode: true } } }
+        }
+      }
     });
-    if (!link) {
-      console.error(`No payment link found for CheckoutRequestID ${checkoutRequestId}`);
-      return;
-    }
+    if (!link) return console.error(`No link for CheckoutRequestID ${checkoutRequestId}`);
 
-    if (!link.customer || !link.customer.phoneNumber) {
-      console.error(`No customer or phone number found for CheckoutRequestID ${checkoutRequestId}`);
-      return;
-    }
-
-    // Extract shortCode from MPESAConfig
-    const shortCode = link.tenant?.mpesaConfig?.shortCode;
-    if (!shortCode) {
-      console.error(`No shortCode found for tenantId ${link.tenantId}`);
-      return;
-    }
-
-    // Extract callback metadata
-    const items = cb.CallbackMetadata?.Item;
-    if (!items) {
-      console.error('Missing CallbackMetadata in callback');
-      return;
-    }
-
-    const amount = parseFloat(items.find(i => i.Name === 'Amount')?.Value);
+    const items = cb.CallbackMetadata?.Item || [];
+    const amount  = items.find(i => i.Name === 'Amount')?.Value;
     const receipt = items.find(i => i.Name === 'MpesaReceiptNumber')?.Value;
-    const callbackPhone = items.find(i => i.Name === 'PhoneNumber')?.Value;
-    const transactionDate = items.find(i => i.Name === 'TransactionDate')?.Value;
+    const phone   = items.find(i => i.Name === 'PhoneNumber')?.Value;
+    const txDate  = items.find(i => i.Name === 'TransactionDate')?.Value;
 
-    // Log raw metadata for debugging
-    console.log('Callback Metadata:', { amount, receipt, callbackPhone, transactionDate });
-
-    if (!amount || !receipt || !callbackPhone || !transactionDate) {
-      console.error('Missing required callback metadata:', { amount, receipt, callbackPhone, transactionDate });
+    // Avoid duplicate TransID errors
+    const existing = await prisma.mPESATransactions.findUnique({ where: { TransID: receipt } });
+    if (existing) {
+      console.log(`Duplicate transaction ${receipt}. Skipping creation.`);
       return;
     }
 
-    // Check for duplicate transaction
-    const existingTransaction = await prisma.mPESATransactions.findUnique({
-      where: { TransID: receipt },
-    });
-    if (existingTransaction) {
-      console.log(`Duplicate transaction ${receipt}. Skipping.`);
-      return;
-    }
+    // Parse transaction timestamp
+    const dt = String(txDate);
+    const transTime = new Date(
+      `${dt.slice(0,4)}-${dt.slice(4,6)}-${dt.slice(6,8)}T${dt.slice(8,10)}:${dt.slice(10,12)}:${dt.slice(12,14)}Z`
+    );
 
-    const localPhone = String(callbackPhone).startsWith('254') && String(callbackPhone).length === 12
-      ? '0' + String(callbackPhone).slice(3)
-      : String(callbackPhone);
+    // Store transaction
+    await prisma.mPESATransactions.create({ data: {
+      BillRefNumber: phone.toString(),
+      TransAmount:   amount.toString(),
+      FirstName:     link.customer.firstName || 'Unknown',
+      MSISDN:        phone.toString(),
+      TransID:       receipt,
+      TransTime:     transTime,
+      processed:     false,
+      tenantId:      link.tenant.mpesaConfig?.shortCode ? link.tenantId : link.tenantId,
+      ShortCode:     link.tenant.mpesaConfig?.shortCode
+    }});
 
-    const now = new Date();
-    const transTime = now.toISOString().replace('T', ' ').substring(0, 19); // "YYYY-MM-DD HH:mm:ss"
-
-    // Store transaction in mPESATransactions
-    await prisma.mPESATransactions.create({
-      data: {
-        BillRefNumber: localPhone,
-        TransAmount: amount,
-        FirstName: link.customer.firstName || 'Unknown',
-        MSISDN: String(callbackPhone), // Convert to string
-        TransID: receipt,
-        TransTime: new Date(transTime), // Ensure TransTime is a Date object
-        processed: false,
-        tenantId: link.tenantId,
-        ShortCode: shortCode,
-      },
-    });
-
-    // Call settleInvoice with the link object
+    // Call settlement
     await settleInvoice();
-
-
-    console.log(`STK Callback processed for CheckoutRequestID ${checkoutRequestId}`);
+    console.log(`Processed STK Callback for ${checkoutRequestId}`);
   } catch (err) {
     console.error('STK Callback error:', err.message);
   }
 }
+
 
 
 async function checkPaymentStatus(req, res) {
