@@ -533,8 +533,6 @@ const sendToEstate = async (req, res) => {
 // Send bill SMS for a specific customer
 
 
-
-
 const sendBill = async (req, res) => {
   const { customerId } = req.body;
   const { tenantId } = req.user;
@@ -562,8 +560,17 @@ const sendBill = async (req, res) => {
       return res.status(404).json({ error: 'Customer not found.' });
     }
 
-    // Generate a new payment link
-    const linkUrl = await generatePaymentLink(customerId, tenantId);
+    // Check M-Pesa config for all required credentials
+    const mpesaConfig = await prisma.mPESAConfig.findFirst({
+      where: { tenantId },
+      select: { apiKey: true, passKey: true, secretKey: true },
+    });
+
+    // Generate payment link only if all credentials exist
+    let linkUrl = '';
+    if (mpesaConfig && mpesaConfig.apiKey && mpesaConfig.passKey && mpesaConfig.secretKey) {
+      linkUrl = await generatePaymentLink(customerId, tenantId);
+    }
 
     // Format balance message
     const balanceMessage =
@@ -571,8 +578,12 @@ const sendBill = async (req, res) => {
         ? `overpayment of KES ${Math.abs(customer.closingBalance)}`
         : `KES ${customer.closingBalance}`;
 
-    // Construct SMS message with payment link
-    const message = `Dear ${customer.firstName}, your ${nameOfMonth} bill is KES ${customer.monthlyCharge}, balance ${balanceMessage}. Paybill: ${paybill}, acct: ${customer.phoneNumber}.Or use Prompt to pay, click on the link: ${linkUrl}. Inquiries? ${customerSupportPhoneNumber}`;
+    // Construct SMS message
+    let message = `Dear ${customer.firstName}, your ${nameOfMonth} bill is KES ${customer.monthlyCharge}, balance ${balanceMessage}. Paybill: ${paybill}, acct: ${customer.phoneNumber}.`;
+    if (linkUrl) {
+      message += ` Pay here: ${linkUrl}.`;
+    }
+    message += ` Inquiries? ${customerSupportPhoneNumber}`;
 
     // Send SMS
     const smsResponses = await sendSMS(tenantId, customer.phoneNumber, message);
@@ -583,7 +594,6 @@ const sendBill = async (req, res) => {
     res.status(500).json({ error: 'Failed to send bill.', details: error.message });
   }
 };
-
 
 
 

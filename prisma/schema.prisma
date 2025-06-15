@@ -163,9 +163,9 @@ model MPESAConfig {
   tenantId         Int                 @unique
   shortCode        String              @unique
   name             String
-  apiKey           String
-  passKey          String
-  secretKey String @default("")
+  apiKey           String?
+  passKey          String?
+  secretKey String? @default("")
 
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
