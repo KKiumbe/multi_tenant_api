@@ -356,10 +356,9 @@ async function stkPush(req, res, next) {
     if (!link) {
       return res.status(400).json({ error: 'Invalid payment link token' });
     }
-if (link.expiresAt < new Date() || link.paid) {
-  return res.status(400).json({ error: 'Payment link expired or already used' });
-}
-
+    if (link.expiresAt < new Date() || link.paid) {
+      return res.status(400).json({ error: 'Payment link expired or already used' });
+    }
 
     const tenantId = link.tenantId;
 
@@ -374,34 +373,40 @@ if (link.expiresAt < new Date() || link.paid) {
 
     console.log(`initiating STK Push for token ${token} with amount ${integerAmount} to phone ${phoneNumber}`);
 
-    const timestamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0,14);
+    const timestamp = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14);
     const password = Buffer.from(shortCode + passKey + timestamp).toString('base64');
+
+    // Format phone number for AccountReference (remove leading 0, add 254)
+    const formattedPhoneNumber = phoneNumber.replace(/^0/, '254');
+    
+    // Ensure AccountReference is 12 characters or less (if required by your paybill)
+    const accountReference = formattedPhoneNumber.slice(-12); // Use last 12 digits of phone number
+
     const payload = {
       BusinessShortCode: shortCode,
       Password: password,
       Timestamp: timestamp,
       TransactionType: 'CustomerPayBillOnline',
-      Amount: integerAmount, // Use integer amount
-      PartyA: phoneNumber.replace(/^0/, '254'),
+      Amount: integerAmount,
+      PartyA: formattedPhoneNumber,
       PartyB: shortCode,
-      PhoneNumber: phoneNumber.replace(/^0/, '254'),
+      PhoneNumber: formattedPhoneNumber,
       CallBackURL: process.env.MPESA_CALLBACK_URL,
-      AccountReference: token,
+      AccountReference: accountReference, // Use phone number as AccountReference
       TransactionDesc: transactionDesc
     };
 
     console.log(`M-Pesa URL: ${process.env.MPESA_URL}/mpesa/stkpush/v1/processrequest`);
     try {
-     
-       const response = await axios.post(
+      const response = await axios.post(
         `${process.env.MPESA_URL}/mpesa/stkpush/v1/processrequest`,
         payload,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
 
-      console.log('STK Push HTTP status:',   response.status);
+      console.log('STK Push HTTP status:', response.status);
       console.log('STK Push response headers:', response.headers);
-      console.log('STK Push response body:',    JSON.stringify(response.data, null, 2));
+      console.log('STK Push response body:', JSON.stringify(response.data, null, 2));
 
       const data = response.data;
 
@@ -428,7 +433,6 @@ if (link.expiresAt < new Date() || link.paid) {
     res.status(500).json({ error: 'Failed to initiate STK Push' });
   }
 }
-
 
 async function stkCallback(req, res) {
   res.status(200).end();
