@@ -79,9 +79,45 @@ const { sendSMS } = require('../sms/sms.js');
                 continue;
             }
 
-            const sanitizedBillRefNumber = BillRefNumber.replace(/\s/g, '');
+           
 
-            // Fetch the customer within the same tenant
+         let sanitizedBillRefNumber = BillRefNumber.replace(/\s/g, '');
+      if (sanitizedBillRefNumber.startsWith('+254')) {
+        // Check the digit after +254 to determine 07 or 01
+        const coreNumber = sanitizedBillRefNumber.slice(4);
+        if (coreNumber.startsWith('7')) {
+          sanitizedBillRefNumber = '07' + coreNumber;
+        } else if (coreNumber.startsWith('1')) {
+          sanitizedBillRefNumber = '01' + coreNumber;
+        }
+      } else if (sanitizedBillRefNumber.startsWith('254')) {
+        // Check the digit after 254 to determine 07 or 01
+        const coreNumber = sanitizedBillRefNumber.slice(3);
+        if (coreNumber.startsWith('7')) {
+          sanitizedBillRefNumber = '07' + coreNumber;
+        } else if (coreNumber.startsWith('1')) {
+          sanitizedBillRefNumber = '01' + coreNumber;
+        }
+      }
+
+      // Validate sanitized phone number format (must be 07XXXXXXXX or 01XXXXXXXX)
+      if (!sanitizedBillRefNumber.match(/^(07|01)\d{8}$/)) {
+        console.log(`Invalid phone number format for BillRefNumber ${BillRefNumber} after sanitization: ${sanitizedBillRefNumber}. Skipping customer lookup.`);
+        await prisma.payment.create({
+          data: {
+            amount: paymentAmount,
+            modeOfPayment: 'MPESA',
+            transactionId: MpesaCode,
+            firstName: FirstName,
+            receipted: false,
+            createdAt: TransTime,
+            ref: BillRefNumber,
+            tenantId, // Associate payment with tenant
+          },
+        });
+        continue;
+      }
+
          
 
             const customer = await prisma.customer.findFirst({
@@ -89,7 +125,7 @@ const { sendSMS } = require('../sms/sms.js');
                 tenantId,
                 OR: [
                   { phoneNumber: sanitizedBillRefNumber },
-                  { possibleRefs: { has: sanitizedBillRefNumber } }
+                  { possibleRefs: { has: BillRefNumber } }
                   ],
                 },
                 select: { id: true, closingBalance: true, phoneNumber: true, firstName: true },
