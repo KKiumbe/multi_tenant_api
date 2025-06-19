@@ -90,6 +90,11 @@ const validateCustomerData = (data) => {
 
 
 
+const fs = require('fs');
+const path = require('path');
+const csv = require('csv-parse');
+const UploadsDir = '/path/to/uploads'; // Adjust to your uploads directory
+
 const uploadCustomers = async (req, res) => {
   const { tenantId } = req.user;
   console.log('Tenant ID from authenticated user:', tenantId);
@@ -102,11 +107,11 @@ const uploadCustomers = async (req, res) => {
     return res.status(400).json({ message: 'No file uploaded' });
   }
 
-  const filePath = path.join(uploadsDir, req.file.filename);
+  const filePath = path.join(UploadsDir, req.file.filename);
   const customersToUpload = [];
   const existingPhoneNumbers = new Set();
-  const skippedDuplicates = []; // Track duplicates
-  const skippedMissingFields = []; // Track entries with missing fields
+  const skippedDuplicates = [];
+  const skippedMissingFields = [];
   const requiredFields = [
     'firstName',
     'lastName',
@@ -116,6 +121,9 @@ const uploadCustomers = async (req, res) => {
     'building',
     'closingBalance',
   ];
+  const BATCH_SIZE = 100; // Process 100 records per batch to avoid overload
+  let headersValidated = false;
+  let headers = [];
 
   try {
     // Validate tenantId
@@ -124,23 +132,12 @@ const uploadCustomers = async (req, res) => {
     });
 
     if (!tenantExists) {
+      fs.unlinkSync(filePath); // Clean up file
       return res.status(404).json({ message: 'Invalid tenant ID. Tenant does not exist.' });
     }
 
-    // Fetch all existing phone numbers across all tenants
-    const allCustomers = await prisma.customer.findMany({
-      select: { phoneNumber: true },
-    });
-
-    allCustomers.forEach((customer) => {
-      if (customer.phoneNumber) existingPhoneNumbers.add(customer.phoneNumber);
-    });
-
-    // Validate CSV headers
-    let headersValidated = false;
-    let headers = [];
-
-    const stream = fs.createReadStream(filePath).pipe(csv());
+    // Process CSV file in a stream
+    const stream = fs.createReadStream(filePath).pipe(csv({ columns: true, trim: true }));
 
     stream
       .on('headers', (headerList) => {
@@ -155,23 +152,13 @@ const uploadCustomers = async (req, res) => {
           });
         }
 
-        // const extraFields = headers.filter(
-        //   (header) =>
-        //     !requiredFields.includes(header) &&
-        //     !['email', 'secondaryPhoneNumber', 'gender', 'county', 'town', 'location', 'houseNumber', 'category', 'collected', 'garbageCollectionDay'].includes(header)
-        // );
-        // if (extraFields.length > 0) {
-        //   stream.destroy();
-        //   fs.unlinkSync(filePath);
-        //   return res.status(400).json({
-        //     message: `CSV file contains invalid fields: ${extraFields.join(', ')}. Only allowed fields are: ${requiredFields.join(', ')} plus optional fields (email, secondaryPhoneNumber, gender, county, town, location, houseNumber, category, collected, garbageCollectionDay)`,
-        //   });
-        // }
-
         headersValidated = true;
       })
-      .on('data', (data) => {
+      .on('data', async (data) => {
         if (!headersValidated) return;
+
+        // Pause stream to process data
+        stream.pause();
 
         // Validate required fields
         const missingFields = requiredFields.filter((field) => !data[field] || data[field].trim() === '');
@@ -182,6 +169,7 @@ const uploadCustomers = async (req, res) => {
             phoneNumber: data.phoneNumber || 'N/A',
             missingFields,
           });
+          stream.resume();
           return;
         }
 
@@ -202,10 +190,10 @@ const uploadCustomers = async (req, res) => {
           location: data.location ? data.location.trim() : null,
           houseNumber: data.houseNumber ? data.houseNumber.trim() : null,
           category: data.category ? data.category.trim() : null,
-          collected: data.collected ? data.collected.trim().toLowerCase() === 'true' : false, // Explicitly set, default to false
-          garbageCollectionDay: data.garbageCollectionDay ? data.garbageCollectionDay.trim() : 'Monday', // Default to Monday
-          status: 'ACTIVE', // Explicitly set default
-          trashBagsIssued: false, // Explicitly set default
+          collected: data.collected ? data.collected.trim().toLowerCase() === 'true' : false,
+          garbageCollectionDay: data.garbageCollectionDay ? data.garbageCollectionDay.trim() : 'Monday',
+          status: 'ACTIVE',
+          trashBagsIssued: false,
         };
 
         // Validate numerical fields
@@ -216,44 +204,58 @@ const uploadCustomers = async (req, res) => {
             phoneNumber: customer.phoneNumber,
             missingFields: ['Invalid monthlyCharge or closingBalance'],
           });
+          stream.resume();
           return;
         }
 
-        // Check for duplicates across all tenants
-        if (existingPhoneNumbers.has(customer.phoneNumber)) {
+        // Check for duplicate phone number in database
+        const existingCustomer = await prisma.customer.findUnique({
+          where: { phoneNumber: customer.phoneNumber },
+          select: { phoneNumber: true },
+        });
+
+        if (existingCustomer) {
           console.warn(`Duplicate phone number found: ${customer.phoneNumber}. Skipping entry.`);
           skippedDuplicates.push({
             customer: customer.firstName,
             phoneNumber: customer.phoneNumber,
           });
+          stream.resume();
           return;
         }
 
         customersToUpload.push(customer);
         existingPhoneNumbers.add(customer.phoneNumber);
+
+        // Process batch if size is reached
+        if (customersToUpload.length >= BATCH_SIZE) {
+          try {
+            await prisma.customer.createMany({ data: customersToUpload.splice(0, BATCH_SIZE) });
+          } catch (error) {
+            console.error('Error saving batch:', error);
+            skippedMissingFields.push({ error: `Failed to save batch: ${error.message}` });
+          }
+        }
+
+        stream.resume();
       })
       .on('end', async () => {
         if (!headersValidated) return;
 
         try {
+          // Save any remaining customers
           if (customersToUpload.length > 0) {
             await prisma.customer.createMany({ data: customersToUpload });
-            res.status(200).json({
-              message: `${customersToUpload.length} customers uploaded successfully`,
-              uploadedCount: customersToUpload.length,
-              skippedDuplicates,
-              skippedMissingFields,
-            });
-          } else {
-            res.status(200).json({
-              message: 'No new customers to upload',
-              uploadedCount: 0,
-              skippedDuplicates,
-              skippedMissingFields,
-            });
           }
+
+          res.status(200).json({
+            message: `${existingPhoneNumbers.size - skippedDuplicates.length} customers uploaded successfully`,
+            uploadedCount: existingPhoneNumbers.size - skippedDuplicates.length,
+            skippedDuplicates,
+            skippedMissingFields,
+          });
         } catch (error) {
-          console.error('Error saving customers:', error);
+          console.error('Error saving remaining customers:', error);
           res.status(500).json({
             message: 'Error saving customers',
             error: error.message,
@@ -267,12 +269,15 @@ const uploadCustomers = async (req, res) => {
       .on('error', (error) => {
         console.error('Error reading CSV file:', error);
         res.status(500).json({ message: 'Error processing file', error: error.message });
+        fs.unlinkSync(filePath);
       });
   } catch (error) {
-    console.error('Error validating tenant or fetching existing customers:', error);
-    res.status(500).json({ message: 'Error validating tenant or checking existing customers.' });
+    console.error('Error during customer upload:', error);
+    fs.unlinkSync(filePath);
+    res.status(500).json({ message: 'Error validating tenant or processing customers.', error: error.message });
   }
 };
+
 
 
 
