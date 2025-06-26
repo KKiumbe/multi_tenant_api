@@ -90,10 +90,6 @@ const validateCustomerData = (data) => {
 
 
 
-const fs = require('fs');
-const path = require('path');
-const csv = require('csv-parse');
-const UploadsDir = '/path/to/uploads'; // Adjust to your uploads directory
 
 const uploadCustomers = async (req, res) => {
   const { tenantId } = req.user;
