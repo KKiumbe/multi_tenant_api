@@ -16,10 +16,13 @@ const BACKUP_DIR = process.env.BACKUP_DIR || './backups';
 const RETENTION_DAYS = 7; // Keep backups for 7 days
 const instanceId = process.env.PM2_NODE_ID || 'single';
 
+// Debug: Log PM2_NODE_ID and key environment variables at startup
+console.log(`[${instanceId}] Debug: PM2_NODE_ID=${process.env.PM2_NODE_ID}, NODE_ENV=${process.env.NODE_ENV}`);
+
 const backupDatabase = async () => {
   try {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const backupFile = `${BACKUP_DIR}/backup-${timestamp}.dump`;
+    const backupFile = path.join(BACKUP_DIR, `backup-${timestamp}.dump`);
 
     // Ensure backup directory exists
     if (!(await fs.stat(BACKUP_DIR).catch(() => false))) {
@@ -116,7 +119,7 @@ module.exports = () => {
   }
 
   cron.schedule('0 0 * * *', () => {
-    console.log(`[${instanceId}] Running task at:`, new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' }));
+    console.log(`[${instanceId}] Running task at: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' })}`);
     runTask();
   }, {
     scheduled: true,
