@@ -14,10 +14,10 @@ const DB_HOST = process.env.DB_HOST || 'localhost';
 const DB_NAME = process.env.DB_NAME;
 const BACKUP_DIR = process.env.BACKUP_DIR || './backups';
 const RETENTION_DAYS = 7; // Keep backups for 7 days
-const instanceId = process.env.PM2_NODE_ID || 'single';
+const instanceId = process.env.PM2_NODE_ID || `pid-${process.pid}`; // Fallback to process ID if PM2_NODE_ID is undefined
 
-// Debug: Log PM2_NODE_ID and key environment variables at startup
-console.log(`[${instanceId}] Debug: PM2_NODE_ID=${process.env.PM2_NODE_ID}, NODE_ENV=${process.env.NODE_ENV}`);
+// Debug: Log environment variables and process info at startup
+console.log(`[${instanceId}] Debug: PM2_NODE_ID=${process.env.PM2_NODE_ID}, NODE_ENV=${process.env.NODE_ENV}, PID=${process.pid}, PM2_VERSION=${process.env.PM2_VERSION}`);
 
 const backupDatabase = async () => {
   try {
@@ -96,11 +96,33 @@ const deleteOldBackups = async () => {
   }
 };
 
+// Fallback to select a single instance based on lowest PID
+const isPrimaryInstance = async () => {
+  if (process.env.PM2_NODE_ID === '0') return true;
+  if (!process.env.PM2_NODE_ID) {
+    // Fallback: Check for a lock file to elect a primary instance
+    const lockFile = path.join(BACKUP_DIR, 'cleanup.lock');
+    try {
+      await fs.writeFile(lockFile, process.pid.toString(), { flag: 'wx' }); // Exclusive write
+      console.log(`[${instanceId}] Acquired cleanup lock`);
+      return true;
+    } catch (error) {
+      if (error.code === 'EEXIST') {
+        console.log(`[${instanceId}] Cleanup lock exists, skipping cleanup`);
+        return false;
+      }
+      console.error(`[${instanceId}] Error checking lock: ${error.message}`);
+      return false;
+    }
+  }
+  return false;
+};
+
 const runTask = async () => {
   try {
     console.log(`[${instanceId}] Starting backup and cleanup task...`);
     await backupDatabase();
-    if (process.env.PM2_NODE_ID === '0' || !process.env.PM2_NODE_ID) {
+    if (await isPrimaryInstance()) {
       console.log(`[${instanceId}] Performing cleanup...`);
       await deleteOldBackups();
     } else {
