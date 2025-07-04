@@ -32,7 +32,8 @@ async function generateInvoicePDF(invoiceId) {
         items: true
       }
     });
-
+    
+    console.log(`invoice data ${invoice}`);
     if (!invoice) throw new Error('Invoice not found');
 
     const tenant = await fetchTenant(invoice.customer.tenantId);
@@ -43,6 +44,9 @@ async function generateInvoicePDF(invoiceId) {
     });
 
     const smsConfig = await getSMSConfigForTenant(invoice.customer.tenantId);
+
+    const openingBalance = invoice.customer.closingBalance - invoice.invoiceAmount;
+    const closingBalance = invoice.customer.closingBalance;
 
     const doc = new PDFDocument({ margin: 50 });
     const pdfPath = path.join(__dirname, 'invoices', `invoice-${invoiceId}.pdf`);
@@ -69,7 +73,8 @@ async function generateInvoicePDF(invoiceId) {
       .text(`Invoice Period: ${formattedPeriod} `, 50, doc.y)
       .text(`Invoice Date: ${invoiceDate.toDateString()}`,50, doc.y)
       .text(`Invoice Number: ${invoice.invoiceNumber}`,50, doc.y)
-      .text(`Customer: ${invoice.customer.firstName} ${invoice.customer.lastName}`,50, doc.y);
+      .text(`Customer: ${invoice.customer.firstName} ${invoice.customer.lastName}`,50, doc.y)
+      .text(`Opening Balance: ${openingBalance} `,50, doc.y);
 
     doc.moveDown();
 
@@ -110,11 +115,10 @@ async function generateInvoicePDF(invoiceId) {
 
     // Compute opening and closing balance
     
-    const openingBalance = invoice.customer.closingBalance - invoice.invoiceAmount;
-    const closingBalance = invoice.customer.closingBalance;
+
 
     doc.fontSize(12).font('Helvetica-Bold')
-      .text(`Opening Balance: Ksh${openingBalance.toFixed(2)}`,50, doc.y)
+      
       .text(`Invoice Amount: Ksh${invoice.invoiceAmount.toFixed(2)}`,50, doc.y)
       .text(`Closing Balance (Total To Pay): Ksh${closingBalance.toFixed(2)}`,50, doc.y);
 
