@@ -17,7 +17,7 @@ async function generatePDFHeader(doc, tenant) {
 
   // Header background (light gray)
   doc.rect(0, 0, 612, 120)
-     .fill('#f5f5f5');
+     //.fill('#f5f5f5');
 
   // Construct the logo file path
   let logoPath;
@@ -33,7 +33,7 @@ async function generatePDFHeader(doc, tenant) {
   if (logoPath && fs.existsSync(logoPath)) {
     try {
       console.log('generatePDFHeader - Logo found, adding to PDF');
-      doc.image(logoPath, 50, 20, { width: 60, align: 'left' });
+      doc.image(logoPath, 500, 20, { width: 60, align: 'left' });
     } catch (error) {
       console.warn('⚠️ Error adding logo to PDF:', error.message);
     }

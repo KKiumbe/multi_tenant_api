@@ -72,11 +72,15 @@ async function generateInvoicePDF(invoiceId) {
     doc.fontSize(12).font('Helvetica')
       .text(`Invoice Period: ${formattedPeriod} `, 50, doc.y)
       .text(`Invoice Date: ${invoiceDate.toDateString()}`,50, doc.y)
-      .text(`Invoice Number: ${invoice.invoiceNumber}`,50, doc.y)
+      .text(`Invoice Number: ${invoice.invoiceNumber.slice(0,10)}`,50, doc.y)
+      .moveDown(0.5)
+      doc.font('Helvetica-Bold')
       .text(`Customer: ${invoice.customer.firstName} ${invoice.customer.lastName}`,50, doc.y)
-      .text(`Opening Balance: ${openingBalance} `,50, doc.y);
+      .moveDown(0.5)
+      doc.font('Helvetica-Bold')
+      .text(`Opening Balance: Ksh ${openingBalance} `,50, doc.y);
 
-    doc.moveDown();
+    doc.moveDown(0.5);
 
     // Items table
     if (invoice.items && invoice.items.length > 0) {
@@ -84,10 +88,10 @@ async function generateInvoicePDF(invoiceId) {
       doc.moveDown(0.5);
 
       doc.fontSize(10).font('Helvetica-Bold')
-        .text('Description', 50, doc.y)
-        .text('Quantity', 300, doc.y)
-        .text('Unit Price', 380, doc.y)
-        .text('Total', 460, doc.y);
+        .text('Description', 50, 330)
+        .text('Quantity', 300, 330)
+        .text('Unit Price', 380, 330)
+        .text('Total', 460, 330);
 
       doc.moveDown(0.5);
       let totalAmount = 0;
@@ -97,16 +101,16 @@ async function generateInvoicePDF(invoiceId) {
 
         doc.font('Helvetica')
           .text(item.description || 'N/A', 50, doc.y)
-          .text(item.quantity?.toString() || '0', 300, doc.y)
-          .text(`$${(item.amount || 0).toFixed(2)}`, 380, doc.y)
-          .text(`$${itemTotal.toFixed(2)}`, 440, doc.y);
+          .text(item.quantity?.toString() || '0', 310, 350)
+          .text(`Ksh ${(item.amount || 0).toFixed(2)}`,390 , 350)
+          .text(`Ksh ${itemTotal.toFixed(2)}`, 455, 350);
 
         doc.moveDown(0.5);
       });
 
       doc.moveDown();
       doc.font('Helvetica-Bold')
-        .text(`Items Total: $${totalAmount.toFixed(2)}`, { align: 'right' });
+        .text(`Items Total: Ksh ${totalAmount.toFixed(2)}`,455, doc.y);
     } else {
       doc.text('No items found for this invoice.');
     }
@@ -130,7 +134,10 @@ async function generateInvoicePDF(invoiceId) {
       .text('Please make your payment using the following details:',50, doc.y)
       .moveDown(0.5)
       .text(`Payment Method: MPesa`,50, doc.y)
-      .text(`Paybill Number: ${mpeaConfig?.shortCode || 'Not Available'}`,50, doc.y)
+        doc.font('Helvetica-Bold')
+      
+       .text(`Paybill Number: ${mpeaConfig?.shortCode || 'Not Available'}`,50, doc.y)
+         doc.font('Helvetica')
       .text(`Account Number: ${invoice.customer.phoneNumber}`,50, doc.y)
       .text(`Amount to Pay: Ksh${closingBalance.toFixed(2)}`,50, doc.y)
       .moveDown(0.5)
