@@ -247,6 +247,13 @@ const fetchTenant = async (tenantId) => {
         numberOfBags: true,
         paymentDetails: true,
         email: true,
+        street: true,
+        building: true,
+        address: true,
+        county: true,
+        town: true,
+        website: true,
+       
         phoneNumber: true,
         alternativePhoneNumber: true,
         logoUrl: true,

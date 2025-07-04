@@ -11,7 +11,6 @@ const { getSMSConfigForTenant } = require('../smsConfig/getSMSConfig.js');
 
 
 
-
 async function generateInvoicePDF(invoiceId) {
   try {
     if (!invoiceId || typeof invoiceId !== 'string') {
@@ -20,7 +19,10 @@ async function generateInvoicePDF(invoiceId) {
 
     const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
-      include: { customer: true, items: true },
+      include: {
+        customer: true,
+        items: true
+      },
     });
 
     if (!invoice) throw new Error('Invoice not found');
@@ -28,155 +30,126 @@ async function generateInvoicePDF(invoiceId) {
     const tenant = await fetchTenant(invoice.customer.tenantId);
     if (!tenant) throw new Error('Tenant not found');
 
-    // Fetch MPesa configuration for Paybill number
     const mpeaConfig = await prisma.mPESAConfig.findUnique({
       where: { tenantId: invoice.customer.tenantId },
     });
-    if (!mpeaConfig || !mpeaConfig.shortCode) {
-      console.warn('MPesa config incomplete; missing shortCode for payment instructions');
-    }
 
-    // Fetch SMS configuration for customer support phone number (if still needed)
     const smsConfig = await getSMSConfigForTenant(invoice.customer.tenantId);
-    if (!smsConfig || !smsConfig.customerSupportPhoneNumber) {
-      console.warn('SMS config incomplete; missing customerSupportPhoneNumber');
-    }
 
     const doc = new PDFDocument({ margin: 50 });
     const pdfPath = path.join(__dirname, 'invoices', `invoice-${invoiceId}.pdf`);
-    
-    const invoicesDir = path.dirname(pdfPath);
-    if (!fs.existsSync(invoicesDir)) {
-      fs.mkdirSync(invoicesDir, { recursive: true });
+    if (!fs.existsSync(path.dirname(pdfPath))) {
+      fs.mkdirSync(path.dirname(pdfPath), { recursive: true });
     }
 
     const writeStream = fs.createWriteStream(pdfPath);
     doc.pipe(writeStream);
 
-    // Generate the header
+    // Header
     await generatePDFHeader(doc, tenant);
 
-    // Debug: Log current Y position after header
-    console.log('Y position after header:', doc.y);
-
     // Invoice title
-    doc.fontSize(20)
-       .font('Helvetica-Bold')
-       .text('Invoice', 250, 190);
+    doc.fontSize(20).font('Helvetica-Bold').text('Invoice', { align: 'center' });
 
     // Invoice details
     const invoiceDate = new Date(invoice.invoicePeriod);
-    if (isNaN(invoiceDate.getTime())) {
-      throw new Error('Invalid invoicePeriod date');
-    }
     const options = { month: 'long', year: 'numeric' };
     const formattedPeriod = invoiceDate.toLocaleDateString('en-US', options);
 
-    doc.fontSize(12)
-       .font('Helvetica')
-       .text(`Invoice Period: ${formattedPeriod}`, 50, 230)
-       .text(`Invoice Date: ${invoiceDate.toDateString()}`, 50, 250)
-       .text(`Customer: ${invoice.customer.firstName} ${invoice.customer.lastName}`, 50, 270);
+    doc.moveDown();
+    doc.fontSize(12).font('Helvetica')
+      .text(`Invoice Period: ${formattedPeriod}`)
+      .text(`Invoice Date: ${invoiceDate.toDateString()}`)
+      .text(`Invoice Number: ${invoice.invoiceNumber}`)
+      .text(`Customer: ${invoice.customer.firstName} ${invoice.customer.lastName}`);
 
-    // Initialize currentY after customer details
-    let currentY = 290; // Start after customer name (270 + 20 for spacing)
-    let totalAmount = 0;
+    doc.moveDown();
 
-    // Add invoice items (if any)
+    // Items table
     if (invoice.items && invoice.items.length > 0) {
-      doc.moveDown(1);
-      doc.fontSize(14)
-         .font('Helvetica-Bold')
-         .text('Items', 50, doc.y);
+      doc.fontSize(14).font('Helvetica-Bold').text('Items');
+      doc.moveDown(0.5);
 
-      // Table headers
-      const tableTop = doc.y + 10;
-      doc.fontSize(10)
-         .text('Description', 50, tableTop)
-         .text('Quantity', 300, tableTop)
-         .text('Unit Price', 400, tableTop)
-         .text('Total', 500, tableTop);
+      doc.fontSize(10).font('Helvetica-Bold')
+        .text('Description', 50, doc.y)
+        .text('Quantity', 300, doc.y)
+        .text('Unit Price', 380, doc.y)
+        .text('Total', 460, doc.y);
 
-      // Table content
-      currentY = tableTop + 20;
+      doc.moveDown(0.5);
+      let totalAmount = 0;
       invoice.items.forEach((item) => {
-        doc.text(item.description || 'N/A', 50, currentY)
-           .text(item.quantity?.toString() || '0', 300, currentY)
-           .text(item.amount?.toFixed(2) || '0.00', 400, currentY)
-           .text((item.quantity * item.amount)?.toFixed(2) || '0.00', 500, currentY);
-        totalAmount += item.quantity * item.amount || 0;
-        currentY += 20;
+        const itemTotal = (item.quantity || 0) * (item.amount || 0);
+        totalAmount += itemTotal;
 
-        // Check for page overflow
-        if (currentY > 700) {
-          doc.addPage();
-          currentY = 50;
-        }
+        doc.font('Helvetica')
+          .text(item.description || 'N/A', 50, doc.y)
+          .text(item.quantity?.toString() || '0', 300, doc.y)
+          .text(`$${(item.amount || 0).toFixed(2)}`, 380, doc.y)
+          .text(`$${itemTotal.toFixed(2)}`, 460, doc.y);
+
+        doc.moveDown(0.5);
       });
 
-      // Total
-      doc.moveDown(1);
-      currentY = doc.y;
+      doc.moveDown();
       doc.font('Helvetica-Bold')
-         .text(`Total: $${totalAmount.toFixed(2)}`, 500, currentY);
-      currentY += 20; // Increment for next section
+        .text(`Items Total: $${totalAmount.toFixed(2)}`, { align: 'right' });
     } else {
-      doc.moveDown(1);
-      currentY = doc.y;
-      doc.text('No items found for this invoice.', 50, currentY);
-      currentY += 20; // Increment for next section
+      doc.text('No items found for this invoice.');
     }
 
-    // Payment Instructions
-    doc.moveDown(1);
-    const paymentY = currentY > 700 ? 50 : currentY; // Start on new page if needed
-    if (paymentY === 50) doc.addPage();
+    doc.moveDown();
 
-    doc.fontSize(14)
-       .font('Helvetica-Bold')
-       .text('Payment Instructions', 50, paymentY);
+    // Compute opening and closing balance
+    const closingBalance = invoice.customer.closingBalance || 0;
+    const openingBalance = closingBalance - invoice.invoiceAmount;
 
-    doc.fontSize(10)
-       .font('Helvetica')
-       .text('Please make your payment using the following details:', 50, paymentY + 20);
+    doc.fontSize(12).font('Helvetica-Bold')
+      .text(`Opening Balance: $${openingBalance.toFixed(2)}`)
+      .text(`Invoice Amount: $${invoice.invoiceAmount.toFixed(2)}`)
+      .text(`Closing Balance (Total To Pay): $${closingBalance.toFixed(2)}`);
 
-    const paymentDetailsY = paymentY + 40;
-    doc.text('Payment Method: MPesa', 50, paymentDetailsY)
-    .font('Helvetica-Bold')
-       .text(`Paybill Number: ${mpeaConfig?.shortCode || 'Not Available'}`, 50, paymentDetailsY + 15)
-       
-       .text(`Account Number: ${invoice.customer.phoneNumber}`, 50, paymentDetailsY + 30)
-       .font('Helvetica')
-       .text('Steps:', 50, paymentDetailsY + 50)
-       .text('1. Go to MPesa on your phone.', 60, paymentDetailsY + 65)
-       .text('2. Select Lipa na MPesa > Paybill.', 60, paymentDetailsY + 80)
-       .text(`3. Enter Paybill Number: ${mpeaConfig?.shortCode || 'Not Available'}`, 60, paymentDetailsY + 95)
-       .text(`4. Enter Account Number: ${invoice.customer.phoneNumber}`, 60, paymentDetailsY + 110)
-       .text(`5. Enter Amount: $${totalAmount.toFixed(2)}`, 60, paymentDetailsY + 125)
-       .text('6. Confirm the transaction.', 60, paymentDetailsY + 140);
+    doc.moveDown(2);
 
-    // Customer Support (using smsConfig)
-    doc.text(
-      `For assistance, contact Customer Support: ${smsConfig?.customerSupportPhoneNumber || 'Not Available'}`,
-      50,
-      paymentDetailsY + 160
-    );
+    // Payment instructions
+    doc.fontSize(14).font('Helvetica-Bold').text('Payment Instructions');
+    doc.fontSize(10).font('Helvetica')
+      .text('Please make your payment using the following details:')
+      .moveDown(0.5)
+      .text(`Payment Method: MPesa`)
+      .text(`Paybill Number: ${mpeaConfig?.shortCode || 'Not Available'}`)
+      .text(`Account Number: ${invoice.customer.phoneNumber}`)
+      .text(`Amount to Pay: $${closingBalance.toFixed(2)}`)
+      .moveDown(0.5)
+      .text('Steps:')
+      .text('1. Go to MPesa on your phone.')
+      .text('2. Select Lipa na MPesa > Paybill.')
+      .text(`3. Enter Paybill Number: ${mpeaConfig?.shortCode || 'Not Available'}`)
+      .text(`4. Enter Account Number: ${invoice.customer.phoneNumber}`)
+      .text(`5. Enter Amount: $${closingBalance.toFixed(2)}`)
+      .text('6. Confirm the transaction.');
 
-    // Finalize the PDF
+    doc.moveDown(0.5);
+    doc.text(`For assistance, contact Customer Support: ${smsConfig?.customerSupportPhoneNumber || 'Not Available'}`);
+
+    // Finish PDF
     doc.end();
-    
+
     return new Promise((resolve, reject) => {
       writeStream.on('finish', () => {
-        console.log('PDF generated successfully:', pdfPath);
+        console.log('✅ PDF generated:', pdfPath);
         resolve(pdfPath);
       });
-      writeStream.on('error', (err) => reject(new Error(`Failed to write PDF: ${err.message}`)));
+      writeStream.on('error', (err) => reject(new Error(`PDF write failed: ${err.message}`)));
     });
+
   } catch (error) {
-    console.error('Error generating invoice PDF:', error);
+    console.error('❌ Error generating invoice PDF:', error);
     throw error;
   }
 }
+
+
 
 
 

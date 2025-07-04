@@ -25,7 +25,7 @@ async function generatePDFHeader(doc, tenant) {
     // Remove leading '/Uploads/' and get the filename
     const logoFilename = path.basename(tenant.logoUrl);
     // Use the project root's Uploads directory
-    logoPath = path.join(__dirname, '..', '..', 'Uploads', logoFilename);
+    logoPath = path.join(__dirname, '..', '..', 'uploads', logoFilename);
     console.log('generatePDFHeader - Attempting logo path:', logoPath);
   }
 
