@@ -58,10 +58,10 @@ async function generateInvoicePDF(invoiceId) {
 
     doc.moveDown();
     doc.fontSize(12).font('Helvetica')
-      .text(`Invoice Period: ${formattedPeriod}`)
-      .text(`Invoice Date: ${invoiceDate.toDateString()}`)
-      .text(`Invoice Number: ${invoice.invoiceNumber}`)
-      .text(`Customer: ${invoice.customer.firstName} ${invoice.customer.lastName}`);
+      .text(`Invoice Period: ${formattedPeriod} `, 50, doc.y)
+      .text(`Invoice Date: ${invoiceDate.toDateString()}`,50, doc.y)
+      .text(`Invoice Number: ${invoice.invoiceNumber}`,50, doc.y)
+      .text(`Customer: ${invoice.customer.firstName} ${invoice.customer.lastName}`,50, doc.y);
 
     doc.moveDown();
 
@@ -86,7 +86,7 @@ async function generateInvoicePDF(invoiceId) {
           .text(item.description || 'N/A', 50, doc.y)
           .text(item.quantity?.toString() || '0', 300, doc.y)
           .text(`$${(item.amount || 0).toFixed(2)}`, 380, doc.y)
-          .text(`$${itemTotal.toFixed(2)}`, 460, doc.y);
+          .text(`$${itemTotal.toFixed(2)}`, 440, doc.y);
 
         doc.moveDown(0.5);
       });
@@ -105,32 +105,32 @@ async function generateInvoicePDF(invoiceId) {
     const openingBalance = closingBalance - invoice.invoiceAmount;
 
     doc.fontSize(12).font('Helvetica-Bold')
-      .text(`Opening Balance: $${openingBalance.toFixed(2)}`)
-      .text(`Invoice Amount: $${invoice.invoiceAmount.toFixed(2)}`)
-      .text(`Closing Balance (Total To Pay): $${closingBalance.toFixed(2)}`);
+      .text(`Opening Balance: $${openingBalance.toFixed(2)}`,50, doc.y)
+      .text(`Invoice Amount: $${invoice.invoiceAmount.toFixed(2)}`,50, doc.y)
+      .text(`Closing Balance (Total To Pay): $${closingBalance.toFixed(2)}`,50, doc.y);
 
     doc.moveDown(2);
 
     // Payment instructions
     doc.fontSize(14).font('Helvetica-Bold').text('Payment Instructions');
     doc.fontSize(10).font('Helvetica')
-      .text('Please make your payment using the following details:')
+      .text('Please make your payment using the following details:',50, doc.y)
       .moveDown(0.5)
-      .text(`Payment Method: MPesa`)
-      .text(`Paybill Number: ${mpeaConfig?.shortCode || 'Not Available'}`)
-      .text(`Account Number: ${invoice.customer.phoneNumber}`)
-      .text(`Amount to Pay: $${closingBalance.toFixed(2)}`)
+      .text(`Payment Method: MPesa`,50, doc.y)
+      .text(`Paybill Number: ${mpeaConfig?.shortCode || 'Not Available'}`,50, doc.y)
+      .text(`Account Number: ${invoice.customer.phoneNumber}`,50, doc.y)
+      .text(`Amount to Pay: $${closingBalance.toFixed(2)}`,50, doc.y)
       .moveDown(0.5)
-      .text('Steps:')
-      .text('1. Go to MPesa on your phone.')
-      .text('2. Select Lipa na MPesa > Paybill.')
-      .text(`3. Enter Paybill Number: ${mpeaConfig?.shortCode || 'Not Available'}`)
-      .text(`4. Enter Account Number: ${invoice.customer.phoneNumber}`)
-      .text(`5. Enter Amount: $${closingBalance.toFixed(2)}`)
-      .text('6. Confirm the transaction.');
+      .text('Steps:',50, doc.y)
+      .text('1. Go to MPesa on your phone.',50, doc.y)
+      .text('2. Select Lipa na MPesa > Paybill.',50, doc.y)
+      .text(`3. Enter Paybill Number: ${mpeaConfig?.shortCode || 'Not Available'}`,50, doc.y)
+      .text(`4. Enter Account Number: ${invoice.customer.phoneNumber}`,50, doc.y)
+      .text(`5. Enter Amount: $${closingBalance.toFixed(2)}`,50, doc.y)
+      .text('6. Confirm the transaction.',50, doc.y);
 
     doc.moveDown(0.5);
-    doc.text(`For assistance, contact Customer Support: ${smsConfig?.customerSupportPhoneNumber || 'Not Available'}`);
+    doc.text(`For assistance, contact Customer Support: ${smsConfig?.customerSupportPhoneNumber || 'Not Available'}`,10, doc.y);
 
     // Finish PDF
     doc.end();
