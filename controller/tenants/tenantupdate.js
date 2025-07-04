@@ -256,8 +256,9 @@ const fetchTenant = async (tenantId) => {
        
         phoneNumber: true,
         alternativePhoneNumber: true,
-        logoUrl: true,
+       
         allowedUsers: true,
+        logoUrl:true
        
        
       },
