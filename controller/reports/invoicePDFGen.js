@@ -20,9 +20,17 @@ async function generateInvoicePDF(invoiceId) {
     const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
       include: {
-        customer: true,
+        customer: {
+          select: {
+            closingBalance: true,
+            firstName: true,
+            lastName: true,
+            tenantId: true,
+            phoneNumber: true
+          }
+        },
         items: true
-      },
+      }
     });
 
     if (!invoice) throw new Error('Invoice not found');
@@ -101,13 +109,14 @@ async function generateInvoicePDF(invoiceId) {
     doc.moveDown();
 
     // Compute opening and closing balance
-    const closingBalance = invoice.customer.closingBalance || 0;
-    const openingBalance = closingBalance - invoice.invoiceAmount;
+    
+    const openingBalance = invoice.customer.closingBalance - invoice.invoiceAmount;
+    const closingBalance = invoice.customer.closingBalance;
 
     doc.fontSize(12).font('Helvetica-Bold')
-      .text(`Opening Balance: $${openingBalance.toFixed(2)}`,50, doc.y)
-      .text(`Invoice Amount: $${invoice.invoiceAmount.toFixed(2)}`,50, doc.y)
-      .text(`Closing Balance (Total To Pay): $${closingBalance.toFixed(2)}`,50, doc.y);
+      .text(`Opening Balance: Ksh${openingBalance.toFixed(2)}`,50, doc.y)
+      .text(`Invoice Amount: Ksh${invoice.invoiceAmount.toFixed(2)}`,50, doc.y)
+      .text(`Closing Balance (Total To Pay): Ksh${closingBalance.toFixed(2)}`,50, doc.y);
 
     doc.moveDown(2);
 
@@ -119,14 +128,14 @@ async function generateInvoicePDF(invoiceId) {
       .text(`Payment Method: MPesa`,50, doc.y)
       .text(`Paybill Number: ${mpeaConfig?.shortCode || 'Not Available'}`,50, doc.y)
       .text(`Account Number: ${invoice.customer.phoneNumber}`,50, doc.y)
-      .text(`Amount to Pay: $${closingBalance.toFixed(2)}`,50, doc.y)
+      .text(`Amount to Pay: Ksh${closingBalance.toFixed(2)}`,50, doc.y)
       .moveDown(0.5)
       .text('Steps:',50, doc.y)
       .text('1. Go to MPesa on your phone.',50, doc.y)
       .text('2. Select Lipa na MPesa > Paybill.',50, doc.y)
       .text(`3. Enter Paybill Number: ${mpeaConfig?.shortCode || 'Not Available'}`,50, doc.y)
       .text(`4. Enter Account Number: ${invoice.customer.phoneNumber}`,50, doc.y)
-      .text(`5. Enter Amount: $${closingBalance.toFixed(2)}`,50, doc.y)
+      .text(`5. Enter Amount: Ksh${closingBalance.toFixed(2)}`,50, doc.y)
       .text('6. Confirm the transaction.',50, doc.y);
 
     doc.moveDown(0.5);
