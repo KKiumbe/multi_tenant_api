@@ -175,6 +175,11 @@ model MPESAConfig {
   MPESATransactions MPESATransactions[]
 }
 
+enum CustomerType {
+  PREPAID
+  POSTPAID
+}
+
 model Customer {
   id                   String              @id @default(uuid())
   tenantId             Int
@@ -193,6 +198,7 @@ model Customer {
   category             String?
   monthlyCharge        Float
   status               CustomerStatus      @default(ACTIVE)
+  customerType         CustomerType        @default(PREPAID) // New field
   garbageCollectionDay String
   collected            Boolean             @default(false)
   closingBalance       Float

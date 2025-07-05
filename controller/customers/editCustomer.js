@@ -15,6 +15,7 @@ const editCustomer = async (req, res) => {
     county,
     town,
     status,
+    customerType,
     location,
     estateName,
     building,
@@ -65,6 +66,7 @@ const editCustomer = async (req, res) => {
       if (county !== undefined) updateData.county = county;
       if (town !== undefined) updateData.town = town;
       if (status !== undefined) updateData.status = status;
+      if (customerType !== undefined) updateData.customerType = customerType;
       if (location !== undefined) updateData.location = location;
       if (estateName !== undefined) updateData.estateName = estateName;
       if (building !== undefined) updateData.building = building;

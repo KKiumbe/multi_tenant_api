@@ -20,7 +20,9 @@ router.post('/send-bills', verifyToken,checkTenantStatus,                       
 router.post('/send-bills-per-estate', verifyToken,checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
   requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('sms', 'create'), sendBillsEstate);//done
 router.post('/send-to-all', verifyToken,checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
-  requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('sms', 'create'), sendToAll);//done
+  requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('sms', 'create'), sendToAll);
+  
+  //done
 router.post('/send-to-estate', verifyToken, checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
   requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('sms', 'create'), sendToEstate);//done
 
