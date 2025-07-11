@@ -8,22 +8,73 @@ const prisma = new PrismaClient();
  *
  * @param {TenantStatus[]} allowedStatuses
  */
+
+
+
 function requireTenantStatus(allowedStatuses = []) {
   return (req, res, next) => {
     const status = req.tenantStatus;
 
-    // If subscription expired, send specific message
+    // Detect if the request expects an HTML response
+    const isBrowserRequest = req.accepts('html') && !req.xhr; // Check for HTML and non-AJAX request
+
     if (status === TenantStatus.EXPIRED) {
-      return res
-        .status(402)  // Payment Required
-        .json({ error: 'This feature is disabled due to non payment of the service' });
+      if (isBrowserRequest) {
+        // Render an HTML page for browser users
+        return res.status(402).send(`
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Payment Required</title>
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+              h1 { color: #d32f2f; }
+              p { font-size: 18px; }
+              a { color: #1976d2; text-decoration: none; }
+              a:hover { text-decoration: underline; }
+            </style>
+          </head>
+          <body>
+            <h1>Feature Disabled</h1>
+            <p>This feature is disabled due to non-payment of the service.</p>
+            <p>Please <a href="/billing">update your payment details</a> to restore access.</p>
+          </body>
+          </html>
+        `);
+      }
+      // For API requests, return JSON
+      return res.status(402).json({ error: 'This feature is disabled due to non payment of the service' });
     }
 
-    // Otherwise, block any other disallowed statuses
+    // Block other disallowed statuses
     if (!allowedStatuses.includes(status)) {
-      return res
-        .status(402)  // or 403 Forbidden
-        .json({ error: `Access denied: tenant status is '${status}'` });
+      if (isBrowserRequest) {
+        return res.status(403).send(`
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Access Denied</title>
+            <style>
+              body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+              h1 { color: #d32f2f; }
+              p { font-size: 18px; }
+              a { color: #1976d2; text-decoration: none; }
+              a:hover { text-decoration: underline; }
+            </style>
+          </head>
+          <body>
+            <h1>Access Denied</h1>
+            <p>Your account status ('${status}') does not allow access to this feature.</p>
+            <p>Please <a href="/support">contact support</a> for assistance.</p>
+          </body>
+          </html>
+        `);
+      }
+      return res.status(403).json({ error: `Access denied: tenant status is '${status}'` });
     }
 
     // Tenant status is allowed
