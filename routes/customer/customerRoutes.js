@@ -23,19 +23,19 @@ router.post(
  
     createCustomer // Step 3: Proceed to the controller if authorized
 );
-router.get('/customers', verifyToken, checkAccess('customer','read') ,getAllCustomers);
+router.get('/customers', verifyToken,checkTenantStatus,requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('customer','read') ,getAllCustomers);
 router.put('/customers/:id',verifyToken,  checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
   requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('customer','update'), editCustomer);
-router.get('/search-customers',verifyToken, SearchCustomers);
-router.delete('/customers/:id',verifyToken,checkAccess('customer','delete'), deleteCustomer);
+router.get('/search-customers',verifyToken,checkTenantStatus,requireTenantStatus([TenantStatus.ACTIVE]), SearchCustomers);
+router.delete('/customers/:id',verifyToken, checkTenantStatus,requireTenantStatus([TenantStatus.ACTIVE]),checkAccess('customer','delete'), deleteCustomer);
 
-router.get('/search-customer-by-phone',verifyToken,  checkAccess('customer','read'), SearchCustomersByPhoneNumber);
+router.get('/search-customer-by-phone',verifyToken,checkTenantStatus,requireTenantStatus([TenantStatus.ACTIVE]),  checkAccess('customer','read'), SearchCustomersByPhoneNumber);
 
-router.get('/search-customer-by-name',verifyToken, checkAccess('customer','read'), SearchCustomersByName
+router.get('/search-customer-by-name',verifyToken, checkTenantStatus,requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('customer','read'), SearchCustomersByName
 );
-router.get('/customer-details/:id',verifyToken,  checkAccess('customer','read'), getCustomerDetails);
+router.get('/customer-details/:id',verifyToken,checkTenantStatus,requireTenantStatus([TenantStatus.ACTIVE]),  checkAccess('customer','read'), getCustomerDetails);
 
-router.get('/customer-activity/:id',verifyToken, checkAccess('customer','read'), getCustomerActivity);
+router.get('/customer-activity/:id',verifyToken,checkTenantStatus,requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('customer','read'), getCustomerActivity);
  
 
 //DELETE ALL CUSTOMERS

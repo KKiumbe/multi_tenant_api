@@ -18,9 +18,9 @@ router.get('/receipts',verifyToken,checkAccess('receipts', 'read'), getReceipts 
 
 router.get('/receipts/:id',verifyToken, checkAccess('receipts', 'read'), getReceiptById);
 
-router.get('/search-by-phone',verifyToken,checkAccess('receipts', 'read'), searchReceiptsByPhone );
+router.get('/search-by-phone',verifyToken,checkTenantStatus,requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('receipts', 'read'), searchReceiptsByPhone );
 
-router.get('/search-by-name',verifyToken, checkAccess('receipts', 'read'), searchReceiptsByName );
+router.get('/search-by-name',verifyToken,checkTenantStatus,requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('receipts', 'read'), searchReceiptsByName );
 
 
 
