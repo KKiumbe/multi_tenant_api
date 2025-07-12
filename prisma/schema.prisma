@@ -198,7 +198,7 @@ model Customer {
   category             String?
   monthlyCharge        Float
   status               CustomerStatus      @default(ACTIVE)
-  customerType         CustomerType        @default(PREPAID) // New field
+  customerType         CustomerType        @default(PREPAID) 
   garbageCollectionDay String
   collected            Boolean             @default(false)
   closingBalance       Float
@@ -218,6 +218,7 @@ model Customer {
   @@index([status])
   UserActivity UserActivity[]
   PaymentLink PaymentLink[]
+  profilePhoto String?
 }
 
 model Invoice {
