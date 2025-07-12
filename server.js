@@ -25,7 +25,7 @@ const smsBalanceRoute = require('./routes/sms/balance.js')
 const reportsReoute  = require('./routes/reportRoutes/reportRoute.js')
 const userManagementRoute = require('./routes/rolesRoute/rolesRoute.js')
 
-const tenantRoute = require('./routes/tenant/tenantRoute.js')
+const  tenantRoute = require('./routes/tenant/tenantRoute.js')
 
 const mpesaSettings = require('./routes/mpesa/mpesaConfig.js')
 
