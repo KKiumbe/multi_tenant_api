@@ -1,24 +1,24 @@
-// scripts/setDefaultCustomerType.ts
-import { PrismaClient } from '@prisma/client';
-
+const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
   const updated = await prisma.customer.updateMany({
     where: {
-      customerType: null,
+      customerType: {
+        equals: null,
+      },
     },
     data: {
       customerType: 'PREPAID',
     },
   });
 
-  console.log(`Updated ${updated.count} customer records with default customerType.`);
+  console.log(`✅ Updated ${updated.count} customers to customerType PREPAID.`);
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error('❌ Error:', e);
     process.exit(1);
   })
   .finally(async () => {
