@@ -4,6 +4,7 @@ const { getAllUsers, assignRole, deleteUser, stripRoles, editUserRole, updateUse
 const verifyToken = require("../../middleware/verifyToken.js");
 const { checkTenantStatus, requireTenantStatus } = require("../../middleware/requireTenantStatus.js");
 const { TenantStatus } = require("@prisma/client");
+const { getTenantStatus } = require("../../controller/tenants/tenantupdate.js");
 
 
 const router = express.Router();
@@ -26,5 +27,7 @@ router.delete("/user/:userId",verifyToken, checkAccess("user", "delete"), delete
 
 // // Strip all roles from a user
 router.post("/user/strip-roles",verifyToken, checkAccess("users", "update"), stripRoles);
+
+router.get('/tenant/status', verifyToken, getTenantStatus)
 
 module.exports = router;
