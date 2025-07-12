@@ -19,7 +19,7 @@ const SMSRoute = require('./routes/sms/sendSms.js');
 const receiptRoute = require('./routes/receipt/receiptingRoute.js');
 const paymentRoute = require('./routes/payment/paymentRoutes.js');
 const statsRoute = require('./routes/stats/statsRoute.js');
-
+const tenantStatus = require('./routes/tenant/tenantStatus.js')
 const uploadcustomers = require('./routes/fileUpload/uploadRoute.js');
 const smsBalanceRoute = require('./routes/sms/balance.js')
 const reportsReoute  = require('./routes/reportRoutes/reportRoute.js')
@@ -126,6 +126,7 @@ app.use('/api', mpesaSettings);
 app.use('/api', tenantRoute); 
 
 app.use('/api', taskRoute);
+app.use('/api', tenantStatus);
 
 
 
