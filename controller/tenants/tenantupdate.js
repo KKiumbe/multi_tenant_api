@@ -328,7 +328,7 @@ const getTenantStatus = async (req, res) => {
   }
 
   const DEFAULT_STATUS = 'ACTIVE'; // or any default value you want
-  const TIMEOUT_MS = 3000; // 3 seconds
+  const TIMEOUT_MS = 2000; // 3 seconds
 
   try {
     // Wrap DB call in a timeout promise
