@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient, CustomerType } = require('@prisma/client');
 const axios = require('axios');
 const {getSMSConfigForTenant }= require('../smsConfig/getSMSConfig.js')
 const {fetchTenant} = require('../tenants/tenantupdate.js')
@@ -1272,7 +1272,7 @@ const sendCustomersAboveBalance = async (req, res) => {
     });
 
     // Validate customerType
-    const validCustomerTypes = ['PREPAID', 'POSTPAID'];
+    const validCustomerTypes = [CustomerType.POSTPAID , CustomerType.PREPAID];
     const invalidCustomers = activeCustomers.filter(
       (customer) => !validCustomerTypes.includes(customer.customerType)
     );
@@ -1302,7 +1302,7 @@ const sendCustomersAboveBalance = async (req, res) => {
       const currentDate = new Date().toLocaleString('en-US', {
         timeZone: 'Africa/Nairobi',
       });
-      const billingDate = customer.customerType === 'POSTPAID'
+      const billingDate = customer.customerType === CustomerType.POSTPAID
         ? new Date(new Date(currentDate).getFullYear(), new Date(currentDate).getMonth() - 1)
         : new Date(currentDate);
       const nameOfMonth = billingDate.toLocaleString('en-US', {
