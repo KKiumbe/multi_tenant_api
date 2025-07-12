@@ -320,6 +320,48 @@ async function getAllTenants(req, res) {
 
 
 
+const getTenantStatus = async (req, res) => {
+  const tenantId = req.user?.tenantId;
+
+  if (!tenantId) {
+    return res.status(401).json({ error: 'Unauthorized: Tenant ID not found' });
+  }
+
+  const DEFAULT_STATUS = 'ACTIVE'; // or any default value you want
+  const TIMEOUT_MS = 3000; // 3 seconds
+
+  try {
+    // Wrap DB call in a timeout promise
+    const tenant = await Promise.race([
+      prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { status: true },
+      }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout')), TIMEOUT_MS)
+      ),
+    ]);
+
+    if (!tenant) {
+      return res.status(404).json({ error: 'Tenant not found' });
+    }
+
+    res.json({ status: tenant.status });
+  } catch (error) {
+    if (error.message === 'Timeout') {
+      console.warn('Tenant status fetch timed out, returning default.');
+      return res.json({ status: DEFAULT_STATUS });
+    }
+
+    console.error("Error fetching tenant status:", error);
+    res.status(500).json({ error: 'Failed to fetch tenant status' });
+  }
+};
+
+
+
+
 module.exports = {
-  updateTenantDetails,getTenantDetails,uploadLogo,fetchTenant,updateTenantStatus,fetchTenantDetails,getAllTenants
+  updateTenantDetails,getTenantDetails,uploadLogo,fetchTenant,updateTenantStatus,fetchTenantDetails,getAllTenants,
+  getTenantStatus
 };
