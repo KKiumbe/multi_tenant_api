@@ -30,7 +30,7 @@ router.put(
 );
 
 
-router.get('/tenant-status', verifyToken, getTenantStatus  )
+router.get('/tenant/status', verifyToken, getTenantStatus  )
 
 
 
