@@ -2,18 +2,8 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
-  const updated = await prisma.customer.updateMany({
-    where: {
-      customerType: {
-        equals: null,
-      },
-    },
-    data: {
-      customerType: 'PREPAID',
-    },
-  });
-
-  console.log(`✅ Updated ${updated.count} customers to customerType PREPAID.`);
+  const result = await prisma.$executeRaw`UPDATE "Customer" SET "customerType" = 'PREPAID' WHERE "customerType" IS NULL;`;
+  console.log(`✅ Updated ${result} customers with customerType = 'PREPAID'`);
 }
 
 main()
