@@ -1,6 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const express = require('express');
-const { updateTenantDetails, getTenantDetails, uploadLogo, updateTenantStatus, getAllTenants, getTenantStatus } = require('../../controller/tenants/tenantupdate.js');
+const { updateTenantDetails, getTenantDetails, uploadLogo, updateTenantStatus, getAllTenants } = require('../../controller/tenants/tenantupdate.js');
 const verifyToken = require('../../middleware/verifyToken.js');
 const upload = require('../../controller/tenants/logoUploadMiddleware.js');
 
@@ -30,7 +30,7 @@ router.put(
 );
 
 
-router.get('/tenant/status', verifyToken, getTenantStatus  )
+
 
 
 

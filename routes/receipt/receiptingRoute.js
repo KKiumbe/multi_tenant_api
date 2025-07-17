@@ -6,6 +6,7 @@ const verifyToken = require('../../middleware/verifyToken.js');
 const checkAccess = require('../../middleware/roleVerify.js');
 const { checkTenantStatus, requireTenantStatus } = require('../../middleware/requireTenantStatus.js');
 const { TenantStatus } = require('@prisma/client');
+const { downloadReceipt } = require('../../controller/receipting/downloadReceipt.js');
 
 const router = express.Router();
 
@@ -22,7 +23,11 @@ router.get('/search-by-phone',verifyToken,checkTenantStatus,requireTenantStatus(
 
 router.get('/search-by-name',verifyToken,checkTenantStatus,requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('receipts', 'read'), searchReceiptsByName );
 
+//download receipt
 
+
+router.get('/download-receipt/:receiptId',verifyToken,checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
+  requireTenantStatus([TenantStatus.ACTIVE]), checkAccess("receipts", "read"), downloadReceipt); 
 
 module.exports = router;
 

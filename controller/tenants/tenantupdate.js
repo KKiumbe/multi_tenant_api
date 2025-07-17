@@ -259,6 +259,7 @@ const fetchTenant = async (tenantId) => {
        
         allowedUsers: true,
         logoUrl:true
+        
        
        
       },

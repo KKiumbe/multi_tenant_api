@@ -1267,7 +1267,7 @@ const sendCustomersAboveBalance = async (req, res) => {
         firstName: true,
         closingBalance: true,
         monthlyCharge: true,
-        customerType: true,
+       customerType: true,
       },
     });
 

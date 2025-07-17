@@ -28,6 +28,6 @@ router.delete("/user/:userId",verifyToken, checkAccess("user", "delete"), delete
 // // Strip all roles from a user
 router.post("/user/strip-roles",verifyToken, checkAccess("users", "update"), stripRoles);
 
-router.get('/tenant/status', verifyToken, getTenantStatus)
+
 
 module.exports = router;
