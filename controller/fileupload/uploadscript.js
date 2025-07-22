@@ -103,7 +103,7 @@ const uploadCustomers = async (req, res) => {
     return res.status(400).json({ message: 'No file uploaded' });
   }
 
-  const filePath = path.join(UploadsDir, req.file.filename);
+  const filePath = path.join(uploadsDir, req.file.filename);
   const customersToUpload = [];
   const existingPhoneNumbers = new Set();
   const skippedDuplicates = [];
