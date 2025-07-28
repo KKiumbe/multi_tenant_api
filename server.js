@@ -49,7 +49,7 @@ app.use(cookieParser());
 app.use(bodyParser.json());
 app.use(express.json());
 
-//app.use(helmet());
+app.use(helmet());
 
 
 
