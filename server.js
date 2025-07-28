@@ -41,15 +41,15 @@ const PORT = process.env.PORT || 5000;
 
 
 
-//app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-////app.use(express.static(path.join(__dirname, 'public')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+//app.use(express.static(path.join(__dirname, 'public')));
 
-//app.use(cookieParser());
+app.use(cookieParser());
 
-//app.use(bodyParser.json());
-//app.use(express.json());
+app.use(bodyParser.json());
+app.use(express.json());
 
-app.use(helmet());
+//app.use(helmet());
 
 
 
@@ -103,36 +103,35 @@ connectDatabase();
 
 
 
-// Use customer routes
-// app.use('/api', customerRoutes); //done
-// app.use('/api', userRoutes);
-// app.use('/api', SMSRoute);
-// app.use('/api', invoiceRoutes);
-// app.use('/api', mpesaRoute);
-// app.use('/api', collectionRoute);
-// app.use('/api', receiptRoute);
-// app.use('/api', paymentRoute);
-// app.use('/api', statsRoute); //done
+app.use('/api', customerRoutes); //done
+app.use('/api', userRoutes);
+app.use('/api', SMSRoute);
+app.use('/api', invoiceRoutes);
+app.use('/api', mpesaRoute);
+app.use('/api', collectionRoute);
+app.use('/api', receiptRoute);
+app.use('/api', paymentRoute);
+app.use('/api', statsRoute); //done
 
-// app.use('/api', uploadcustomers); 
+app.use('/api', uploadcustomers); 
  
-//  app.use('/api', smsBalanceRoute); 
-// app.use('/api', reportsReoute); 
-// app.use('/api', userManagementRoute); 
+ app.use('/api', smsBalanceRoute); 
+app.use('/api', reportsReoute); 
+app.use('/api', userManagementRoute); 
 
-// app.use('/api', mpesaSettings); 
+app.use('/api', mpesaSettings); 
 
-// app.use('/api', tenantRoute); 
+app.use('/api', tenantRoute); 
 
-// app.use('/api', taskRoute);
-// app.use('/api', tenantStatus);
+app.use('/api', taskRoute);
+app.use('/api', tenantStatus);
 
 
-//startBackup();
-//startInvoiceGen(); // Invoke if this script exports a function
-//startInvoiceScheduler(); 
+startBackup();
+startInvoiceGen(); // Invoke if this script exports a function
+startInvoiceScheduler(); 
 
-////startInvoiceSMSScheduler();
+startInvoiceSMSScheduler();
 // Start the HTTP server
 const server = app.listen(5000, '0.0.0.0', () => { 
   console.log('Server running on port 5000');
