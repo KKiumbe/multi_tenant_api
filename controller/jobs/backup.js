@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 const { exec } = require('child_process');
 const cron = require('node-cron');
 const { PrismaClient } = require('@prisma/client');
