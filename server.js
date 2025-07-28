@@ -128,7 +128,7 @@ app.use('/api', tenantStatus);
 
 
 startBackup();
-startInvoiceGen(); // Invoke if this script exports a function
+
 startInvoiceScheduler(); 
 
 startInvoiceSMSScheduler();
