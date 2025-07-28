@@ -104,9 +104,9 @@ connectDatabase();
 
 
 // Use customer routes
-app.use('/api', customerRoutes); //done
-app.use('/api', userRoutes);
-app.use('/api', SMSRoute);
+// app.use('/api', customerRoutes); //done
+// app.use('/api', userRoutes);
+// app.use('/api', SMSRoute);
 app.use('/api', invoiceRoutes);
 app.use('/api', mpesaRoute);
 app.use('/api', collectionRoute);
