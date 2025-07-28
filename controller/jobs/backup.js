@@ -5,8 +5,8 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const fs = require('fs').promises;
 const path = require('path');
-
-
+const { uploadToDropbox } = require('./backuToDropbox');
+const lockfile = require('proper-lockfile');
 
 const DB_USER = process.env.DB_USER;
 const DB_PASSWORD = process.env.DB_PASSWORD;
@@ -14,10 +14,10 @@ const DB_HOST = process.env.DB_HOST || 'localhost';
 const DB_NAME = process.env.DB_NAME;
 const BACKUP_DIR = process.env.BACKUP_DIR || './backups';
 const RETENTION_DAYS = 7; // Keep backups for 7 days
-const instanceId = process.env.PM2_NODE_ID || `pid-${process.pid}`; // Fallback to process ID if PM2_NODE_ID is undefined
+const instanceId = process.env.PM2_NODE_ID || `pid-${process.pid}`;
 
 // Debug: Log environment variables and process info at startup
-console.log(`[${instanceId}] Debug: PM2_NODE_ID=${process.env.PM2_NODE_ID}, NODE_ENV=${process.env.NODE_ENV}, PID=${process.pid}, PM2_VERSION=${process.env.PM2_VERSION}`);
+console.log(`[${instanceId}] Starting backup service. PM2_NODE_ID=${process.env.PM2_NODE_ID}, PID=${process.pid}`);
 
 const backupDatabase = async () => {
   try {
@@ -45,6 +45,13 @@ const backupDatabase = async () => {
         }
       });
     });
+
+    try {
+      await uploadToDropbox(backupFile);
+    } catch (error) {
+      console.error(`[${instanceId}] Failed to upload to Dropbox: ${error.message}`);
+    }
+
     return backupFile;
   } catch (error) {
     throw new Error(`[${instanceId}] Backup process failed: ${error.message}`);
@@ -60,33 +67,25 @@ const deleteOldBackups = async () => {
 
     const files = await fs.readdir(BACKUP_DIR);
     for (const file of files) {
+      if (!file.endsWith('.dump')) continue;
+      
       const filePath = path.join(BACKUP_DIR, file);
       try {
-        const stats = await fs.stat(filePath).catch((error) => {
-          if (error.code === 'ENOENT') {
-            console.log(`[${instanceId}] File ${filePath} not found, skipping.`);
-            skippedCount++;
-            return null;
-          }
-          throw error;
-        });
-
-        if (stats && stats.isFile() && stats.mtime < cutoffDate) {
-          await fs.unlink(filePath).catch((error) => {
-            if (error.code === 'ENOENT') {
-              console.log(`[${instanceId}] File ${filePath} already deleted, skipping.`);
-              skippedCount++;
-              return;
-            }
-            throw error;
-          });
+        const stats = await fs.stat(filePath);
+        if (stats.isFile() && stats.mtime < cutoffDate) {
+          await fs.unlink(filePath);
           console.log(`[${instanceId}] Deleted old backup: ${filePath}`);
           deletedCount++;
-        } else if (!stats) {
+        } else {
           skippedCount++;
         }
       } catch (error) {
-        console.error(`[${instanceId}] Error processing file ${filePath}: ${error.message}`);
+        if (error.code === 'ENOENT') {
+          console.log(`[${instanceId}] File ${filePath} not found, skipping.`);
+          skippedCount++;
+        } else {
+          console.error(`[${instanceId}] Error processing file ${filePath}: ${error.message}`);
+        }
       }
     }
     console.log(`[${instanceId}] Cleanup complete: ${deletedCount} files deleted, ${skippedCount} files skipped.`);
@@ -96,44 +95,53 @@ const deleteOldBackups = async () => {
   }
 };
 
-// Fallback to select a single instance based on lowest PID
-const isPrimaryInstance = async () => {
-  if (process.env.PM2_NODE_ID === '0') return true;
-  if (!process.env.PM2_NODE_ID) {
-    // Fallback: Check for a lock file to elect a primary instance
-    const lockFile = path.join(BACKUP_DIR, 'cleanup.lock');
-    try {
-      await fs.writeFile(lockFile, process.pid.toString(), { flag: 'wx' }); // Exclusive write
-      console.log(`[${instanceId}] Acquired cleanup lock`);
-      return true;
-    } catch (error) {
-      if (error.code === 'EEXIST') {
-        console.log(`[${instanceId}] Cleanup lock exists, skipping cleanup`);
-        return false;
-      }
-      console.error(`[${instanceId}] Error checking lock: ${error.message}`);
-      return false;
+const acquireLock = async () => {
+  const lockFile = path.join(BACKUP_DIR, 'backup.lock');
+  
+  try {
+    // Try to acquire lock with 10 second timeout and automatic release after 5 minutes
+    const release = await lockfile.lock(BACKUP_DIR, {
+      lockfilePath: lockFile,
+      retries: 3,
+      stale: 300000, // 5 minutes
+      update: 60000, // Update lock every minute
+      realpath: false
+    });
+    
+    console.log(`[${instanceId}] Acquired backup lock`);
+    return release;
+  } catch (error) {
+    if (error.code === 'ELOCKED') {
+      console.log(`[${instanceId}] Backup is already running in another instance`);
+      return null;
     }
+    console.error(`[${instanceId}] Error acquiring lock: ${error.message}`);
+    return null;
   }
-  return false;
 };
 
 const runTask = async () => {
+  const releaseLock = await acquireLock();
+  if (!releaseLock) return;
+
   try {
     console.log(`[${instanceId}] Starting backup and cleanup task...`);
     await backupDatabase();
-    if (await isPrimaryInstance()) {
-      console.log(`[${instanceId}] Performing cleanup...`);
-      await deleteOldBackups();
-    } else {
-      console.log(`[${instanceId}] Skipping cleanup.`);
-    }
+    await deleteOldBackups();
     console.log(`[${instanceId}] Task completed successfully.`);
   } catch (error) {
     console.error(`[${instanceId}] Task failed: ${error.message}`);
+  } finally {
+    if (releaseLock) {
+      try {
+        await releaseLock();
+        console.log(`[${instanceId}] Released backup lock`);
+      } catch (error) {
+        console.error(`[${instanceId}] Error releasing lock: ${error.message}`);
+      }
+    }
   }
 };
-
 
 module.exports = () => {
   if (!DB_USER || !DB_PASSWORD || !DB_NAME || !DB_HOST || !BACKUP_DIR) {
@@ -141,15 +149,9 @@ module.exports = () => {
     return;
   }
 
-  const shouldSchedule = process.env.PM2_NODE_ID === '0' || !process.env.PM2_NODE_ID;
-
-  if (!shouldSchedule) {
-    console.log(`[${instanceId}] ⛔ Skipping scheduler (not primary instance)`);
-    return;
-  }
-
-  cron.schedule('0 2 * * *', () => {
-    console.log(`[${instanceId}] Running task at: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' })}`);
+  // Schedule to run every 5 minutes
+  cron.schedule('* * * * *', () => {
+    console.log(`[${instanceId}] Triggering backup task at: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' })}`);
     runTask();
   }, {
     scheduled: true,
@@ -158,4 +160,3 @@ module.exports = () => {
 
   console.log(`[${instanceId}] ✅ Scheduler started. Will run every 5 minutes`);
 };
-
