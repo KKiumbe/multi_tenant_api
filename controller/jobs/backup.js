@@ -134,18 +134,28 @@ const runTask = async () => {
   }
 };
 
+
 module.exports = () => {
   if (!DB_USER || !DB_PASSWORD || !DB_NAME || !DB_HOST || !BACKUP_DIR) {
-    console.error(`[${instanceId}] Missing required environment variables (DB_USER, DB_PASSWORD, DB_NAME, DB_HOST, BACKUP_DIR). Check your .env file.`);
+    console.error(`[${instanceId}] Missing required environment variables (DB_USER, DB_PASSWORD, DB_NAME, DB_HOST, BACKUP_DIR).`);
     return;
   }
 
-  cron.schedule('0 0 * * *', () => {
+  const shouldSchedule = process.env.PM2_NODE_ID === '0' || !process.env.PM2_NODE_ID;
+
+  if (!shouldSchedule) {
+    console.log(`[${instanceId}] ⛔ Skipping scheduler (not primary instance)`);
+    return;
+  }
+
+  cron.schedule('0 2 * * *', () => {
     console.log(`[${instanceId}] Running task at: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' })}`);
     runTask();
   }, {
     scheduled: true,
-    timezone: 'Africa/Nairobi'
+    timezone: 'Africa/Nairobi',
   });
-  console.log(`[${instanceId}] Scheduler started. Task will run every midnight.`);
+
+  console.log(`[${instanceId}] ✅ Scheduler started. Will run every 5 minutes`);
 };
+

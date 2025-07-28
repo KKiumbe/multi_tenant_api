@@ -1,0 +1,225 @@
+{"level":"info","message":"Starting invoice generation for 7/2025 at 2025-07-28T09:28:00.479Z","timestamp":"2025-07-28T09:28:00.480Z"}
+{"level":"info","message":"Found 3 tenants.","timestamp":"2025-07-28T09:28:00.496Z"}
+{"level":"info","message":"Processing tenant 1","timestamp":"2025-07-28T09:28:00.496Z"}
+{"level":"info","message":"Generated 0 invoices for tenant 1","timestamp":"2025-07-28T09:28:00.542Z"}
+{"level":"info","message":"Processing tenant 3","timestamp":"2025-07-28T09:28:00.543Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:00.560Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:01.039Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:01.239Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:01.399Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:01.555Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:01.739Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:01.898Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:02.047Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:02.202Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:02.357Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:02.507Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:02.659Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:02.812Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:02.964Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:03.119Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:03.271Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:03.424Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:03.575Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:03.781Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:03.955Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:04.110Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:04.260Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:04.416Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:04.571Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:28:04.724Z"}
+{"level":"info","message":"Processing 70 customers for tenant 3","timestamp":"2025-07-28T09:28:04.881Z"}
+{"level":"info","message":"Generated 2570 invoices for tenant 3","timestamp":"2025-07-28T09:28:05.139Z"}
+{"level":"info","message":"Processing tenant 2","timestamp":"2025-07-28T09:28:05.139Z"}
+{"level":"info","message":"Processing 2 customers for tenant 2","timestamp":"2025-07-28T09:28:05.142Z"}
+{"level":"info","message":"Generated 1 invoices for tenant 2","timestamp":"2025-07-28T09:28:05.151Z"}
+{"level":"info","message":"Successfully generated 2571 invoices across 3 tenants","timestamp":"2025-07-28T09:28:05.151Z"}
+{"level":"info","message":"Starting invoice generation for 7/2025 at 2025-07-28T09:29:00.518Z","timestamp":"2025-07-28T09:29:00.518Z"}
+{"level":"info","message":"Found 3 tenants.","timestamp":"2025-07-28T09:29:00.520Z"}
+{"level":"info","message":"Processing tenant 1","timestamp":"2025-07-28T09:29:00.520Z"}
+{"level":"info","message":"Generated 0 invoices for tenant 1","timestamp":"2025-07-28T09:29:00.522Z"}
+{"level":"info","message":"Processing tenant 3","timestamp":"2025-07-28T09:29:00.523Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.529Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.532Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.540Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.546Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.552Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.555Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.563Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.566Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.572Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.575Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.582Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.585Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.591Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.596Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.603Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.606Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.614Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.618Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.625Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.629Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.636Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.639Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.647Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.651Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.657Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.661Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.669Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.672Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.680Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.684Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.691Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.695Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.702Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.705Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.714Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.720Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.731Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.736Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.745Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.749Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.760Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.764Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.773Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.776Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.785Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.796Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.806Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.809Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:29:00.819Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.823Z"}
+{"level":"info","message":"Processing 70 customers for tenant 3","timestamp":"2025-07-28T09:29:00.831Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.833Z"}
+{"level":"info","message":"Generated 0 invoices for tenant 3","timestamp":"2025-07-28T09:29:00.833Z"}
+{"level":"info","message":"Processing tenant 2","timestamp":"2025-07-28T09:29:00.834Z"}
+{"level":"info","message":"Processing 2 customers for tenant 2","timestamp":"2025-07-28T09:29:00.837Z"}
+{"level":"info","message":"No new customers to process for tenant 2 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:29:00.840Z"}
+{"level":"info","message":"Generated 0 invoices for tenant 2","timestamp":"2025-07-28T09:29:00.840Z"}
+{"level":"info","message":"Successfully generated 0 invoices across 3 tenants","timestamp":"2025-07-28T09:29:00.840Z"}
+{"level":"info","message":"Starting invoice generation for 7/2025 at 2025-07-28T09:30:00.574Z","timestamp":"2025-07-28T09:30:00.574Z"}
+{"level":"info","message":"Found 3 tenants.","timestamp":"2025-07-28T09:30:00.576Z"}
+{"level":"info","message":"Processing tenant 1","timestamp":"2025-07-28T09:30:00.576Z"}
+{"level":"info","message":"Generated 0 invoices for tenant 1","timestamp":"2025-07-28T09:30:00.580Z"}
+{"level":"info","message":"Processing tenant 3","timestamp":"2025-07-28T09:30:00.580Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.586Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.589Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.595Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.599Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.606Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.609Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.615Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.619Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.625Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.628Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.635Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.639Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.644Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.647Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.654Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.657Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.663Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.666Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.673Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.676Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.683Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.686Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.693Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.696Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.703Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.706Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.713Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.716Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.723Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.726Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.733Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.736Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.743Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.746Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.754Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.757Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.765Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.769Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.776Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.779Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.787Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.790Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.798Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.801Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.808Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.811Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.819Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.823Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:30:00.830Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.833Z"}
+{"level":"info","message":"Processing 70 customers for tenant 3","timestamp":"2025-07-28T09:30:00.840Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.843Z"}
+{"level":"info","message":"Generated 0 invoices for tenant 3","timestamp":"2025-07-28T09:30:00.843Z"}
+{"level":"info","message":"Processing tenant 2","timestamp":"2025-07-28T09:30:00.843Z"}
+{"level":"info","message":"Processing 2 customers for tenant 2","timestamp":"2025-07-28T09:30:00.845Z"}
+{"level":"info","message":"No new customers to process for tenant 2 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:30:00.847Z"}
+{"level":"info","message":"Generated 0 invoices for tenant 2","timestamp":"2025-07-28T09:30:00.848Z"}
+{"level":"info","message":"Successfully generated 0 invoices across 3 tenants","timestamp":"2025-07-28T09:30:00.848Z"}
+{"level":"info","message":"Starting invoice generation for 7/2025 at 2025-07-28T09:31:00.618Z","timestamp":"2025-07-28T09:31:00.618Z"}
+{"level":"info","message":"Found 3 tenants.","timestamp":"2025-07-28T09:31:00.620Z"}
+{"level":"info","message":"Processing tenant 1","timestamp":"2025-07-28T09:31:00.620Z"}
+{"level":"info","message":"Generated 0 invoices for tenant 1","timestamp":"2025-07-28T09:31:00.623Z"}
+{"level":"info","message":"Processing tenant 3","timestamp":"2025-07-28T09:31:00.623Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.630Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.635Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.641Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.646Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.653Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.656Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.663Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.667Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.673Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.677Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.685Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.688Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.696Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.700Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.707Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.711Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.719Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.721Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.728Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.733Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.741Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.744Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.753Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.756Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.766Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.770Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.778Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.783Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.790Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.793Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.803Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.807Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.817Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.821Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.829Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.832Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.840Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.846Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.853Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.856Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.864Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.867Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.874Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.878Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.885Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.888Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.895Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.899Z"}
+{"level":"info","message":"Processing 100 customers for tenant 3","timestamp":"2025-07-28T09:31:00.907Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.910Z"}
+{"level":"info","message":"Processing 70 customers for tenant 3","timestamp":"2025-07-28T09:31:00.917Z"}
+{"level":"info","message":"No new customers to process for tenant 3 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.919Z"}
+{"level":"info","message":"Generated 0 invoices for tenant 3","timestamp":"2025-07-28T09:31:00.920Z"}
+{"level":"info","message":"Processing tenant 2","timestamp":"2025-07-28T09:31:00.920Z"}
+{"level":"info","message":"Processing 2 customers for tenant 2","timestamp":"2025-07-28T09:31:00.922Z"}
+{"level":"info","message":"No new customers to process for tenant 2 (all have invoices for 7/2025).","timestamp":"2025-07-28T09:31:00.924Z"}
+{"level":"info","message":"Generated 0 invoices for tenant 2","timestamp":"2025-07-28T09:31:00.924Z"}
+{"level":"info","message":"Successfully generated 0 invoices across 3 tenants","timestamp":"2025-07-28T09:31:00.924Z"}

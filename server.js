@@ -31,6 +31,9 @@ const mpesaSettings = require('./routes/mpesa/mpesaConfig.js')
 
 const taskRoute = require('./routes/tasks/tasks.js')
 const cookieParser = require('cookie-parser');
+const { generateInvoicesForAll } = require('./controller/bill/processBillsAllTenants.js');
+const startInvoiceScheduler = require('./controller/jobs/invoicegen.js');
+const startInvoiceSMSScheduler = require('./controller/jobs/invoiceGenReminderSMS.js');
 
 const prisma = new PrismaClient(); // Prisma Client instance
 
@@ -129,11 +132,11 @@ app.use('/api', taskRoute);
 app.use('/api', tenantStatus);
 
 
-
-// Start scheduled jobs
-startBackup(); // Invoke the backup scheduler
+startBackup();
 //startInvoiceGen(); // Invoke if this script exports a function
+startInvoiceScheduler(); 
 
+startInvoiceSMSScheduler();
 // Start the HTTP server
 const server = app.listen(5000, '0.0.0.0', () => { 
   console.log('Server running on port 5000');
