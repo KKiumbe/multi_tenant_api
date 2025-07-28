@@ -148,9 +148,10 @@ module.exports = () => {
     console.error(`[${instanceId}] Missing required environment variables (DB_USER, DB_PASSWORD, DB_NAME, DB_HOST, BACKUP_DIR).`);
     return;
   }
+//every 1 am in kenya 
 
-  // Schedule to run every 5 minutes
-  cron.schedule('* * * * *', () => {
+  
+  cron.schedule('0 1 * * *', () => {
     console.log(`[${instanceId}] Triggering backup task at: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' })}`);
     runTask();
   }, {
