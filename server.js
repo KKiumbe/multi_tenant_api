@@ -49,7 +49,7 @@ const PORT = process.env.PORT || 5000;
 //app.use(bodyParser.json());
 //app.use(express.json());
 
-//app.use(helmet());
+app.use(helmet());
 
 
 
@@ -81,7 +81,7 @@ app.use(cors({
 }));
 
 // Handle preflight requests explicitly
-//app.options('*', cors());
+app.options('*', cors());
 
 
 
