@@ -41,15 +41,15 @@ const PORT = process.env.PORT || 5000;
 
 
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use(express.static(path.join(__dirname, 'public')));
+//app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+////app.use(express.static(path.join(__dirname, 'public')));
 
-app.use(cookieParser());
+//app.use(cookieParser());
 
-app.use(bodyParser.json());
-app.use(express.json());
+//app.use(bodyParser.json());
+//app.use(express.json());
 
-app.use(helmet());
+//app.use(helmet());
 
 
 
@@ -81,7 +81,7 @@ app.use(cors({
 }));
 
 // Handle preflight requests explicitly
-app.options('*', cors());
+//app.options('*', cors());
 
 
 
