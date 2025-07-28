@@ -107,25 +107,25 @@ connectDatabase();
 // app.use('/api', customerRoutes); //done
 // app.use('/api', userRoutes);
 // app.use('/api', SMSRoute);
-app.use('/api', invoiceRoutes);
-app.use('/api', mpesaRoute);
-app.use('/api', collectionRoute);
-app.use('/api', receiptRoute);
-app.use('/api', paymentRoute);
-app.use('/api', statsRoute); //done
+// app.use('/api', invoiceRoutes);
+// app.use('/api', mpesaRoute);
+// app.use('/api', collectionRoute);
+// app.use('/api', receiptRoute);
+// app.use('/api', paymentRoute);
+// app.use('/api', statsRoute); //done
 
-app.use('/api', uploadcustomers); 
+// app.use('/api', uploadcustomers); 
  
- app.use('/api', smsBalanceRoute); 
-app.use('/api', reportsReoute); 
-app.use('/api', userManagementRoute); 
+//  app.use('/api', smsBalanceRoute); 
+// app.use('/api', reportsReoute); 
+// app.use('/api', userManagementRoute); 
 
-app.use('/api', mpesaSettings); 
+// app.use('/api', mpesaSettings); 
 
-app.use('/api', tenantRoute); 
+// app.use('/api', tenantRoute); 
 
-app.use('/api', taskRoute);
-app.use('/api', tenantStatus);
+// app.use('/api', taskRoute);
+// app.use('/api', tenantStatus);
 
 
 startBackup();

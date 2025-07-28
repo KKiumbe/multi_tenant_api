@@ -135,7 +135,7 @@ const runTask = async () => {
 };
 
 
-module.exports = () => {
+module.lsexports = () => {
   if (!DB_USER || !DB_PASSWORD || !DB_NAME || !DB_HOST || !BACKUP_DIR) {
     console.error(`[${instanceId}] Missing required environment variables (DB_USER, DB_PASSWORD, DB_NAME, DB_HOST, BACKUP_DIR).`);
     return;
