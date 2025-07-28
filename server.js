@@ -128,9 +128,9 @@ connectDatabase();
 // app.use('/api', tenantStatus);
 
 
-startBackup();
+//startBackup();
 //startInvoiceGen(); // Invoke if this script exports a function
-startInvoiceScheduler(); 
+//startInvoiceScheduler(); 
 
 ////startInvoiceSMSScheduler();
 // Start the HTTP server
