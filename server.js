@@ -31,7 +31,6 @@ const mpesaSettings = require('./routes/mpesa/mpesaConfig.js')
 
 const taskRoute = require('./routes/tasks/tasks.js')
 const cookieParser = require('cookie-parser');
-const { generateInvoicesForAll } = require('./controller/bill/processBillsAllTenants.js');
 const startInvoiceScheduler = require('./controller/jobs/invoicegen.js');
 const startInvoiceSMSScheduler = require('./controller/jobs/invoiceGenReminderSMS.js');
 
@@ -103,9 +102,6 @@ connectDatabase();
 
 
 
-app.get('/api/test', (req, res) => {
-  res.json({ message: "API is working!" });
-});
 
 // Use customer routes
 app.use('/api', customerRoutes); //done

@@ -15,14 +15,14 @@ const router = express.Router();
 
 
 router.get('/invoices/all',verifyToken,checkAccess('invoices', 'read'), getAllInvoices );
-router.patch('/invoice/cancel/:id/', verifyToken,checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
+router.patch('/invoice/cancel/:id', verifyToken,checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
   requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('invoices', 'update'), cancelCustomerInvoice );
 
 router.get('/invoices/search-by-phone',verifyToken,checkAccess('invoices', 'read'), searchInvoicesByPhone);
 
 router.get('/invoices/search-by-name',verifyToken, checkAccess('invoices', 'read'),searchInvoicesByName);
 router.get('/invoices/:id/',verifyToken,checkAccess('invoices', 'read'), getInvoiceDetails);
-router.put('/invoices/cancel/:invoiceId/', verifyToken, checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
+router.put('/invoices/cancel/:invoiceId', verifyToken, checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
   requireTenantStatus([TenantStatus.ACTIVE]),checkAccess('invoices', 'update'), cancelInvoiceById);
 
 // Route to create a manual invoice

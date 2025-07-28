@@ -20,7 +20,7 @@ const router = express.Router();
 // Route to create a new customer
 router.post('/create-trashbag-task', verifyToken, checkAccess('trashBagIssuance', 'create'),  createTaskForIssuingTrashBags);
 
-router.get('/fetch-task/',verifyToken, checkAccess('trashBagIssuance', 'read'), fetchMyTasks);
+router.get('/fetch-task',verifyToken, checkAccess('trashBagIssuance', 'read'), fetchMyTasks);
 
 router.get('/fetch-task-details/:taskId',verifyToken, checkAccess('trashBagIssuance', 'read'), fetchTaskDetails);
 

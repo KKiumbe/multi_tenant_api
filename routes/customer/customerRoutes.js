@@ -44,3 +44,4 @@ router.delete('/customers',verifyToken, checkAccess('customer','delete'), delete
 
 module.exports = router;
 
+  
