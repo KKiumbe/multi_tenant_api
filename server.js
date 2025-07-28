@@ -132,7 +132,7 @@ startBackup();
 //startInvoiceGen(); // Invoke if this script exports a function
 startInvoiceScheduler(); 
 
-startInvoiceSMSScheduler();
+////startInvoiceSMSScheduler();
 // Start the HTTP server
 const server = app.listen(5000, '0.0.0.0', () => { 
   console.log('Server running on port 5000');
