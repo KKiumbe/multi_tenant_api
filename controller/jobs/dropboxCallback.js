@@ -29,9 +29,7 @@ const handleDropboxCallback = async (req, res) => {
 
     const { access_token, refresh_token, expires_in } = tokenResponse.data;
 
-    console.log('📦 Dropbox Access Token:', access_token);
-    console.log('🔁 Dropbox Refresh Token:', refresh_token);
-    console.log('⏰ Expires In:', expires_in + ' seconds');
+
 
     // Optional: Save to secure database or file (NOT RECOMMENDED to write to .env dynamically in prod)
 

@@ -18,20 +18,57 @@ const logger = winston.createLogger({
   ],
 });
 
+
+
+
+
+
+
 // Generate a unique invoice number
 function generateInvoiceNumber(customerId, tenantId, period) {
   const timestamp = Date.now();
-  return `INV-${tenantId}-${customerId}-${period.getFullYear()}${String(period.getMonth() + 1).padStart(2, '0')}-${timestamp}`;
+  return `INV${customerId}-${tenantId}-${period.getFullYear()}${String(period.getMonth() + 1).padStart(2, '0')}-${timestamp}`;
 }
 
 async function generateInvoicesForAllTenants() {
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const year = now.getFullYear();
-  const invoicePeriod = new Date(year, currentMonth - 1, 1);
+  // Current date in EAT (Africa/Nairobi)
+
+
+
+
+// Current date in EAT (Africa/Nairobi)
+const now = moment.tz('Africa/Nairobi');
+
+const currentMonth = new Date().getMonth(); // 0-based for Date
+
+const year = now.year(); // 2025
+
+ const invoicePeriod = new Date(new Date().getFullYear(), currentMonth - 1, 1);
+
+
+console.log(`Invoice period: ${invoicePeriod}`);
+
+
+
+
+console.log(`Billing period: ${periodStart} to ${periodEnd}`);
+
+console.log(`Invoice period: ${invoicePeriod}`);
+
+// Define periodStart and periodEnd for checking existing invoices
+const periodStart = moment.tz(`${year}-${currentMonth}`, 'YYYY-M-DD', 'Africa/Nairobi')
+  .startOf('day')
+  .toDate();
+
+const periodEnd = moment.tz(`${year}-${currentMonth}`, 'YYYY-M-DD', 'Africa/Nairobi')
+  .startOf('day')
+  .add(1, 'month')
+  .toDate();
+
+console.log(`Billing period: ${periodStart} to ${periodEnd}`);
   const BATCH_SIZE = 100; // Process customers in batches
 
-  logger.info(`Starting invoice generation for ${currentMonth}/${year} at ${now.toISOString()}`);
+  //(`Starting invoice generation for ${currentMonth + 1}/${year} at ${now.toISOString()}`);
 
   try {
     console.time('Find Tenants');
@@ -40,7 +77,7 @@ async function generateInvoicesForAllTenants() {
       select: { id: true },
     });
     console.timeEnd('Find Tenants');
-    logger.info(`Found ${tenants.length} tenants.`);
+    //logger.info(`Found ${tenants.length} tenants.`);
 
     const results = {
       totalInvoices: 0,
@@ -51,7 +88,7 @@ async function generateInvoicesForAllTenants() {
     for (const tenant of tenants) {
       try {
         console.time(`Process Tenant ${tenant.id}`);
-        logger.info(`Processing tenant ${tenant.id}`);
+        //logger.info(`Processing tenant ${tenant.id}`);
 
         // Fetch active customers for the tenant in batches
         let skip = 0;
@@ -63,20 +100,22 @@ async function generateInvoicesForAllTenants() {
             where: {
               status: 'ACTIVE',
               tenantId: tenant.id,
-
             },
             take: BATCH_SIZE,
             skip,
           });
 
           if (customersBatch.length > 0) {
-            logger.info(`Processing ${customersBatch.length} customers for tenant ${tenant.id}`);
+           // logger.info(`Processing ${customersBatch.length} customers for tenant ${tenant.id}`);
 
             // Check for existing invoices to avoid duplicates
             const existingInvoices = await prisma.invoice.findMany({
               where: {
                 tenantId: tenant.id,
-                invoicePeriod: { equals: invoicePeriod },
+                invoicePeriod: {
+                  gte: periodStart,
+                  lt: periodEnd,
+                },
                 customerId: { in: customersBatch.map((c) => c.id) },
               },
               select: { customerId: true },
@@ -87,10 +126,10 @@ async function generateInvoicesForAllTenants() {
             const customersToProcess = customersBatch.filter((c) => !existingCustomerIds.has(c.id));
 
             if (customersToProcess.length > 0) {
-              const batchInvoices = await processCustomerBatchForAll(customersToProcess, currentMonth, year);
+              const batchInvoices = await processCustomerBatchForAll(customersToProcess, invoicePeriod);
               tenantInvoices += batchInvoices.length;
             } else {
-              logger.info(`No new customers to process for tenant ${tenant.id} (all have invoices for ${currentMonth}/${year}).`);
+              //logger.info(`No new customers to process for tenant ${tenant.id} (all have invoices for ${currentMonth + 1}/${year}).`);
             }
           }
 
@@ -111,8 +150,6 @@ async function generateInvoicesForAllTenants() {
       logger.warn(`Completed with partial success: ${results.totalInvoices} invoices generated, ${results.tenantsProcessed}/${tenants.length} tenants processed`, {
         errors: results.errors,
       });
-      // Optionally notify admins (e.g., via email or monitoring system)
-      // await notifyAdmins(results);
     } else {
       logger.info(`Successfully generated ${results.totalInvoices} invoices across ${results.tenantsProcessed} tenants`);
     }
@@ -124,11 +161,15 @@ async function generateInvoicesForAllTenants() {
   }
 }
 
-async function processCustomerBatchForAll(customers, currentMonth, year) {
+
+
+
+
+async function processCustomerBatchForAll(customers, invoicePeriod) {
   const invoices = [];
   const invoiceItems = [];
   const customerUpdates = [];
-  const invoicePeriod = new Date(year, currentMonth - 1, 1);
+  //const invoicePeriod = new Date(year, currentMonth - 1, 1);
 
   for (const customer of customers) {
     // Validate required fields
