@@ -29,6 +29,8 @@ const  tenantRoute = require('./routes/tenant/tenantRoute.js')
 
 const mpesaSettings = require('./routes/mpesa/mpesaConfig.js')
 
+const dropboxRoutes = require('./routes/dropboxCallback/callback.js')
+
 const taskRoute = require('./routes/tasks/tasks.js')
 const cookieParser = require('cookie-parser');
 const startInvoiceScheduler = require('./controller/jobs/invoicegen.js');
@@ -125,6 +127,23 @@ app.use('/api', tenantRoute);
 
 app.use('/api', taskRoute);
 app.use('/api', tenantStatus);
+
+app.use('/api', dropboxRoutes);
+
+
+app.get('/', (req, res) => {
+  const { code } = req.query;
+
+  if (!code) {
+    return res.send('No code found in query.');
+  }
+
+  res.send(`
+    <h2>✅ Dropbox Authorization Code</h2>
+    <p>Copy and paste this code into your terminal to exchange it for a refresh token:</p>
+    <code>${code}</code>
+  `);
+});
 
 
 startBackup();
