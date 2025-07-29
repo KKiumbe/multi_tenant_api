@@ -6,7 +6,8 @@ const { sendSMS } = require('../sms/sms');
 const prisma = new PrismaClient();
 
 function startInvoiceSMSScheduler() {
-  cron.schedule('0 20 28-31 * *', async () => {
+ cron.schedule('30 11 28-31 * *', async () => {
+
     const kenyaTime = moment().tz('Africa/Nairobi');
     const today = kenyaTime.date();
     const daysInMonth = kenyaTime.daysInMonth();
@@ -27,6 +28,8 @@ function startInvoiceSMSScheduler() {
           alternativePhoneNumber: true,
         },
       });
+
+      console.log(`this is the tenants ${JSON.stringify(tenants)}`);
 
       for (const tenant of tenants) {
         const recipient = tenant.phoneNumber || tenant.alternativePhoneNumber;
