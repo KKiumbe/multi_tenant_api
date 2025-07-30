@@ -37,7 +37,7 @@ async function sendInvoiceReminders() {
     const message = `Hello ${tenant.name}, this is a reminder that invoices will be auto-generated at midnight on the 1st. Please ensure customer balances are up to date. Also clear the Unrecepted payments`;
 
     try {
-        const sendSMS = require('../sms/sms.js');
+        const {sendSMS} = require('../sms/sms.js');
       const result = await sendSMS(tenant.id, recipient, message);
       console.log(`✅ SMS sent to ${recipient} for tenant ${tenant.name}: ${result[0]?.status}`);
     } catch (error) {
