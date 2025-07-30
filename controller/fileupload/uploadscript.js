@@ -91,6 +91,8 @@ const validateCustomerData = (data) => {
 
 
 
+
+
 const uploadCustomers = async (req, res) => {
   const { tenantId } = req.user;
   console.log('Tenant ID from authenticated user:', tenantId);
@@ -105,7 +107,7 @@ const uploadCustomers = async (req, res) => {
 
   const filePath = path.join(uploadsDir, req.file.filename);
   const customersToUpload = [];
-  const existingPhoneNumbers = new Set();
+  const existingPhoneNumbers = new Set(); // Tracks phone numbers in current upload
   const skippedDuplicates = [];
   const skippedMissingFields = [];
   const requiredFields = [
@@ -117,7 +119,7 @@ const uploadCustomers = async (req, res) => {
     'building',
     'closingBalance',
   ];
-  const BATCH_SIZE = 100; // Process 100 records per batch to avoid overload
+  const BATCH_SIZE = 100; // Process 100 records per batch
   let headersValidated = false;
   let headers = [];
 
@@ -128,7 +130,7 @@ const uploadCustomers = async (req, res) => {
     });
 
     if (!tenantExists) {
-      fs.unlinkSync(filePath); // Clean up file
+      fs.unlinkSync(filePath);
       return res.status(404).json({ message: 'Invalid tenant ID. Tenant does not exist.' });
     }
 
@@ -153,7 +155,6 @@ const uploadCustomers = async (req, res) => {
       .on('data', async (data) => {
         if (!headersValidated) return;
 
-        // Pause stream to process data
         stream.pause();
 
         // Validate required fields
@@ -204,14 +205,9 @@ const uploadCustomers = async (req, res) => {
           return;
         }
 
-        // Check for duplicate phone number in database
-        const existingCustomer = await prisma.customer.findUnique({
-          where: { phoneNumber: customer.phoneNumber },
-          select: { phoneNumber: true },
-        });
-
-        if (existingCustomer) {
-          console.warn(`Duplicate phone number found: ${customer.phoneNumber}. Skipping entry.`);
+        // Check for duplicate phone number in current upload
+        if (existingPhoneNumbers.has(customer.phoneNumber)) {
+          console.warn(`Duplicate phone number in CSV: ${customer.phoneNumber}. Skipping entry.`);
           skippedDuplicates.push({
             customer: customer.firstName,
             phoneNumber: customer.phoneNumber,
@@ -226,10 +222,39 @@ const uploadCustomers = async (req, res) => {
         // Process batch if size is reached
         if (customersToUpload.length >= BATCH_SIZE) {
           try {
-            await prisma.customer.createMany({ data: customersToUpload.splice(0, BATCH_SIZE) });
+            // Check for duplicates in database for the batch
+            const phoneNumbers = customersToUpload.map((c) => c.phoneNumber);
+            const existingCustomers = await prisma.customer.findMany({
+              where: { phoneNumber: { in: phoneNumbers } },
+              select: { phoneNumber: true },
+            });
+
+            const existingInDb = new Set(existingCustomers.map((c) => c.phoneNumber));
+            const filteredCustomers = customersToUpload.filter((c) => {
+              if (existingInDb.has(c.phoneNumber)) {
+                console.warn(`Duplicate phone number in database: ${c.phoneNumber}. Skipping entry.`);
+                skippedDuplicates.push({
+                  customer: c.firstName,
+                  phoneNumber: c.phoneNumber,
+                });
+                return false;
+              }
+              return true;
+            });
+
+            if (filteredCustomers.length > 0) {
+              await prisma.customer.createMany({ data: filteredCustomers, skipDuplicates: true });
+            }
+
+            customersToUpload.length = 0; // Clear the batch
           } catch (error) {
-            console.error('Error saving batch:', error);
-            skippedMissingFields.push({ error: `Failed to save batch: ${error.message}` });
+            if (error.code === 'P2002') {
+              console.warn('Unique constraint violation caught, skipping duplicates.');
+              skippedMissingFields.push({ error: 'Some records were skipped due to duplicate phone numbers.' });
+            } else {
+              console.error('Error saving batch:', error);
+              skippedMissingFields.push({ error: `Failed to save batch: ${error.message}` });
+            }
           }
         }
 
@@ -241,23 +266,56 @@ const uploadCustomers = async (req, res) => {
         try {
           // Save any remaining customers
           if (customersToUpload.length > 0) {
-            await prisma.customer.createMany({ data: customersToUpload });
+            // Check for duplicates in database for remaining records
+            const phoneNumbers = customersToUpload.map((c) => c.phoneNumber);
+            const existingCustomers = await prisma.customer.findMany({
+              where: { phoneNumber: { in: phoneNumbers } },
+              select: { phoneNumber: true },
+            });
+
+            const existingInDb = new Set(existingCustomers.map((c) => c.phoneNumber));
+            const filteredCustomers = customersToUpload.filter((c) => {
+              if (existingInDb.has(c.phoneNumber)) {
+                console.warn(`Duplicate phone number in database: ${c.phoneNumber}. Skipping entry.`);
+                skippedDuplicates.push({
+                  customer: c.firstName,
+                  phoneNumber: c.phoneNumber,
+                });
+                return false;
+              }
+              return true;
+            });
+
+            if (filteredCustomers.length > 0) {
+              await prisma.customer.createMany({ data: filteredCustomers, skipDuplicates: true });
+            }
           }
 
           res.status(200).json({
-            message: `${existingPhoneNumbers.size - skippedDuplicates.length} customers uploaded successfully`,
-            uploadedCount: existingPhoneNumbers.size - skippedDuplicates.length,
+            message: `${existingPhoneNumbers.size - skippedDuplicates.length - skippedMissingFields.length} customers uploaded successfully`,
+            uploadedCount: existingPhoneNumbers.size - skippedDuplicates.length - skippedMissingFields.length,
             skippedDuplicates,
             skippedMissingFields,
           });
         } catch (error) {
-          console.error('Error saving remaining customers:', error);
-          res.status(500).json({
-            message: 'Error saving customers',
-            error: error.message,
-            skippedDuplicates,
-            skippedMissingFields,
-          });
+          if (error.code === 'P2002') {
+            console.warn('Unique constraint violation caught, skipping duplicates.');
+            res.status(200).json({
+              message: `${existingPhoneNumbers.size - skippedDuplicates.length - skippedMissingFields.length} customers uploaded successfully`,
+              uploadedCount: existingPhoneNumbers.size - skippedDuplicates.length - skippedMissingFields.length,
+              skippedDuplicates,
+              skippedMissingFields,
+              warning: 'Some records were skipped due to duplicate phone numbers.',
+            });
+          } else {
+            console.error('Error saving remaining customers:', error);
+            res.status(500).json({
+              message: 'Error saving customers',
+              error: error.message,
+              skippedDuplicates,
+              skippedMissingFields,
+            });
+          }
         } finally {
           fs.unlinkSync(filePath);
         }
@@ -273,6 +331,8 @@ const uploadCustomers = async (req, res) => {
     res.status(500).json({ message: 'Error validating tenant or processing customers.', error: error.message });
   }
 };
+
+
 
 
 
