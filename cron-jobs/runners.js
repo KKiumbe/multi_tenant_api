@@ -36,7 +36,7 @@ cron.schedule('0 4 1 * *', async () => {
 );
 
 
-cron.schedule('0 9 28-31 * *', async () => {
+cron.schedule('0 11 28-31 * *', async () => {
   try {
      await sendInvoiceReminders();
 

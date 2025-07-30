@@ -45,7 +45,7 @@ const sendSmsBalanceAlerts = async () => {
 
       const message = `Hello ${config.tenant.name}, your SMS balance is very low. Please reach us on 0722230603 for a top up to ensure your customers get notifications.`;
 
-      const sendSMS= require('../sms/sms.js');
+      const {sendSMS}= require('../sms/sms.js');
       const result = await sendSMS(config.tenantId, phone, message);
       console.log(`✅ SMS alert sent to ${phone}: ${result[0]?.status || 'sent'}`);
     }
