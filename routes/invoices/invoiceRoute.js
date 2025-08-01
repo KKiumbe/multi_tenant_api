@@ -44,7 +44,7 @@ router.post('/invoices-generate-tenant',generateInvoicesPerTenant)
 
 
 router.post('/generate-invoices-for-all',verifyToken, checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
-  requireTenantStatus([TenantStatus.ACTIVE]),checkAccess('invoices', 'create'),generateInvoicesForAll)
+checkAccess('invoices', 'create'),generateInvoicesForAll)
 
 
 
