@@ -8,6 +8,7 @@ const verifyToken = require('../../middleware/verifyToken.js');
 const checkAccess = require('../../middleware/roleVerify.js');
 const { checkTenantStatus, requireTenantStatus } = require('../../middleware/requireTenantStatus.js');
 const { TenantStatus } = require('@prisma/client');
+const { deleteTodayInvoices } = require('../../controller/bill/massDelete.js');
 
 const router = express.Router();
 
@@ -49,6 +50,11 @@ router.post('/generate-invoices-for-all',verifyToken, checkTenantStatus,        
 
 // Route to cancel system-generated invoices for a specific customer and month
 router.patch('/invoices/cancel',verifyToken, checkAccess('invoices', 'update'),cancelSystemGenInvoices);
+
+//delete invoices  created today
+
+
+router.delete('/invoices/today', verifyToken, deleteTodayInvoices);
 
 
 module.exports = router;
