@@ -22,17 +22,21 @@ cron.schedule('0 2 * * *', () => {
 
 
 // 2:00 AM on the last day of every month
-cron.schedule('0 4 1 * *', async () => {
 
+
+cron.schedule(
+  '35 8 * * *',
+  async () => {
     try {
       await generateInvoicesForAllTenants();
       console.log('✅ Invoice generation completed successfully');
     } catch (error) {
       console.error('❌ Invoice generation failed:', error.message);
     }
+  },
+  {
+    timezone: 'Africa/Nairobi',
   }
-// }, {
-//   timezone: 'Africa/Nairobi',
 );
 
 
