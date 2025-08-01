@@ -51,7 +51,7 @@ console.log(`Invoice period: ${invoicePeriod}`);
 
 
 
-console.log(`Billing period: ${periodStart} to ${periodEnd}`);
+
 
 console.log(`Invoice period: ${invoicePeriod}`);
 
