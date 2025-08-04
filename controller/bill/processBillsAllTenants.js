@@ -39,7 +39,8 @@ async function generateInvoicesForAllTenants() {
 // Current date in EAT (Africa/Nairobi)
 const now = moment.tz('Africa/Nairobi');
 
-const currentMonth = new Date().getMonth(); // 0-based for Date
+  
+const currentMonth = new Date().getMonth() + 1;
 
 const year = now.year(); // 2025
 

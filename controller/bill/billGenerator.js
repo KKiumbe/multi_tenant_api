@@ -1023,6 +1023,73 @@ console.log(`this is userid ${JSON.stringify(req.user)}`);
 
 
 
+ async function cancelInvoicesByDate(req, res) {
+  const { date } = req.query;
+
+  if (!date || isNaN(Date.parse(date))) {
+    return res.status(400).json({ message: 'Valid ?date=YYYY-MM-DD is required' });
+  }
+
+  const startOfDay = new Date(`${date}T00:00:00.000Z`);
+  const endOfDay = new Date(startOfDay);
+  endOfDay.setUTCDate(startOfDay.getUTCDate() + 1); // Next day, exclusive
+
+  try {
+    const invoices = await prisma.invoice.findMany({
+      where: {
+        createdAt: {
+          gte: startOfDay,
+          lt: endOfDay,
+        },
+        status: {
+          in: ['UNPAID'],
+        },
+      },
+      include: {
+        customer: true,
+      },
+    });
+
+    if (invoices.length === 0) {
+      return res.status(404).json({ message: `No invoices found for ${date}` });
+    }
+
+    let cancelledCount = 0;
+
+    for (const invoice of invoices) {
+      try {
+        await prisma.invoice.update({
+          where: { id: invoice.id },
+          data: { status: 'CANCELLED' },
+        });
+
+        await prisma.customer.update({
+          where: { id: invoice.customerId },
+          data: {
+            closingBalance: {
+              decrement: invoice.invoiceAmount,
+            },
+          },
+        });
+
+        cancelledCount++;
+      } catch (err) {
+        console.error(`Failed to cancel invoice ${invoice.id}:`, err);
+      }
+    }
+
+    return res.status(200).json({
+      message: `Cancelled ${cancelledCount} invoice(s) created on ${date}`,
+    });
+  } catch (err) {
+    console.error('Error cancelling invoices:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+
 
 
 // Phone number sanitization function
@@ -1120,5 +1187,5 @@ module.exports = {
   getCurrentMonthBill,
   generateInvoicesByDay,
   generateInvoicesPerTenant,searchInvoices,
-  generateInvoicesForAll ,cancelCustomerInvoice
+  generateInvoicesForAll ,cancelCustomerInvoice, cancelInvoicesByDate
 };

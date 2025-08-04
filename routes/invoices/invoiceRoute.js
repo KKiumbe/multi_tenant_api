@@ -1,6 +1,6 @@
 const express = require('express');
 
-const { getAllInvoices, generateInvoices, cancelInvoiceById, createInvoice, getInvoiceDetails, generateInvoicesByDay, generateInvoicesPerTenant, searchInvoices, generateInvoicesForAll, cancelCustomerInvoice } = require('../../controller/bill/billGenerator.js');
+const { getAllInvoices, generateInvoices, cancelInvoiceById, createInvoice, getInvoiceDetails, generateInvoicesByDay, generateInvoicesPerTenant, searchInvoices, generateInvoicesForAll, cancelCustomerInvoice, cancelInvoicesByDate } = require('../../controller/bill/billGenerator.js');
 const { SearchInvoices, searchInvoicesByPhone, searchInvoicesByName } = require('../../controller/bill/searchInvoice.js');
 const { addSmsJob } = require('../../controller/bulkSMS/sendSMSJob.js');
 const { cancelSystemGenInvoices } = require('../../controller/bill/cancelJob.js');
@@ -55,6 +55,9 @@ router.patch('/invoices/cancel',verifyToken, checkAccess('invoices', 'update'),c
 
 
 router.delete('/invoices/today', verifyToken, deleteTodayInvoices);
+
+router.patch('/cancel-invoices-by-date', verifyToken, cancelInvoicesByDate );
+
 
 
 module.exports = router;
