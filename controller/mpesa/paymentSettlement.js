@@ -115,6 +115,8 @@ const { sendSMS } = require('../sms/sms.js');
             tenantId, // Associate payment with tenant
           },
         });
+
+  
         continue;
       }
 
@@ -145,6 +147,11 @@ const { sendSMS } = require('../sms/sms.js');
                         tenantId, // Associate payment with tenant
                     },
                 });
+
+            await prisma.mPESATransactions.update({
+               where: { id },
+              data: { processed: true },
+  });
                 continue;
             }
 

@@ -74,7 +74,7 @@ router.post('/callback', async (req, res) => {
   
 
     // Trigger invoice settlement process
-    await settleInvoice(); // Ensure settleInvoice is correctly implemented to process invoices
+   // await settleInvoice(); // Ensure settleInvoice is correctly implemented to process invoices
 
     // Respond with a success message
     res.status(200).json({ message: 'Payment processed successfully.' });

@@ -10,6 +10,7 @@ const {generateInvoicesForAllTenants} = require('../controller/bill/processBills
 const moment = require('moment-timezone');
 const { sendInvoiceReminders } = require('../controller/jobs/invoiceGenReminderSMS.js');
 const { sendSmsBalanceAlerts } = require('../controller/jobs/smsBalanceReminder.js');
+const { settleInvoice } = require('../controller/mpesa/paymentSettlement.js');
 
 cron.schedule('0 2 * * *', () => {
   console.log(`[ ⏰ Triggering backup task at: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' })}`);
@@ -57,7 +58,14 @@ cron.schedule('10 11 28-31 * *', async () => {
 
 
 
-
+cron.schedule('*/1 * * * *', async () => {
+  console.log(`[${new Date().toISOString()}] Running scheduled invoice settlement...`);
+  try {
+    await settleInvoice(); // this will process ALL unprocessed ones
+  } catch (err) {
+    console.error('Scheduled settleInvoice error:', err.message);
+  }
+});
 
 
 cron.schedule('0 0 * * 0', async () => {
