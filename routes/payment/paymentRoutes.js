@@ -1,5 +1,5 @@
 const express = require('express');
-const { fetchAllPayments, fetchPaymentById, fetchPaymentsByTransactionId, getAllPayments, searchPaymentsByName, searchPaymentsByPhone, getUnreceiptedPayments, searchTransactionById, filterPaymentsByMode } = require('../../controller/payments/getAllPayments.js');
+const { fetchAllPayments, fetchPaymentById, fetchPaymentsByTransactionId, getAllPayments, searchPaymentsByName, searchPaymentsByPhone, getUnreceiptedPayments, searchTransactionById, filterPaymentsByMode, removeOldUnreceiptedPayments } = require('../../controller/payments/getAllPayments.js');
 const verifyToken = require('../../middleware/verifyToken.js');
 const checkAccess = require('../../middleware/roleVerify.js');
 const { checkTenantStatus, requireTenantStatus } = require('../../middleware/requireTenantStatus.js');
@@ -18,5 +18,6 @@ router.get('/filterPaymentsByMode',verifyToken,checkTenantStatus,requireTenantSt
 router.get('/payments/:paymentId', verifyToken,checkTenantStatus,requireTenantStatus([TenantStatus.ACTIVE]),checkAccess('payments','read'), fetchPaymentById);
 router.get('/payments-search', verifyToken,checkTenantStatus,requireTenantStatus([TenantStatus.ACTIVE]), checkAccess('payments','read'), fetchPaymentsByTransactionId);
 
+router.delete('/payments/old-unreceipted', verifyToken, removeOldUnreceiptedPayments);
 
 module.exports = router;

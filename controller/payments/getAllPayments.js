@@ -384,6 +384,37 @@ const getUnreceiptedPayments = async (req, res) => {
   
 
 
+ const removeOldUnreceiptedPayments = async (req, res) => {
+  try {
+    const tenantId = req.user?.tenantId;
+    if (!tenantId) {
+      return res.status(400).json({ message: 'Tenant ID missing from user' });
+    }
+
+    // Start of the current month
+    const firstDayOfMonth = new Date();
+    firstDayOfMonth.setDate(1);
+    firstDayOfMonth.setHours(0, 0, 0, 0);
+
+    // Delete unrecepted payments older than this month
+    const result = await prisma.payment.deleteMany({
+      where: {
+        tenantId,
+        receipted: false,
+        createdAt: { lt: firstDayOfMonth },
+      },
+    });
+
+    res.json({
+      message: `Removed ${result.count} unrecepted payments older than current month.`,
+    });
+  } catch (error) {
+    console.error('Error removing old unrecepted payments:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+
 
 
 
@@ -394,5 +425,5 @@ module.exports = {
  
     fetchAllPayments, 
     fetchPaymentById, 
-    fetchPaymentsByTransactionId ,getAllPayments,searchPaymentsByPhone,searchPaymentsByName,getUnreceiptedPayments ,searchTransactionById ,filterPaymentsByMode
+    fetchPaymentsByTransactionId ,getAllPayments,searchPaymentsByPhone,searchPaymentsByName,getUnreceiptedPayments ,searchTransactionById ,filterPaymentsByMode,removeOldUnreceiptedPayments
 };
