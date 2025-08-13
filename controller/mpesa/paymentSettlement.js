@@ -32,7 +32,7 @@ async function generateUniqueReceiptNumber(paymentId) {
 
 async function settleInvoice() {
 
-const { sendSMS } = require('../sms/sms.js');
+//const { sendSMS } = require('../sms/sms.js');
 
     try {
         // Fetch unprocessed Mpesa transactions and include tenantId
@@ -151,9 +151,25 @@ const { sendSMS } = require('../sms/sms.js');
             await prisma.mPESATransactions.update({
                where: { id },
               data: { processed: true },
-  });
+            });
+
+
+
+            const {sendSMS} = require('../sms/sms.js');
+
+            const recipient = sanitizedBillRefNumber;
+            const message = `Hello ${FirstName}, your payment of Ksh ${paymentAmount} for garbage collection services has been not been processed because we do not have this phone number(${sanitizedBillRefNumber}) in our system. Please contact our customer care number to resolve this issue.`;
+
+             await sendSMS(tenantId, recipient, message);
+                
+
+
+
+  
                 continue;
             }
+
+          
 
             const payment = await prisma.payment.create({
                 data: {
@@ -229,6 +245,7 @@ const { sendSMS } = require('../sms/sms.js');
 
              
             try {
+                const {sendSMS} = require('../sms/sms.js');
                  await sendSMS(tenantId,customer.phoneNumber,message);
                 
             } catch (error) {
