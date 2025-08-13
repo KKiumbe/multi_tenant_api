@@ -69,6 +69,62 @@ const getDashboardStats = async (req, res) => {
   }
 };
 
+
+
+
+ const checkCustomersForAllTenants = async () => {
+  try {
+    // Get all tenants
+    const tenants = await prisma.tenant.findMany({
+      select: {
+        id: true,
+        name: true,
+        phoneNumber: true,
+        alternativePhoneNumber: true
+      },
+    });
+
+    for (const tenant of tenants) {
+      // Get all active customers for the tenant
+      const activeCustomers = await prisma.customer.findMany({
+        where: {
+          tenantId: tenant.id,
+          status: 'ACTIVE'
+        },
+        select: { closingBalance: true }
+      });
+
+      const totalCustomers = activeCustomers.length;
+      if (totalCustomers === 0) {
+        console.log(`Tenant ${tenant.name} has no active customers.`);
+        continue;
+      }
+
+      // Paid = closingBalance <= 0
+         const paidCustomers = activeCustomers.filter(
+        c => c.closingBalance <= 0
+      ).length;
+      const paidPercentage = ((paidCustomers / totalCustomers) * 100).toFixed(1);
+      const currentDay = new Date().getDate();
+
+      const message = `Dear ${tenant.name},${paidPercentage}% of customers have paid you as of ${currentDay}! You can nudge your customers to pay you by sending them reminders.Most people run out of money as the month progresses`;
+
+      console.log(`Tenant ${tenant.name}: ${message}`);
+
+     const {sendSMS} = require('../sms/sms.js');
+
+      await sendSMS(
+        tenant.id,
+        tenant.phoneNumber || tenant.alternativePhoneNumber,
+        message
+      );
+    }
+  } catch (error) {
+    console.error('Error checking customers for all tenants:', error);
+  }
+};
+
+
 module.exports = {
-  getDashboardStats,
+  getDashboardStats,checkCustomersForAllTenants
 };

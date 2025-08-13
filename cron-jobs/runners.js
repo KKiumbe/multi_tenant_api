@@ -12,6 +12,7 @@ const { sendInvoiceReminders } = require('../controller/jobs/invoiceGenReminderS
 const { sendSmsBalanceAlerts } = require('../controller/jobs/smsBalanceReminder.js');
 const { settleInvoice } = require('../controller/mpesa/paymentSettlement.js');
 const { notifyUnreceiptedPayments } = require('../controller/payments/getAllPayments.js');
+const { checkCustomersForAllTenants } = require('../controller/dashboadstats/dashboard.js');
 
 cron.schedule('0 2 * * *', () => {
   console.log(`[ ⏰ Triggering backup task at: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' })}`);
@@ -68,6 +69,24 @@ cron.schedule('20 15 * * 3', async () => {
 }, {
   timezone: 'Africa/Nairobi',
 });
+
+
+cron.schedule(
+  '0 11 * * 1', // Every Monday at 11:00 AM
+  async () => {
+    try {
+      await checkCustomersForAllTenants();
+      console.log('✅ SMS reminders sent to tenants');
+    } catch (error) {
+      console.error('❌ Error sending SMS reminders:', error.message);
+    }
+  },
+  {
+    timezone: 'Africa/Nairobi',
+  }
+);
+
+
 
 
 cron.schedule('*/1 * * * *', async () => {
