@@ -11,6 +11,7 @@ const moment = require('moment-timezone');
 const { sendInvoiceReminders } = require('../controller/jobs/invoiceGenReminderSMS.js');
 const { sendSmsBalanceAlerts } = require('../controller/jobs/smsBalanceReminder.js');
 const { settleInvoice } = require('../controller/mpesa/paymentSettlement.js');
+const { notifyUnreceiptedPayments } = require('../controller/payments/getAllPayments.js');
 
 cron.schedule('0 2 * * *', () => {
   console.log(`[ ⏰ Triggering backup task at: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' })}`);
@@ -56,6 +57,17 @@ cron.schedule('10 11 28-31 * *', async () => {
   });
 
 
+
+cron.schedule('20 15 * * 3', async () => {
+  try {
+    await notifyUnreceiptedPayments();
+    console.log(`sms reminders sent`);
+  } catch (error) {
+    console.error('error sending sms reminders,', error.message);
+  }
+}, {
+  timezone: 'Africa/Nairobi',
+});
 
 
 cron.schedule('*/1 * * * *', async () => {
