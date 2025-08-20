@@ -19,11 +19,11 @@ async function generateUniqueReceiptNumber(tenantId) {
   while (exists && attempts < maxAttempts) {
     const randomDigits = Math.floor(1000000 + Math.random() * 9000000);
     receiptNumber = `RCPT${randomDigits}-${tenantId}`;
-    console.time('checkReceiptNumber');
+   
     exists = await prisma.receipt.findUnique({
       where: { receiptNumber },
     }) !== null;
-    console.timeEnd('checkReceiptNumber');
+   
     attempts++;
   }
 
@@ -54,7 +54,7 @@ function sanitizePhoneNumber(phone) {
 
 // Process invoices and create a single receipt
 async function settlePaymentInvoices(paymentAmount, customerId, paymentId, tenantId, paidBy, modeOfPayment, tx) {
-  console.time('fetchInvoices');
+
   const invoices = await tx.invoice.findMany({
     where: {
       customerId,
@@ -63,18 +63,18 @@ async function settlePaymentInvoices(paymentAmount, customerId, paymentId, tenan
     },
     orderBy: { createdAt: 'asc' },
   });
-  console.timeEnd('fetchInvoices');
+ 
 
   let remainingAmount = parseFloat(paymentAmount);
   const receiptEntries = [];
   let totalPaidToInvoices = 0;
 
-  console.time('fetchCustomer');
+
   const customer = await tx.customer.findUnique({
     where: { id: customerId },
     select: { closingBalance: true, firstName: true, phoneNumber: true },
   });
-  console.timeEnd('fetchCustomer');
+
 
   if (!customer) {
     throw new Error('Customer not found');
@@ -88,7 +88,7 @@ async function settlePaymentInvoices(paymentAmount, customerId, paymentId, tenan
     const invoiceDueAmount = invoice.invoiceAmount - invoice.amountPaid;
     const paymentForInvoice = Math.min(remainingAmount, invoiceDueAmount);
 
-    console.time('updateInvoice');
+   
     const updatedInvoice = await tx.invoice.update({
       where: { id: invoice.id },
       data: {
@@ -97,7 +97,7 @@ async function settlePaymentInvoices(paymentAmount, customerId, paymentId, tenan
         //closingBalance: invoice.closingBalance - paymentForInvoice,
       },
     });
-    console.timeEnd('updateInvoice');
+   
 
     receiptEntries.push({
       invoiceId: updatedInvoice.id,
@@ -110,18 +110,17 @@ async function settlePaymentInvoices(paymentAmount, customerId, paymentId, tenan
 
   const newClosingBalance = currentBalance - paymentAmount;
 
-  console.time('updateCustomer');
+
   await tx.customer.update({
     where: { id: customerId },
     data: { closingBalance: newClosingBalance },
   });
-  console.timeEnd('updateCustomer');
+ 
 
-  console.time('generateReceiptNumber');
+
   const receiptNumber = await generateUniqueReceiptNumber(tenantId);
-  console.timeEnd('generateReceiptNumber');
+ 
 
-  console.time('createReceipt');
   const receipt = await tx.receipt.create({
     data: {
       amount: paymentAmount,
@@ -141,14 +140,12 @@ async function settlePaymentInvoices(paymentAmount, customerId, paymentId, tenan
       tenantId,
     },
   });
-  console.timeEnd('createReceipt');
 
-  console.time('updatePaymentReceiptId');
   await tx.payment.update({
     where: { id: paymentId },
     data: { receiptId: receipt.id },
   });
-  console.timeEnd('updatePaymentReceiptId');
+ 
 
   const receipts = [
     {
@@ -192,12 +189,12 @@ const manualCashPayment = async (req, res) => {
 
   try {
     // Validate customer
-    console.time('checkCustomer');
+  
     const customerCheck = await prisma.customer.findUnique({
       where: { id: customerId, tenantId },
       select: { phoneNumber: true, firstName: true, closingBalance: true },
     });
-    console.timeEnd('checkCustomer');
+   
 
     if (!customerCheck) {
       return res.status(404).json({ message: 'Customer not found.' });
@@ -206,11 +203,11 @@ const manualCashPayment = async (req, res) => {
     // Fetch paybill and tenant details
     let paybill, customerCarePhoneNumber;
     try {
-      console.time('fetchPaybillAndTenant');
+    
       paybill = await getShortCode(tenantId);
       const tenant = await fetchTenant(tenantId);
       customerCarePhoneNumber = tenant.phoneNumber;
-      console.timeEnd('fetchPaybillAndTenant');
+     
     } catch (error) {
       console.error('Error fetching paybill or tenant details:', error);
       return res.status(500).json({ message: 'Failed to fetch tenant details for SMS notification.' });
@@ -221,7 +218,7 @@ const manualCashPayment = async (req, res) => {
     const result = await prisma.$transaction(
       async (tx) => {
         // Create new payment
-        console.time('createPayment');
+       
         const newPayment = await tx.payment.create({
           data: {
             amount: paymentAmount,
@@ -233,20 +230,19 @@ const manualCashPayment = async (req, res) => {
             createdAt: new Date(),
           },
         });
-        console.timeEnd('createPayment');
+      
 
-        // Verify payment exists
-        console.time('verifyPayment');
+   
         const paymentCheck = await tx.payment.findUnique({
           where: { id: newPayment.id },
         });
-        console.timeEnd('verifyPayment');
+      
 
         if (!paymentCheck) {
           throw new Error('Failed to create payment record.');
         }
 
-        console.log('Created Payment ID:', newPayment.id);
+    
 
         // Process invoices and create receipt
         const { receipts, newClosingBalance, remainingAmount, customer } = await settlePaymentInvoices(
@@ -260,7 +256,7 @@ const manualCashPayment = async (req, res) => {
         );
 
         // Log user activity
-        console.time('createUserActivity');
+      
         await tx.userActivity.create({
           data: {
             userId,
@@ -285,7 +281,7 @@ const manualCashPayment = async (req, res) => {
             },
           },
         });
-        console.timeEnd('createUserActivity');
+      
 
         return { updatedPayment: newPayment, receipts, newClosingBalance, remainingAmount, customer };
       },
@@ -302,10 +298,10 @@ const manualCashPayment = async (req, res) => {
     const text = `Dear ${result.customer.firstName}, payment of KES ${paymentAmount} received successfully. ` +
       `Your balance is ${balanceMessage}. To serve you better, use our paybill number ${paybill} acc number, your phone number;${result?.customer?.phoneNumber}. Inquiries? ${customerCarePhoneNumber}`;
 
-    console.time('sendSMS');
+   
     const sanitizedPhone = sanitizePhoneNumber(result.customer.phoneNumber);
     await sendSMS(tenantId, sanitizedPhone, text);
-    console.timeEnd('sendSMS');
+  
 
     res.status(201).json({
       message: 'Payment and receipt created successfully, SMS notification sent.',

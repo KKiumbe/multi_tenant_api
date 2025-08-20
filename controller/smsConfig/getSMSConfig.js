@@ -14,7 +14,7 @@ const getSMSConfigForTenant = async (tenantId) => {
     throw new Error(`SMS configuration not found for tenant ID: ${tenantId}`);
   }
 
-  console.log(`this is the ${JSON.stringify(smsConfig)}`);
+  //console.log(`this is the ${JSON.stringify(smsConfig)}`);
 
   return {
     partnerID: smsConfig.partnerId,
