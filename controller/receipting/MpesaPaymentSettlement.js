@@ -19,11 +19,11 @@ async function generateReceiptNumber(tenantId) {
   while (exists && attempts < maxAttempts) {
     const randomDigits = Math.floor(1000000 + Math.random() * 9000000);
     receiptNumber = `RCPT${randomDigits}-${tenantId}`;
-    console.time('checkReceiptNumber');
+   
     exists = await prisma.receipt.findUnique({
       where: { receiptNumber },
     }) !== null;
-    console.timeEnd('checkReceiptNumber');
+   
     attempts++;
   }
 
@@ -77,13 +77,12 @@ const MpesaPaymentSettlement = async (req, res) => {
       return res.status(404).json({ message: 'Payment not found.' });
     }
     const incomingRef = payment.ref?.trim();
-    console.log(`this is the payment ref ${JSON.stringify(payment)}`);
-    console.time('checkCustomer');
+   
     const customer = await prisma.customer.findUnique({
       where: { id: customerId },
       select: { id: true, closingBalance: true, phoneNumber: true, firstName: true, tenantId: true },
     });
-    console.timeEnd('checkCustomer');
+   
 
     if (!customer || customer.tenantId !== tenantId) {
       return res.status(404).json({ message: 'Customer not found or does not belong to this tenant.' });
@@ -103,11 +102,11 @@ const MpesaPaymentSettlement = async (req, res) => {
     // Fetch paybill and tenant details
     let paybill, customerCarePhoneNumber;
     try {
-      console.time('fetchPaybillAndTenant');
+   
       paybill = await getShortCode(tenantId);
       const tenant = await fetchTenant(tenantId);
       customerCarePhoneNumber = tenant.phoneNumber;
-      console.timeEnd('fetchPaybillAndTenant');
+     
     } catch (error) {
       console.error('Error fetching paybill or tenant details:', error);
       return res.status(500).json({ message: 'Failed to fetch tenant details for SMS notification.' });
@@ -124,7 +123,7 @@ const MpesaPaymentSettlement = async (req, res) => {
 
   const mobileRegex = /^0(?:7|1)\d{8}$/;
   if (mobileRegex.test(normalized)) {
-    console.time('saveRef');
+  
 
     const existing = await tx.customer.findUnique({
       where: { id: customerId },
@@ -139,7 +138,6 @@ const MpesaPaymentSettlement = async (req, res) => {
       });
     }
 
-    console.timeEnd('saveRef');
   } else {
     console.log(
       `Ref "${incomingRef}" is not a valid mobile number (must be 10 digits starting with 07 or 01, or 2547…/2541…), skipping save.`
@@ -151,15 +149,14 @@ const MpesaPaymentSettlement = async (req, res) => {
 
 
         // Mark payment as receipted
-        console.time('updatePayment');
+      
         await tx.payment.update({
           where: { id: paymentId },
           data: { receipted: true },
         });
-        console.timeEnd('updatePayment');
+      
 
-        // Get unpaid or partially paid invoices
-        console.time('fetchInvoices');
+     
         const invoices = await tx.invoice.findMany({
           where: {
             customerId,
@@ -168,7 +165,7 @@ const MpesaPaymentSettlement = async (req, res) => {
           },
           orderBy: { createdAt: 'asc' },
         });
-        console.timeEnd('fetchInvoices');
+     
 
         let remainingAmount = parseFloat(totalAmount);
         const receiptEntries = [];
@@ -185,7 +182,7 @@ const MpesaPaymentSettlement = async (req, res) => {
           const newStatus = newAmountPaid >= invoice.invoiceAmount ? 'PAID' : 'PPAID';
           const newInvoiceClosingBalance = invoice.closingBalance - paymentForInvoice;
 
-          console.time('updateInvoice');
+         
           const updatedInvoice = await tx.invoice.update({
             where: { id: invoice.id },
             data: {
@@ -194,7 +191,7 @@ const MpesaPaymentSettlement = async (req, res) => {
               //closingBalance: newInvoiceClosingBalance,
             },
           });
-          console.timeEnd('updateInvoice');
+        
 
           updatedInvoices.push(updatedInvoice);
           receiptEntries.push({
@@ -208,19 +205,16 @@ const MpesaPaymentSettlement = async (req, res) => {
         // Calculate new customer closing balance
         const finalClosingBalance = customer.closingBalance - totalAmount;
 
-        console.time('updateCustomer');
+     
         await tx.customer.update({
           where: { id: customerId },
           data: { closingBalance: finalClosingBalance },
         });
-        console.timeEnd('updateCustomer');
+      
 
-        // Create single receipt
-        console.time('generateReceiptNumber');
+    
         const receiptNumber = await generateReceiptNumber(tenantId);
-        console.timeEnd('generateReceiptNumber');
 
-        console.time('createReceipt');
         const receipt = await tx.receipt.create({
           data: {
             customerId,
@@ -241,18 +235,12 @@ const MpesaPaymentSettlement = async (req, res) => {
             },
           },
         });
-        console.timeEnd('createReceipt');
 
-        // Update payment with receiptId
-        console.time('updatePaymentReceiptId');
         await tx.payment.update({
           where: { id: paymentId },
           data: { receiptId: receipt.id },
         });
-        console.timeEnd('updatePaymentReceiptId');
 
-        // Log user activity
-        console.time('createUserActivity');
         await tx.userActivity.create({
           data: {
             userId,
@@ -277,7 +265,7 @@ const MpesaPaymentSettlement = async (req, res) => {
             },
           },
         });
-        console.timeEnd('createUserActivity');
+  
 
         return {
           receipt,
@@ -299,9 +287,8 @@ const MpesaPaymentSettlement = async (req, res) => {
         : `Your closing balance is KES ${result.newClosingBalance}`;
     const message = `Dear ${customer.firstName}, payment of KES ${totalAmount} for garbage collection services received successfully. ${balanceMessage}. Always use paybill no: ${paybill}, acc no: your phone number; ${customer.phoneNumber}, inquiries? ${customerCarePhoneNumber} Thank you!`;
 
-    console.time('sendSMS');
     await sendSMS(tenantId, customer.phoneNumber, message);
-    console.timeEnd('sendSMS');
+
 
     res.status(201).json({
       message: 'Payment processed successfully, SMS notification sent.',
