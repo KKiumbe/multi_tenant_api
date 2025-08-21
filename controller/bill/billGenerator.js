@@ -604,7 +604,7 @@ async function createInvoice(req, res) {
     } else if (newClosingBalance === 0) {
       invoiceStatus = 'PAID';
     } else if (newClosingBalance > 0 && newClosingBalance < invoiceAmount) {
-      invoiceStatus = 'PARTIALLY_PAID'; // Updated from 'PPAID' for consistency
+      invoiceStatus = 'PPAID'; // Updated from 'PPAID' for consistency
     } else {
       invoiceStatus = 'UNPAID';
     }
