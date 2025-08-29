@@ -368,7 +368,7 @@ async function getCustomersWithArrearsReport(req, res) {
     );
     doc.moveDown(1);
 
-    const columnWidths = [120, 70, 50, 100, 70, 70];
+    const columnWidths = [150, 70, 40, 90, 60, 70];
     const startX = 50;
 
     // Check if report is empty
