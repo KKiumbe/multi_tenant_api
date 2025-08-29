@@ -413,7 +413,7 @@ async function getCustomersWithArrearsReport(req, res) {
           );
           rowY = doc.y + 30;
         }
-        doc.font('Helvetica-Bold').fontSize(12).text(
+        doc.font('Helvetica-Bold').fontSize(8).text(
           `Customers with ${group} Unpaid ${group === '6+' ? 'or More ' : ''}Months`,
           startX,
           rowY
