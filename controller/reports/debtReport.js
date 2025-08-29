@@ -328,16 +328,24 @@ async function getCustomersWithArrearsReport(req, res) {
     res.setHeader('Content-Disposition', `attachment; filename="arrears-report_${tenantId}.pdf"`);
     doc.pipe(res);
 
-    // PDF Header
+
     function generatePDFHeader(doc, tenant) {
       doc.fontSize(16).font('Helvetica-Bold').text(`${tenant.name} - Customers with Arrears Report`, { align: 'center' });
       if (tenant.logoUrl) {
-        doc.image(tenant.logoUrl, 50, 50, { width: 100 }).catch((err) => {
-          console.error('Error adding logo to PDF:', err.message);
-        });
+        // Check if the logo file exists before attempting to include it
+        try {
+          fs.accessSync(tenant.logoUrl, fs.constants.F_OK);
+          doc.image(tenant.logoUrl, 50, 50, { width: 100 }).catch((err) => {
+            console.error('Error adding logo to PDF:', err.message);
+          });
+        } catch (err) {
+          console.warn(`Logo file not found at ${tenant.logoUrl}, skipping image.`);
+        }
       }
       doc.moveDown(2);
     }
+
+
 
     // Draw Table Row
     function drawTableRow(doc, y, values, columnWidths, startX, isHeader = false, isBold = false) {
