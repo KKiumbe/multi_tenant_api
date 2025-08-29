@@ -3,10 +3,12 @@ const PDFDocument = require('pdfkit');
 const prisma = new PrismaClient();
 const fs = require('fs');
 const path = require('path');
-const { fetchTenant } = require('../tenants/tenantupdate');
-const { generatePDFHeader } = require('./header');
+const { fetchTenant } = require('../tenants/tenantupdate.js');
+const { generatePDFHeader } = require('./header.js');
 const fsPromises = require('fs').promises;
 
+
+const { join } = require('path');
 
 
 
@@ -53,7 +55,6 @@ async function getCustomersWithHighDebt(req, res) {
     await fsPromises.mkdir(reportsDir, { recursive: true });
 
     const filePath = path.join(reportsDir, 'highdebtcustomersreport.pdf');
-    console.log('File Path:', filePath);
 
     const doc = new PDFDocument({ margin: 50 });
     res.setHeader('Content-Type', 'application/pdf');
@@ -174,7 +175,6 @@ async function getCustomersWithLowBalance(req, res) {
     await fsPromises.mkdir(reportsDir, { recursive: true });
 
     const filePath = path.join(reportsDir, 'lowbalancecustomersreport.pdf');
-    console.log('File Path:', filePath);
 
     const doc = new PDFDocument({ margin: 50 });
     res.setHeader('Content-Type', 'application/pdf');
@@ -247,8 +247,225 @@ async function getCustomersWithLowBalance(req, res) {
 
 
 
+
+
+async function getCustomersWithArrearsReport(req, res) {
+  const tenantId = req.user?.tenantId;
+
+  if (!tenantId) {
+    return res.status(401).json({ message: 'Tenant not identified.' });
+  }
+
+  try {
+
+    // Fetch tenant details
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true, name: true, logoUrl: true },
+    });
+
+    if (!tenant) {
+      return res.status(404).json({ message: 'Tenant details not found.' });
+    }
+
+    // Fetch customers with any unpaid invoices
+    const customers = await prisma.customer.findMany({
+      where: {
+        tenantId,
+        status: 'ACTIVE',
+        invoices: {
+          some: {
+            status: 'UNPAID',
+          },
+        },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        phoneNumber: true,
+        estateName: true,
+        houseNumber: true,
+        closingBalance: true,
+        _count: {
+          select: {
+            invoices: {
+              where: {
+                status: 'UNPAID',
+              },
+            },
+          },
+        },
+      },
+      orderBy: [
+        {
+          invoices: {
+            _count: 'desc',
+          },
+        },
+        { lastName: 'asc' },
+      ],
+    });
+
+    // Group customers by number of unpaid invoices
+    const groupedCustomers = {
+      '6+': customers.filter(customer => customer._count.invoices >= 6),
+      '5': customers.filter(customer => customer._count.invoices === 5),
+      '4': customers.filter(customer => customer._count.invoices === 4),
+      '3': customers.filter(customer => customer._count.invoices === 3),
+      '2': customers.filter(customer => customer._count.invoices === 2),
+      '1': customers.filter(customer => customer._count.invoices === 1),
+    };
+
+
+    // Generate PDF
+    const reportsDir = join(__dirname, '..', 'reports');
+    await fsPromises.mkdir(reportsDir, { recursive: true });
+    const filePath = join(reportsDir, `arrears-report_${tenantId}_${new Date().toISOString().slice(0, 10)}.pdf`);
+
+    const doc = new PDFDocument({ margin: 50 });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="arrears-report_${tenantId}.pdf"`);
+    doc.pipe(res);
+
+    // PDF Header
+    function generatePDFHeader(doc, tenant) {
+      doc.fontSize(16).font('Helvetica-Bold').text(`${tenant.name} - Customers with Arrears Report`, { align: 'center' });
+      if (tenant.logoUrl) {
+        doc.image(tenant.logoUrl, 50, 50, { width: 100 }).catch((err) => {
+          console.error('Error adding logo to PDF:', err.message);
+        });
+      }
+      doc.moveDown(2);
+    }
+
+    // Draw Table Row
+    function drawTableRow(doc, y, values, columnWidths, startX, isHeader = false, isBold = false) {
+      doc.font(isHeader || isBold ? 'Helvetica-Bold' : 'Helvetica').fontSize(10);
+      values.forEach((value, i) => {
+        doc.text(value || '-', startX + columnWidths.slice(0, i).reduce((a, b) => a + b, 0), y, {
+          width: columnWidths[i],
+          align: i === 0 ? 'left' : 'left',
+        });
+      });
+      if (isHeader) {
+        doc.moveTo(startX, y + 25).lineTo(startX + columnWidths.reduce((a, b) => a + b, 0), y + 25).stroke();
+      }
+    }
+
+    generatePDFHeader(doc, tenant);
+    doc.font('Helvetica').fontSize(12).text(
+      `Customers with Arrears Report - ${new Date().toISOString().slice(0, 10)}`,
+      { align: 'center' }
+    );
+    doc.moveDown(1);
+
+    const columnWidths = [120, 70, 50, 100, 70, 70];
+    const startX = 50;
+
+    // Check if report is empty
+    if (customers.length === 0) {
+      doc.font('Helvetica').fontSize(10).text(
+        'No customers with unpaid invoices found.',
+        startX,
+        doc.y,
+        { align: 'center' }
+      );
+      doc.end();
+      return;
+    }
+
+    // Draw table header
+    drawTableRow(
+      doc,
+      doc.y,
+      ['Customer Name', 'EstateName', 'House Number', 'Phone Number', 'Unpaid Months', 'Arrears'],
+      columnWidths,
+      startX,
+      true
+    );
+    let rowY = doc.y + 30;
+
+    // Iterate through groups in order: 6+, 5, 4, 3, 2, 1
+    const groups = ['6+', '5', '4', '3', '2', '1'];
+    for (const group of groups) {
+      const groupCustomers = groupedCustomers[group];
+      if (groupCustomers.length > 0) {
+        // Add group header
+        if (rowY > 700) {
+          doc.addPage();
+          rowY = 50;
+          drawTableRow(
+            doc,
+            doc.y,
+            ['Customer Name', 'Estate Name', 'House Number', 'Phone Number', 'Unpaid Months', 'Total Arrears'],
+            columnWidths,
+            startX,
+            true
+          );
+          rowY = doc.y + 30;
+        }
+        doc.font('Helvetica-Bold').fontSize(12).text(
+          `Customers with ${group} Unpaid ${group === '6+' ? 'or More ' : ''}Months`,
+          startX,
+          rowY
+        );
+        rowY += 20;
+
+        // Draw customers in the group
+        for (const customer of groupCustomers) {
+          if (rowY > 700) {
+            doc.addPage();
+            rowY = 50;
+            drawTableRow(
+              doc,
+              doc.y,
+              ['Customer Name', 'Estate Name', 'House Number', 'Phone Number', 'Unpaid Months', 'Total Arrears'],
+              columnWidths,
+              startX,
+              true
+            );
+            rowY = doc.y + 30;
+          }
+          const customerName = `${customer.firstName} ${customer.lastName}`.trim();
+          drawTableRow(
+            doc,
+            rowY,
+            [
+              customerName,
+              customer.estateName || '-',
+              customer.houseNumber || '-',
+              customer.phoneNumber || '-',
+              customer._count.invoices.toString(),
+              `KES ${customer.closingBalance.toFixed(2)}`,
+            ],
+            columnWidths,
+            startX
+          );
+          rowY += 20;
+        }
+        rowY += 10; // Add spacing between groups
+      }
+    }
+
+    // Footer
+    doc.fontSize(8).text(`Generated on ${new Date().toISOString().slice(0, 10)}`, startX, 750, { align: 'center' });
+
+    doc.end();
+  } catch (error) {
+    console.error('Error generating customers with arrears report:', error);
+    res.status(500).json({ error: 'Error generating report', details: error.message });
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+
+
+
+
 module.exports = {
   getCustomersWithHighDebt,
-  getCustomersWithLowBalance,
+  getCustomersWithLowBalance,getCustomersWithArrearsReport
   
 };

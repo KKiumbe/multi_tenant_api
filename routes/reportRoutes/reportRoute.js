@@ -2,7 +2,7 @@
 const express = require('express');
 const { getAllActiveCustomersReport, generateGarbageCollectionReport } = require('../../controller/reports/allCustomers.js');
 const { downloadInvoice } = require('../../controller/reports/invoicePDFGen.js');
-const {getCurrentCustomersDebt, getCustomersWithHighDebt, getCustomersWithLowBalance} = require('../../controller/reports/debtReport.js');
+const {getCurrentCustomersDebt, getCustomersWithHighDebt, getCustomersWithLowBalance, getCustomersWithArrearsReport} = require('../../controller/reports/debtReport.js');
 const verifyToken = require('../../middleware/verifyToken.js');
 const checkAccess = require('../../middleware/roleVerify.js');
 const { generateAgeAnalysisReport } = require('../../controller/reports/ageAnalysisReport.js');
@@ -33,10 +33,11 @@ router.get('/reports/customers-debt-high',verifyToken,checkTenantStatus,        
   requireTenantStatus([TenantStatus.ACTIVE]), checkAccess("invoices", "read"), getCustomersWithHighDebt);
 router.get('/reports/customers-debt-low',verifyToken,checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
   requireTenantStatus([TenantStatus.ACTIVE]), checkAccess("invoices", "read"), getCustomersWithLowBalance);
+ router.post('/reports/customer-with-balance', verifyToken, checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
+  requireTenantStatus([TenantStatus.ACTIVE]), checkAccess("invoices", "read"), getCustomersWithArrearsReport)
 
 
-
-router.get('/download-invoice/:invoiceId',verifyToken,checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
+router.get('/download-invoice/:invoiceId',verifyToken,  checkTenantStatus,                          // 2️⃣ loads req.tenantStatus from DB
   requireTenantStatus([TenantStatus.ACTIVE]), checkAccess("invoices", "read"), downloadInvoice); 
 
 
