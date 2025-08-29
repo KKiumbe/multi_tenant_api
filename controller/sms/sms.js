@@ -1233,6 +1233,7 @@ const sendSms = async (tenantId, messages) => {
 
 
 
+
 const sendCustomersAboveBalance = async (req, res) => {
   try {
     const { tenantId } = req.user;
@@ -1246,17 +1247,9 @@ const sendCustomersAboveBalance = async (req, res) => {
       throw new Error('A valid balance amount is required');
     }
 
-    // Check SMS configuration
-    const smsConfig = await prisma.sMSConfig.findUnique({
-      where: { tenantId },
-    });
-    if (!smsConfig) {
-      throw new Error('Missing SMS configuration for tenant.');
-    }
-
-    // Get paybill and customer care number
+    // Fetch SMS config + paybill
+    const { customerSupportPhoneNumber: customerSupport } = await getSMSConfigForTenant(tenantId);
     const paybill = await getShortCode(tenantId);
-    const { phoneNumber: customerCarePhoneNumber } = await fetchTenant(tenantId);
 
     // Fetch active customers
     const activeCustomers = await prisma.customer.findMany({
@@ -1267,24 +1260,23 @@ const sendCustomersAboveBalance = async (req, res) => {
         firstName: true,
         closingBalance: true,
         monthlyCharge: true,
-       customerType: true,
+        customerType: true,
       },
     });
 
     // Validate customerType
-    const validCustomerTypes = [CustomerType.POSTPAID , CustomerType.PREPAID];
+    const validCustomerTypes = ['PREPAID', 'POSTPAID'];
     const invalidCustomers = activeCustomers.filter(
       (customer) => !validCustomerTypes.includes(customer.customerType)
     );
     if (invalidCustomers.length > 0) {
       return res.status(400).json({
-        success: false,
         error: `Invalid customerType for some customers. Must be one of: ${validCustomerTypes.join(', ')}.`,
         invalidCustomerIds: invalidCustomers.map((c) => c.id),
       });
     }
 
-    // Filter customers with closingBalance > balance
+    // Filter customers above balance threshold
     const customersAboveBalance = activeCustomers.filter(
       (customer) => customer.closingBalance > balance
     );
@@ -1298,40 +1290,38 @@ const sendCustomersAboveBalance = async (req, res) => {
 
     // Prepare SMS messages
     const messages = customersAboveBalance.map((customer) => {
-      // Get billing month in Kenyan time (Africa/Nairobi)
-      const currentDate = new Date().toLocaleString('en-US', {
-        timeZone: 'Africa/Nairobi',
-      });
-      const billingDate = customer.customerType === CustomerType.POSTPAID
+      const currentDate = new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' });
+      const billingDate = customer.customerType === 'POSTPAID'
         ? new Date(new Date(currentDate).getFullYear(), new Date(currentDate).getMonth() - 1)
         : new Date(currentDate);
+
       const nameOfMonth = billingDate.toLocaleString('en-US', {
         month: 'long',
         timeZone: 'Africa/Nairobi',
       });
 
-      // Calculate arrears and total balance
       const monthBill = customer.monthlyCharge;
       const isOverpayment = customer.closingBalance < 0;
       const isBalanceEqualToBill = customer.closingBalance === monthBill;
+
       const previousArrears = isOverpayment || isBalanceEqualToBill
         ? 0
         : customer.closingBalance > monthBill
-        ? customer.closingBalance - monthBill
-        : 0;
+          ? customer.closingBalance - monthBill
+          : 0;
+
       const totalBalance = customer.closingBalance;
 
-      // Format balance and arrears
       const balanceText = isOverpayment
         ? `overpayment of KES ${Math.abs(totalBalance)}`
         : `KES ${totalBalance}`;
+
       const arrearsText = previousArrears > 0 ? `, previous arrears KES ${previousArrears}` : '';
 
-      // Construct SMS message
       const message =
         `Dear ${customer.firstName}, your ${nameOfMonth} bill is KES ${monthBill}${arrearsText}, ` +
-        `total balance ${balanceText}. Pay via ${paybill}, acct: ${customer.phoneNumber}. ` +
-        `Inquiries? ${customerCarePhoneNumber}.`;
+        `and ${balanceText}. Paybill: ${paybill}, acct: ${customer.phoneNumber}. ` +
+        `Inquiries? ${customerSupport}`;
 
       return {
         mobile: sanitizePhoneNumber(customer.phoneNumber),
@@ -1344,7 +1334,7 @@ const sendCustomersAboveBalance = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `SMS sent to ${customersAboveBalance.length} customers with balance above ${balance} successfully.`,
+      message: `SMS sent to ${customersAboveBalance.length} customers with balance above ${balance}.`,
       count: customersAboveBalance.length,
       smsResponses,
     });
@@ -1357,6 +1347,8 @@ const sendCustomersAboveBalance = async (req, res) => {
     });
   }
 };
+
+
 
   const sendHighBalanceCustomers = async (req, res) => {
   try {
@@ -1681,11 +1673,14 @@ const sendLowBalanceCustomers = async (req, res) => {
         ? customer.closingBalance - monthBill
         : 0;
       const totalBalance = customer.closingBalance;
+      const arreas = customer.closingBalance - monthBill
+
+    
 
       // Format balance and arrears
       const balanceText = isOverpayment
         ? `overpayment of KES ${Math.abs(totalBalance)}`
-        : `KES ${totalBalance}`;
+        : `${arreas>0}`;
       const arrearsText = previousArrears > 0 ? `, previous arrears KES ${previousArrears}` : '';
 
       // Construct SMS message

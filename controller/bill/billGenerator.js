@@ -1187,5 +1187,5 @@ module.exports = {
   getCurrentMonthBill,
   generateInvoicesByDay,
   generateInvoicesPerTenant,searchInvoices,
-  generateInvoicesForAll ,cancelCustomerInvoice, cancelInvoicesByDate
+  generateInvoicesForAll ,cancelCustomerInvoice, cancelInvoicesByDate, processCustomerBatchForAll
 };

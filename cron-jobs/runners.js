@@ -28,7 +28,7 @@ cron.schedule('0 2 * * *', () => {
 
 
 cron.schedule(
-  '39 8 * * *',
+   '0 5 1 * *',
   async () => {
     try {
       await generateInvoicesForAllTenants();
