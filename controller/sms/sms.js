@@ -1319,9 +1319,9 @@ const sendCustomersAboveBalance = async (req, res) => {
       const arrearsText = previousArrears > 0 ? `, previous arrears KES ${previousArrears}` : '';
 
       const message =
-        `Dear ${customer.firstName}, your ${nameOfMonth} bill is KES ${monthBill}${arrearsText}, ` +
-        `and ${balanceText}. Paybill: ${paybill}, acct: ${customer.phoneNumber}. ` +
-        `Inquiries? ${customerSupport}`;
+        `Dear ${customer.firstName},your ${nameOfMonth} bill is KES ${monthBill}${arrearsText}, ` +
+        `total balance ${balanceText}.Paybill: ${paybill},acct: ${customer.phoneNumber}. ` +
+        `Inquiries?${customerSupport}`;
 
       return {
         mobile: sanitizePhoneNumber(customer.phoneNumber),
