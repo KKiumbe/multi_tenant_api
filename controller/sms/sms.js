@@ -414,8 +414,6 @@ const sendBillsEstate = async (req, res) => {
 const sendToAll = async (req, res) => {
   const { tenantId } = req.user;
   const { message } = req.body;
-  const { default: pLimit } = await import('p-limit');
-  const limit = pLimit(100); // Limit to 100 concurrent operations
 
   // Validate inputs
   if (!tenantId) {
@@ -438,36 +436,23 @@ const sendToAll = async (req, res) => {
     // Fetch active customers
     const activeCustomers = await prisma.customer.findMany({
       where: { status: 'ACTIVE', tenantId },
-      select: {
-        id: true,
-        phoneNumber: true,
-        firstName: true,
-      },
+      select: { id: true, phoneNumber: true, firstName: true },
     });
 
     if (activeCustomers.length === 0) {
       return res.status(200).json({ message: 'No active customers found.' });
     }
 
-    // Process customers in batches of 1000
-    const batchSize = 1000;
-    const messages = [];
-    for (let i = 0; i < activeCustomers.length; i += batchSize) {
-      const customerBatch = activeCustomers.slice(i, i + batchSize);
-      const batchMessages = await Promise.all(
-        customerBatch.map((customer) =>
-          limit(async () => ({
-            mobile: sanitizePhoneNumber(customer.phoneNumber),
-            message: `Dear ${customer.firstName}, ${message.trim()}`,
-          }))
-        )
-      );
-      messages.push(...batchMessages);
-    }
+    // Prepare messages
+    const messages = activeCustomers.map((customer) => ({
+      mobile: sanitizePhoneNumber(customer.phoneNumber),
+      message: `Dear ${customer.firstName}, ${message.trim()}`,
+    }));
 
     // Send SMS in batches of 500
     const smsBatchSize = 500;
     const smsResponses = [];
+
     for (let i = 0; i < messages.length; i += smsBatchSize) {
       const batch = messages.slice(i, i + smsBatchSize);
       try {
@@ -485,7 +470,6 @@ const sendToAll = async (req, res) => {
       }
     }
 
-    // Respond with success
     res.status(200).json({
       success: true,
       message: `SMS sent to ${activeCustomers.length} active customers in ${Math.ceil(messages.length / smsBatchSize)} SMS batches.`,
