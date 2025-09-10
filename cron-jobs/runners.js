@@ -1,6 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient();
+
+const {prisma} = require('./cronPrismaClient.js');
 const cron = require('node-cron');
 
 
@@ -8,11 +8,12 @@ const runTask = require('../controller/jobs/backup.js');
 const {generateInvoicesForAllTenants} = require('../controller/bill/processBillsAllTenants.js');
 
 const moment = require('moment-timezone');
-const { sendInvoiceReminders } = require('../controller/jobs/invoiceGenReminderSMS.js');
+const { sendInvoiceReminders, notifyUnreceiptedPayments } = require('../controller/jobs/invoiceGenReminderSMS.js');
 const { sendSmsBalanceAlerts } = require('../controller/jobs/smsBalanceReminder.js');
 const { settleInvoice } = require('../controller/mpesa/paymentSettlement.js');
-const { notifyUnreceiptedPayments } = require('../controller/payments/getAllPayments.js');
-const { checkCustomersForAllTenants } = require('../controller/dashboadstats/dashboard.js');
+const { checkCustomersForAllTenants } = require('../controller/jobs/customer.js');
+
+
 
 cron.schedule('0 2 * * *', () => {
   //console.log(`[ ⏰ Triggering backup task at: ${new Date().toLocaleString('en-US', { timeZone: 'Africa/Nairobi' })}`);

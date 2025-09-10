@@ -1,4 +1,4 @@
-const { PrismaClient, CustomerType } = require('@prisma/client');
+
 const axios = require('axios');
 const {getSMSConfigForTenant }= require('../smsConfig/getSMSConfig.js')
 const {fetchTenant} = require('../tenants/tenantupdate.js')
@@ -6,7 +6,7 @@ const { v4: uuidv4, stringify } = require('uuid');
 const { generatePaymentLink } = require('../mpesa/stkpush.js');
 
 
-const prisma = new PrismaClient();
+const { prisma} = require('../../globalPrismaClient.js')
 
 // const SMS_API_KEY = process.env.SMS_API_KEY;
 // const PARTNER_ID = process.env.PARTNER_ID;

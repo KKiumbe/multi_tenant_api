@@ -1,11 +1,11 @@
-const { PrismaClient } = require('@prisma/client');
+
 const { json } = require('express');
 //const { GarbageCollectionDay } = require('./enum.js'); // Adjust the path if needed
 
 const schedule = require('node-schedule'); // For scheduling jobs
 const { generatePaymentLink } = require('../mpesa/stkpush');
 
-const prisma = new PrismaClient();
+const {prisma} = require('../../globalPrismaClient.js');
 
 // Function to generate a unique invoice number
 function generateInvoiceNumber(customerId) {

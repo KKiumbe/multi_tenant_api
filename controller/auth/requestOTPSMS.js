@@ -1,6 +1,6 @@
 const axios = require('axios');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient(); // Initialize Prisma Client
+
+const {prisma} = require('../../globalPrismaClient.js'); // Initialize Prisma Client
 
 // Load environment variables
 const SMS_API_KEY = process.env.SMS_API_KEY;

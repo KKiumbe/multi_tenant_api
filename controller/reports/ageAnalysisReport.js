@@ -1,10 +1,10 @@
 const { fetchTenantDetails, fetchTenant } = require('../tenants/tenantupdate.js');
 const { generatePDFHeader } = require('./header.js');
-const { PrismaClient } = require('@prisma/client');
+
 const PDFDocument = require('pdfkit');
 const dayjs = require('dayjs');
 
-const prisma = new PrismaClient();
+const {prisma} = require('../../globalPrismaClient.js');
 
 async function generateAgeAnalysisReport(req, res) {
   try {

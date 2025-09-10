@@ -1,8 +1,8 @@
 const { PrismaClient, ModeOfPayment } = require('@prisma/client');
-const { sendSMS, getShortCode } = require('../sms/sms');
-const { fetchTenant } = require('../tenants/tenantupdate');
+const { sendSMS, getShortCode } = require('../sms/sms.js');
+const { fetchTenant } = require('../tenants/tenantupdate.js');
 
-const prisma = new PrismaClient();
+const {prisma} = require('../../globalPrismaClient.js');
 
 function generateTransactionId() {
   const randomDigits = Math.floor(10000000 + Math.random() * 90000000);

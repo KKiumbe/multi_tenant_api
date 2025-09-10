@@ -1,8 +1,7 @@
 
 
-const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient(); 
+const {prisma} = require('../../globalPrismaClient.js'); 
 const createMPESAConfig = async (req, res) => {  
     try {
       const { tenantId, shortCode, name, apiKey, passKey,secretKey } = req.body;

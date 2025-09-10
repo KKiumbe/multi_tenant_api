@@ -1,7 +1,7 @@
 const axios = require('axios');
-const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient();
+
+const {prisma} = require('../../globalPrismaClient.js');
 
 async function checkSmsBalance() {
   try {

@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
+const {prisma} = require('../../globalPrismaClient.js')
 
 const getCustomerDetails = async (req, res) => {
   const { id } = req.params;

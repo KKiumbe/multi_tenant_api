@@ -1,10 +1,6 @@
 const express = require('express');
 
 
-const { PrismaClient } = require('@prisma/client'); // Prisma Client import
-//const startGarbageCollection = require('./controller/jobs/garbagecollectionStatus.js');
-//const startInvoiceGen = require('./controller/jobs/invoicegen.js');
-//const startBackup = require('./controller/jobs/backup.js');
 const cors = require('cors');
 const helmet = require('helmet'); // Import Helmet
 require('dotenv').config();
@@ -36,7 +32,7 @@ const cookieParser = require('cookie-parser');
 //const startInvoiceScheduler = require('./controller/jobs/invoicegen.js');
 //const startInvoiceSMSScheduler = require('./controller/jobs/invoiceGenReminderSMS.js');
 
-const prisma = new PrismaClient(); // Prisma Client instance
+const {prisma} = require('./globalPrismaClient.js'); // Prisma Client instance
 
 const app = express();
 const PORT = process.env.PORT || 5000;

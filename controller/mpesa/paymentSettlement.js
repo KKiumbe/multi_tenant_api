@@ -1,6 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient();
+
+const {prisma} = require('../../cron-jobs/cronPrismaClient.js');
 
 async function generateUniqueReceiptNumber(paymentId) {
     let receiptNumber;

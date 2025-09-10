@@ -1,8 +1,8 @@
-const { PrismaClient } = require('@prisma/client');
+
 const ROLE_PERMISSIONS = require("./../../DatabaseConfig/role.js");
 
 const bcrypt = require('bcrypt');
-const prisma = new PrismaClient();
+const {prisma} = require('../../globalPrismaClient.js');
 
 /**
  * Get all users

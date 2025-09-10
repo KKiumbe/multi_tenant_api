@@ -1,10 +1,10 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
-const { PrismaClient } = require('@prisma/client');
+
 const ROLE_PERMISSIONS = require('../../DatabaseConfig/role.js');
 const { configureTenantSettings } = require('../smsConfig/config.js');
-const prisma = new PrismaClient();
+const {prisma} = require('../../globalPrismaClient.js')
 dotenv.config();
 
 const ACTION_TYPES = {

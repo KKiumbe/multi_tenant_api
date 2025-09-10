@@ -1,7 +1,7 @@
-const { PrismaClient } = require('@prisma/client');
+
 const moment = require('moment-timezone');
 
-const prisma = new PrismaClient();
+const {prisma} = require('../../globalPrismaClient.js');
 
  const deleteTodayInvoices = async (req, res) => {
   try {

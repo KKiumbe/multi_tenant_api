@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
+
 const { lipaNaMpesa } = require('../../controller/mpesa/payment.js');
-const prisma = new PrismaClient();
+const {prisma} = require('../../globalPrismaClient.js');
 const { settleInvoice } = require('../../controller/mpesa/paymentSettlement.js');
 const { renderPayPage, stkPush, stkCallback, checkPaymentStatus } = require('../../controller/mpesa/stkpush.js');
 

@@ -1,5 +1,5 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+
+const {prisma} = require('../../globalPrismaClient.js');
 
 const updateTaskStatus = async (req, res) => {
   const { taskId } = req.params; // Task ID from the URL parameter

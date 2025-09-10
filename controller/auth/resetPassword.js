@@ -1,8 +1,8 @@
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
-const { PrismaClient } = require('@prisma/client');
+
 const { sendSMS } = require('../sms/sms'); // Adjust path as needed
-const prisma = new PrismaClient();
+const {prisma} = require('../../globalPrismaClient.js')
 
 const requestOTP = async (req, res) => {
   const { phoneNumber } = req.body;

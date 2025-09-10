@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client'); // Import Prisma Client
-const prisma = new PrismaClient(); // Create an instance of Prisma Client
+const {prisma} = require('../../globalPrismaClient.js')
 
 const sanitizePhoneNumber = (phone) => {
     if (!phone) return null;

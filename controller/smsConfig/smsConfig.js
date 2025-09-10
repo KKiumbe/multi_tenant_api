@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
+const {prisma} = require('../../globalPrismaClient.js');
 
 // Update SMSConfig
 const updateSMSConfig = async (req, res) => {

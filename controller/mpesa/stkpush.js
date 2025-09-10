@@ -1,8 +1,8 @@
 // src/controllers/mpesaController.js
 const { v4: uuidv4 } = require('uuid');
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
+const {prisma} = require('../../globalPrismaClient.js');
 const { getAccessToken } = require('./token');
 const { settleInvoice } = require('./paymentSettlement');
 const axios = require('axios');

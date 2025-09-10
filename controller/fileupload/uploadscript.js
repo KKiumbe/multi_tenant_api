@@ -3,8 +3,8 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const csv = require('csv-parser');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
+const {prisma} = require('../../globalPrismaClient.js');
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, '..', 'uploads');

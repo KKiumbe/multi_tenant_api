@@ -3,10 +3,10 @@ const pdfFonts = require("pdfmake/build/vfs_fonts");
 const PDFDocument = require("pdfkit");
 
 const { fetchTenantDetails, fetchTenant } = require("../tenants/tenantupdate.js");
-const { PrismaClient } = require("@prisma/client");
+
 const { generatePDFHeader } = require("./header.js");
 
-const prisma = new PrismaClient();
+const {prisma} = require("../../globalPrismaClient.js");
 
 
 

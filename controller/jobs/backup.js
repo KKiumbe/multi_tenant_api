@@ -1,8 +1,7 @@
 require('dotenv').config({ quiet: true });
 const { exec } = require('child_process');
 const cron = require('node-cron');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
 const fs = require('fs').promises;
 const path = require('path');
 const { uploadToDropbox } = require('./backuToDropbox');

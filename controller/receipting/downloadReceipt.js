@@ -8,7 +8,7 @@ const { generateReceiptPDF } = require('./generateReceiptPDF.js');
 
 
 
-const prisma = new PrismaClient();
+const {prisma} = require('../../globalPrismaClient.js');
 
 
 

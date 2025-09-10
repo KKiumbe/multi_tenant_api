@@ -1,11 +1,10 @@
-// jobs/sendSmsBalanceAlerts.js
-const { PrismaClient } = require('@prisma/client');
+
 const axios = require('axios');
 
 
 
 const SMS_BALANCE_URL = process.env.SMS_BALANCE_URL;
-const prisma = new PrismaClient();
+const {prisma} = require('../../cron-jobs/cronPrismaClient.js');
 
 const checkSmsBalance = async (apiKey, partnerId) => {
   if (!apiKey || !partnerId) {

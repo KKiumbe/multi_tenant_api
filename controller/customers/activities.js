@@ -1,5 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const {prisma} = require('../../globalPrismaClient.js')
 
 // GET: Fetch activity history for a specific customer, including actions and details
 const getCustomerActivity = async (req, res) => {

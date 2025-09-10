@@ -1,6 +1,6 @@
-const { PrismaClient } = require('@prisma/client');
 
-const prisma = new PrismaClient();
+
+const {prisma} = require('../../globalPrismaClient.js');
 
 async function getUserLoginStats() {
   return await prisma.user.findMany({

@@ -1,5 +1,5 @@
 const { PrismaClient,CustomerStatus } = require('@prisma/client'); // Import the enum
-const prisma = new PrismaClient();
+const {prisma} = require('../../globalPrismaClient.js');
 // Create a new customer
 
 

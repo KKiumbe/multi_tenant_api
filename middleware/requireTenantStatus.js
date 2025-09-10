@@ -1,7 +1,7 @@
 // middleware/requireTenantStatus.js
 
-const { PrismaClient,TenantStatus } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { TenantStatus } = require('@prisma/client');
+const {prisma} = require('../globalPrismaClient.js');
 /**
  * Blocks requests unless req.tenantStatus is in the allowed list.
  * Sends a specific message if the tenant subscription has expired.

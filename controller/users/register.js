@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
+const {prisma} = require('../../globalPrismaClient.js');
 const ROLE_PERMISSIONS = require('../../DatabaseConfig/role'); // Path to the role permissions file
 
 

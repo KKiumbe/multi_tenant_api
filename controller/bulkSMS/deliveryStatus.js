@@ -1,6 +1,6 @@
 const axios = require('axios');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
+const {prisma} = require('../../globalPrismaClient.js');
 require('dotenv').config();
 
 const ENDPOINT = 'https://quicksms.advantasms.com/api/services/getdlr/'

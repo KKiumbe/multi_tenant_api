@@ -1,5 +1,5 @@
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+
+const {prisma} = require("../../globalPrismaClient.js");
 
 const createTaskForIssuingTrashBags = async (req, res) => {
   const { assigneeId, collectionDay, declaredBags } = req.body; // Single assigneeId and number of declared bags

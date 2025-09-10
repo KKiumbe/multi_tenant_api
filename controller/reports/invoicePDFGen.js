@@ -1,8 +1,7 @@
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const path = require('path');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const {prisma} = require('../../globalPrismaClient.js');
 const { fetchTenant } = require('../tenants/tenantupdate.js');
 const { generatePDFHeader } = require('./header.js');
 const { getSMSConfigForTenant } = require('../smsConfig/getSMSConfig.js');

@@ -1,8 +1,8 @@
 
-const { PrismaClient } = require('@prisma/client');
 
 
-const prisma = new PrismaClient();
+
+const {prisma} = require('../../cron-jobs/cronPrismaClient.js');
 
 const { processCustomerBatchForAll } = require('./billGenerator.js');
 // Configure logger

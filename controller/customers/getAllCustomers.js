@@ -1,6 +1,5 @@
-// Import Prisma Client
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient(); 
+
+const {prisma} = require('../../globalPrismaClient.js')
 
 // Get all customers for the authenticated tenant
 const getAllCustomers = async (req, res) => {
