@@ -1,5 +1,5 @@
 
-const prisma = require('../../globalPrismaClient.js');
+const {prisma} = require('../../globalPrismaClient.js');
 
 const getDashboardStats = async (req, res) => {
 
