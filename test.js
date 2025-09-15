@@ -19,40 +19,40 @@ const at = AfricasTalking(credentials);
 const voice = at.VOICE;
 
 // --- 3. Outbound Call Function ---
-async function makeOutboundCall() {
-  try {
-    const options = {
-      callFrom: '+254711082608',   // MUST be your Africa's Talking Voice number
-      callTo: ['+254702550190']    // Number(s) to call
-    };
+// async function makeOutboundCall() {
+//   try {
+//     const options = {
+//       callFrom: '+254711082608',   // MUST be your Africa's Talking Voice number
+//       callTo: ['+254702550190']    // Number(s) to call
+//     };
 
-    const response = await voice.call(options);
-    console.log('✅ Outbound Call Response:', response);
-  } catch (err) {
-    console.error('❌ Error making call:', err.response?.data || err.message);
-  }
-}
+//     const response = await voice.call(options);
+//     console.log('✅ Outbound Call Response:', response);
+//   } catch (err) {
+//     console.error('❌ Error making call:', err.response?.data || err.message);
+//   }
+// }
 
 // --- 4. Voice Callback (AT will POST here after call connects) ---
 app.post('/voice/callback', (req, res) => {
   console.log('📩 Incoming voice callback:', req.body);
 
   // Respond with Call Actions (JSON instead of XML)
-  const callActions = {
-    callActions: [
+  // const callActions = {
+  //   callActions: [
     
-      {
-        actionType: "Dial",
-        phoneNumbers: [
-          "+254716177880",                       // direct phone
-          "agent1.username@ke.africastalking.com", // SIP/AT agent
-          "Username.JaneDoe"                       // AT user handle
-        ]
-      }
-    ]
-  };
+  //     {
+  //       actionType: "Dial",
+  //       phoneNumbers: [
+  //         "+254716177880",                       // direct phone
+  //         "agent1.username@ke.africastalking.com", // SIP/AT agent
+  //         "Username.JaneDoe"                       // AT user handle
+  //       ]
+  //     }
+  //   ]
+  // };
 
-  res.json(callActions); // ✅ send JSON call flow back to AT
+  // res.json(callActions); // ✅ send JSON call flow back to AT
 });
 
 // --- 5. Start Server ---
@@ -61,5 +61,5 @@ app.listen(PORT, () => {
   console.log(`📞 Voice app running on port ${PORT}`);
 
   // 👇 Automatically launch call after server starts
-  makeOutboundCall();
+  // makeOutboundCall();
 });
