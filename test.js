@@ -11,8 +11,8 @@ app.use(bodyParser.json());
 
 // --- 2. AT Credentials ---
 const credentials = {
-  apiKey: 'atsk_173e85657de7d18f5774e6c8243ef46bb3dc418895544937878ea3e957cb17a3d232743d', // replace with your API key
-  username: 'sikika' 
+  apiKey: 'atsk_173e85657de7d18f5774e6c8243ef46bb3dc418895544937878ea3e957cb17a3d232743d', // replace with your LIVE API key
+  username: 'sikika' // replace with your AT username
 };
 
 const at = AfricasTalking(credentials);
@@ -22,31 +22,37 @@ const voice = at.VOICE;
 async function makeOutboundCall() {
   try {
     const options = {
-      callFrom: '+254711082608',   // your AT virtual number
-      callTo: ['+254702550190']    // numbers to call
+      callFrom: '+254711082608',   // MUST be your Africa's Talking Voice number
+      callTo: ['+254702550190']    // Number(s) to call
     };
 
     const response = await voice.call(options);
     console.log('✅ Outbound Call Response:', response);
   } catch (err) {
-    console.error('❌ Error making call:', err);
+    console.error('❌ Error making call:', err.response?.data || err.message);
   }
 }
 
-// --- 4. Voice Callback ---
+// --- 4. Voice Callback (AT will POST here after call connects) ---
 app.post('/voice/callback', (req, res) => {
-  console.log('Incoming voice request:', req.body);
+  console.log('📩 Incoming voice callback:', req.body);
 
-  const xmlResponse = `
-    <?xml version="1.0" encoding="UTF-8"?>
-    <Response>
-      <Say>Welcome to our call center. Please hold while we connect you.</Say>
-      <Dial phoneNumbers="+2547XXXXXXXX" />
-    </Response>
-  `;
+  // Respond with Call Actions (JSON instead of XML)
+  const callActions = {
+    callActions: [
+    
+      {
+        actionType: "Dial",
+        phoneNumbers: [
+          "+254716177880",                       // direct phone
+          "agent1.username@ke.africastalking.com", // SIP/AT agent
+          "Username.JaneDoe"                       // AT user handle
+        ]
+      }
+    ]
+  };
 
-  res.type('text/xml');
-  res.send(xmlResponse);
+  res.json(callActions); // ✅ send JSON call flow back to AT
 });
 
 // --- 5. Start Server ---
